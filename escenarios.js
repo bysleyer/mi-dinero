@@ -176,14 +176,16 @@ const Escenarios = {
       const monto = redondear(Math.min(E, Math.max(0, cuanto)));
       if (monto > 0) { lista.push({ nombre, monto }); E = redondear(E - monto); }
     };
-    dar("Renta atrasada", Datos.saldoDeuda(Plan.ID_DEUDA_RENTA));
-    dar("Internet atrasado", Datos.saldoDeuda("deudaInternet") - pagadoYa("deudaInternet"));
-    const c = Plan.calcular();
-    const faltaMeta = c.meta - c.plan.sobres.colchon;
-    dar(`Colchón (${porcentajeColchon}% de lo que queda, hasta la meta)`, Math.min(E * porcentajeColchon / 100, faltaMeta));
-    Deudas.prioritarias()
-      .filter(d => d.id !== Plan.ID_DEUDA_RENTA && d.id !== "deudaInternet")
-      .forEach(d => dar(d.nombre, Datos.saldoDeuda(d.id)));
+    // Mismo reparto que el Plan y Mis deudas (Plan.repartirExtra)
+    const orden = Plan.deudasEnOrden();
+    const saldos = {};
+    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id) - pagadoYa(d.id)); });
+    const meta = Plan.metaColchon();
+    const r = Plan.repartirExtra(extra, { pct: porcentajeColchon / 100, colchon: Almacen.leerPlan().sobres.colchon, meta, saldos, orden });
+    const nombre = id => orden.find(d => d.id === id).nombre;
+    Plan.DEUDAS_PRIMERO.forEach(id => { if (r.deudas[id]) dar(nombre(id), r.deudas[id]); });
+    if (r.aColchon > 0) dar(`Colchón (${porcentajeColchon}% hasta llegar a ${dinero(meta)})`, r.aColchon);
+    orden.filter(d => !Plan.DEUDAS_PRIMERO.includes(d.id) && r.deudas[d.id]).forEach(d => dar(d.nombre, r.deudas[d.id]));
     if (E > 0) lista.push({ nombre: "Sobra sin asignar", monto: E });
     return lista;
   },

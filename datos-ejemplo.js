@@ -49,7 +49,7 @@ window.DATOS_EJEMPLO = {
   deudasAtrasadas: [
     { id: "deudaRenta", nombre: "Renta atrasada", monto: 600, prioridad: 1,
       creado: "2026-01-01T00:00:00.000Z", modificado: "2026-01-01T00:00:00.000Z" },
-    { id: "deudaLuz", nombre: "Plan de pagos de luz", monto: 120, prioridad: 4, cuotaMensual: 10, pagoExtraOpcional: true,
+    { id: "deudaLuz", nombre: "Plan de pagos de luz", monto: 120, prioridad: 4, cuotaMensual: 10, pagoExtraOpcional: true, soloExtra: true,
       creado: "2026-01-01T00:00:00.000Z", modificado: "2026-01-01T00:00:00.000Z" },
     { id: "deudaInternet", nombre: "Internet atrasado", monto: 80, prioridad: 2, venceInmediato: true,
       creado: "2026-01-01T00:00:00.000Z", modificado: "2026-01-01T00:00:00.000Z" },
@@ -58,6 +58,8 @@ window.DATOS_EJEMPLO = {
     { id: "deudaAmigo", nombre: "Préstamo de un amigo", monto: 300, prioridad: 3, puedeEsperar: true,
       creado: "2026-01-01T00:00:00.000Z", modificado: "2026-01-01T00:00:00.000Z" }
   ],
+
+  colchon: { meta: 200 },
 
   reglasDePrioridad: {
     nivel1: { descripcion: "No se atrasa", pagos: ["renta", "prestamoSemanal", "transporte", "comida"], comidaMinima: 100 },

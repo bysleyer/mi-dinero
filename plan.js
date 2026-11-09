@@ -69,6 +69,51 @@ const Plan = {
     return { lista, total: redondear(lista.reduce((s, x) => s + x.monto, 0)) };
   },
 
+  // ---------- Colchón y reparto del extra (ajuste al Bloque 11) ----------
+  META_COLCHON_DEFECTO: 300,
+  DEUDAS_PRIMERO: ["deudaRenta", "deudaInternet"], // renta atrasada y luego internet atrasado
+
+  metaColchon() {
+    const c = Datos.actual.colchon;
+    return c && typeof c.meta === "number" ? c.meta : this.META_COLCHON_DEFECTO;
+  },
+
+  // Deudas con prioridad (Bloque 4), en su orden
+  deudasEnOrden() {
+    return Datos.deudas()
+      .filter(d => !d.automatico && d.prioridad != null)
+      .sort((a, b) => a.prioridad - b.prioridad);
+  },
+
+  // Reparte el dinero extra:
+  //   1) renta atrasada, 2) internet atrasado,
+  //   3) colchón: el % elegido hasta llegar a la meta (lleno = no recibe nada),
+  //   4) lo demás a las deudas en su orden (préstamo del amigo, luego plan de luz).
+  // "saldos" ({ id: saldo }) se va restando. Devuelve { deudas: { id: monto }, aColchon, resto }.
+  repartirExtra(extra, { pct, colchon, meta, saldos, orden }) {
+    let E = Math.max(0, extra);
+    const deudas = {};
+    const pagar = id => {
+      const m = Math.min(E, Math.max(0, saldos[id] || 0));
+      if (m > 0.005) { deudas[id] = (deudas[id] || 0) + m; saldos[id] -= m; E -= m; }
+    };
+    this.DEUDAS_PRIMERO.forEach(pagar);
+    let aColchon = 0;
+    if (colchon < meta && E > 0) {
+      aColchon = Math.min(E * pct, meta - colchon);
+      E -= aColchon;
+    }
+    orden.filter(d => !this.DEUDAS_PRIMERO.includes(d.id)).forEach(d => pagar(d.id));
+    return { deudas, aColchon, resto: E };
+  },
+
+  // "Ya puedes pagarle a tu amigo": renta e internet atrasados en 0 y colchón lleno
+  puedePagarAmigo(colchon) {
+    return this.DEUDAS_PRIMERO.every(id => Datos.saldoDeuda(id) <= 0.005)
+      && colchon >= this.metaColchon() - 0.005
+      && Datos.saldoDeuda("deudaAmigo") > 0.005;
+  },
+
   // Bloque 11: ingreso de "¿Y si cobro...?" solo para ver (no se guarda ni registra nada)
   vistaPrevia: null,
 
@@ -83,15 +128,20 @@ const Plan = {
     const neto = vista ? vista.monto : usaReal ? real.total : estimado.neto;
     const { lineas, total } = this.gastosFijos();
     const sobrante = neto - total;
-    const meta = Math.max(0, total - Datos.actual.ingresos.semanaMala.netoMinimo);
+    // Colchón: meta fija (mis datos); recibe su % solo después de renta e internet atrasados
+    const meta = this.metaColchon();
     const pct = plan.porcentajeColchon / 100;
-    const aColchon = sobrante > 0 ? sobrante * pct : 0;
+    const saldos = {};
+    this.deudasEnOrden().forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id)); });
+    const reparto = this.repartirExtra(sobrante, { pct, colchon: plan.sobres.colchon, meta, saldos, orden: this.deudasEnOrden() });
+    const aColchon = sobrante > 0 ? reparto.aColchon : 0;
     const aDeudas = sobrante > 0 ? sobrante - aColchon : 0;
+    const puedePagarAmigo = this.puedePagarAmigo(plan.sobres.colchon);
     const semanalRenta = this.montoDe(lineas, "renta");
     const semanalServicios = ["telefono", "luz", "internet"]
       .reduce((s, id) => s + this.montoDe(lineas, id), 0);
     return { plan, bruto, neto, lineas, total, sobrante, meta, aColchon, aDeudas,
-             semanalRenta, semanalServicios, usaReal, real, vista };
+             semanalRenta, semanalServicios, usaReal, real, vista, puedePagarAmigo };
   },
 
   // Lunes de la semana actual (AAAA-MM-DD), para no apartar dos veces
@@ -227,6 +277,7 @@ const Plan = {
       `${Math.round(avance * 100)}% — llevas ${dinero(ahorrado)} de ${dinero(c.meta)}`;
     $("p-a-colchon").textContent = dinero(c.aColchon);
     $("p-a-deudas").textContent = dinero(c.aDeudas);
+    $("p-amigo").hidden = !c.puedePagarAmigo;
 
     // 5. Sobres
     const sob = c.plan.sobres;

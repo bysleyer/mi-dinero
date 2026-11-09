@@ -368,3 +368,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .pegar { margin-top: 14px; }
 .pegar summary { font-weight: 700; color: #1a5fb4; cursor: pointer; min-height: 32px; }
 .pegar .boton-chico { width: 100%; }
+
+/* ---------- Ajuste al Bloque 11: colchón y amigo ---------- */
+#p-amigo { margin-top: 12px; }
+.resumen li.destacada span:first-child { font-weight: 700; }

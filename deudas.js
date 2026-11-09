@@ -66,12 +66,14 @@ const Deudas = {
     let prestamo = Math.max(0, Datos.saldoDeuda(Plan.ID_DEUDA_PRESTAMO));
     let colchon = Almacen.leerPlan().sobres.colchon;
     const pct = porcentajeColchon / 100;
+    const meta = Plan.metaColchon();
 
     const fechas = {};
     orden.forEach(d => { if (saldos[d.id] <= this.CERO) fechas[d.id] = "pagada"; });
     if (prestamo <= this.CERO) fechas[Plan.ID_DEUDA_PRESTAMO] = "pagada";
 
-    const resultado = { fechas, libre: null, ritmoConPrestamo: null, ritmoSinPrestamo: null };
+    const resultado = { fechas, libre: null, ritmoConPrestamo: null, ritmoSinPrestamo: null,
+                        fechaColchon: colchon >= meta - this.CERO ? "ya" : null };
     const todoPagado = () => prestamo <= this.CERO && orden.every(d => saldos[d.id] <= this.CERO);
     if (todoPagado()) { resultado.libre = "ya"; return resultado; }
 
@@ -84,16 +86,15 @@ const Deudas = {
 
       const gastos = gastosBase + cuota;
       const sobrante = neto - gastos;
-      // Colchón: recibe su parte hasta llegar a la meta (la meta baja sin préstamo)
-      const meta = Math.max(0, gastos - ing.semanaMala.netoMinimo);
-      const aColchon = sobrante > 0 ? Math.min(sobrante * pct, Math.max(0, meta - colchon)) : 0;
-      colchon += aColchon;
-      const paraDeudas = Math.max(0, sobrante - aColchon) + extraSemanal;
+      // Extra de la semana: renta e internet atrasados → colchón (% hasta la meta fija) → demás deudas
+      const extra = Math.max(0, sobrante) + extraSemanal;
+      const r = Plan.repartirExtra(extra, { pct, colchon, meta, saldos, orden });
+      colchon += r.aColchon;
+      if (!resultado.fechaColchon && colchon >= meta - this.CERO) resultado.fechaColchon = new Date(fecha);
+      const paraDeudas = extra - r.aColchon;
 
       if (cuota > 0 && resultado.ritmoConPrestamo == null) resultado.ritmoConPrestamo = paraDeudas;
       if (cuota === 0 && resultado.ritmoSinPrestamo == null) resultado.ritmoSinPrestamo = paraDeudas;
-
-      this.repartir(paraDeudas, saldos, orden);
       orden.forEach(d => {
         if (!fechas[d.id] && saldos[d.id] <= this.CERO) fechas[d.id] = new Date(fecha);
       });
@@ -186,7 +187,9 @@ const Deudas = {
     if (!hayExtra) {
       html += `<p class="mensaje-sobrante negativo">Esta semana no hay extra para deudas. Cubre lo fijo primero.</p>`;
     } else {
-      html = `<p class="nota-sobre">Dinero para deudas esta semana: <strong>${dinero(c.aDeudas)}</strong></p>` + html;
+      html = `<p class="nota-sobre">Dinero para deudas esta semana: <strong>${dinero(c.aDeudas)}</strong>` +
+        (c.aColchon > 0 ? ` (y ${dinero(c.aColchon)} al colchón)` : "") + `</p>` +
+        (c.puedePagarAmigo ? `<p class="mensaje-sobrante positivo">Ya puedes pagarle a tu amigo</p>` : "") + html;
       orden.filter(d => d.id !== Plan.ID_DEUDA_RENTA && reparto[d.id]).forEach(d => {
         html += `
           <div class="pago-bloque">
@@ -227,8 +230,11 @@ const Deudas = {
     const filas = [...this.prioritarias(), ...this.automaticas()].map(d => {
       const f = p.fechas[d.id];
       const texto = f === "pagada" ? "Pagada" : f ? fechaLarga(f) : "—";
-      return `<li><span>${escapar(d.nombre)}</span><span>${texto}</span></li>`;
+      return `<li${d.id === "deudaAmigo" ? ' class="destacada"' : ""}><span>${escapar(d.nombre)}${d.id === "deudaAmigo" ? " queda en $0" : ""}</span><span>${texto}</span></li>`;
     });
+    const fc = p.fechaColchon;
+    filas.unshift(`<li class="destacada"><span>Colchón llega a ${dinero(Plan.metaColchon())}</span>
+      <span>${fc === "ya" ? "Ya está lleno" : fc ? fechaLarga(fc) : "—"}</span></li>`);
     $("d-fechas").innerHTML = filas.join("");
 
     const actual = plan.porcentajeColchon;
