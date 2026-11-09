@@ -372,3 +372,11 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 /* ---------- Ajuste al Bloque 11: colchón y amigo ---------- */
 #p-amigo { margin-top: 12px; }
 .resumen li.destacada span:first-child { font-weight: 700; }
+
+/* ---------- Botón Transporte con monto ---------- */
+.transporte-info { display: grid; gap: 2px; font-size: .9rem; }
+.transporte-alerta { margin-top: 4px; padding: 4px 8px; border-radius: 8px; background: #fff4e0; color: #8a5a00; font-weight: 700; }
+.montos-rapidos { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin: -4px 0 16px; }
+.montos-rapidos .boton-chico { margin-top: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+.montos-rapidos small { font-weight: 400; font-size: .75rem; color: var(--suave); }
+.aviso-flotante { width: max-content; max-width: calc(100% - 32px); text-align: center; }

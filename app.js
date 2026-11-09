@@ -185,6 +185,34 @@ const Formularios = {
     }
   },
 
+  // Botón rápido "Transporte": un gasto de Transporte con montos de un toque
+  transporte: {
+    titulo: "Transporte",
+    campos: () => {
+      const t = Transporte.resumen();
+      return `
+        <div class="ayuda transporte-info">
+          <div>Hoy llevas: <strong>${dinero(t.hoy)}</strong></div>
+          <div>Esta semana: <strong>${dinero(t.semana)}</strong> de ${dinero(t.semanal)}</div>
+          ${t.hoy > t.porDia + 0.005 ? `<div class="transporte-alerta">⚠ Hoy ya pasaste de ${dinero(t.porDia)}</div>` : ""}
+        </div>` + campoMonto() + `
+        <div class="montos-rapidos">
+          ${Transporte.montosRapidos().map(m =>
+            `<button type="button" class="boton-chico" data-llenar-monto="${m.monto}">${dinero(m.monto)}<small>${escapar(m.nombre)}</small></button>`
+          ).join("")}
+        </div>` + campoFecha() + (t.ultimoHoy
+          ? `<button type="button" id="deshacer-transporte" class="boton-chico boton-borrar">Deshacer el último (${dinero(t.ultimoHoy.monto)})</button>` : "");
+    },
+    leer(base) {
+      base.tipo = "gasto";
+      base.categoria = "Transporte";
+      return base;
+    },
+    avisoDespues(mov) {
+      return `Guardado: ${dinero(mov.monto)}. Hoy llevas ${dinero(Transporte.resumen().hoy)} en transporte.`;
+    }
+  },
+
   // Bloque 4: corregir el saldo de una deuda a mano
   ajuste: {
     titulo: "Ajustar saldo",
@@ -266,6 +294,7 @@ function guardarFormulario(evento) {
     return mostrarError("No se pudo guardar en este dispositivo.");
   }
   cerrarFormulario();
+  if (f.avisoDespues) Pantalla.aviso(f.avisoDespues(mov), 4000);
 }
 
 // Guarda un movimiento ya validado (lo usan el formulario y los registros rápidos)
@@ -371,11 +400,51 @@ function costoTransporteDia() {
   return Datos.actual.gastosFijos.find(g => g.id === "transporte").porDia;
 }
 
-async function registrarTransporteHoy() {
-  const monto = costoTransporteDia();
-  if (!(await preguntar(`¿Registrar ${dinero(monto)} de transporte de hoy?`, "Sí, registrar"))) return;
-  registrarMovimiento({ tipo: "gasto", monto, fecha: hoy(), categoria: "Transporte" });
-}
+// Botón "Transporte": cuánto llevas hoy y esta semana, montos rápidos y deshacer
+const Transporte = {
+  gasto() {
+    return Datos.actual.gastosFijos.find(g => g.id === "transporte");
+  },
+
+  // Montos de un toque (de mis datos); si no están, tren, taxi y día completo
+  montosRapidos() {
+    const g = this.gasto();
+    if (Array.isArray(g.montosRapidos) && g.montosRapidos.length) return g.montosRapidos;
+    const d = g.detalleDia || {};
+    return [
+      d.trenIda && { nombre: "Tren", monto: d.trenIda },
+      d.taxi && { nombre: "Taxi", monto: d.taxi },
+      { nombre: "Día completo", monto: g.porDia }
+    ].filter(Boolean);
+  },
+
+  resumen() {
+    const g = this.gasto();
+    const hoyClave = hoy();
+    const lunes = Plan.claveSemana();
+    const [a, m, d] = lunes.split("-").map(Number);
+    const dom = new Date(a, m - 1, d + 6);
+    const p = n => String(n).padStart(2, "0");
+    const domingo = `${dom.getFullYear()}-${p(dom.getMonth() + 1)}-${p(dom.getDate())}`;
+    const lista = Almacen.leerMovimientos().filter(x => x.tipo === "gasto" && x.categoria === "Transporte");
+    const deHoy = lista.filter(x => x.fecha === hoyClave).sort((x, y) => x.creado.localeCompare(y.creado));
+    return {
+      hoy: redondear(deHoy.reduce((s, x) => s + x.monto, 0)),
+      semana: redondear(lista.filter(x => x.fecha >= lunes && x.fecha <= domingo).reduce((s, x) => s + x.monto, 0)),
+      semanal: g.monto,
+      porDia: g.porDia,
+      ultimoHoy: deHoy[deHoy.length - 1] || null
+    };
+  },
+
+  // Borra el último gasto de transporte de hoy (con la misma función y pregunta que la ✕)
+  async deshacerUltimo() {
+    const ultimo = this.resumen().ultimoHoy;
+    if (!ultimo) return;
+    await borrarMovimiento(ultimo.id);
+    if (!$("ventana").hidden && formularioAbierto === "transporte") abrirFormulario("transporte");
+  }
+};
 
 // ---------- Instalar en el celular (solo cuando se abre desde una dirección web) ----------
 function prepararInstalacion() {
@@ -403,9 +472,14 @@ try {
     const b = e.target.closest("[data-borrar]");
     if (b) borrarMovimiento(b.dataset.borrar);
   });
-  $("rapido-transporte").addEventListener("click", registrarTransporteHoy);
+  $("rapido-transporte").addEventListener("click", () => abrirFormulario("transporte"));
+  $("form-campos").addEventListener("click", e => {
+    const b = e.target.closest("[data-llenar-monto]");
+    if (b) { $("f-monto").value = Number(b.dataset.llenarMonto).toFixed(2); $("f-monto").focus(); }
+    if (e.target.closest("#deshacer-transporte")) Transporte.deshacerUltimo();
+  });
   $("rapido-comida").addEventListener("click", () => abrirFormulario("gasto", { categoria: "Comida" }));
-  $("rapido-transporte").textContent = `Transporte de hoy (${dinero(costoTransporteDia())})`;
+  $("rapido-transporte").textContent = "Transporte";
   Pantalla.actualizar();
 } catch (e) {
   if (e !== "primera-vez") Pantalla.mostrarError(e.message);
