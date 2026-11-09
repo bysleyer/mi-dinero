@@ -1,0 +1,412 @@
+/*
+ * MI DINERO - lógica de la app
+ *  - Almacen (almacen.js): guarda/lee en el dispositivo.
+ *  - Datos: cifras de datos.js + cálculos con los movimientos.
+ *  - Formularios: "Me pagaron", "Gasté", "Pagué una deuda".
+ *  - Pantalla: dibuja lo que se ve.
+ */
+
+// ---------- Utilidades ----------
+const dinero = n =>
+  "$" + Number(n).toLocaleString("es-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const redondear = n => Math.round(n * 100) / 100;
+
+// Fecha de hoy en formato AAAA-MM-DD (hora local)
+function hoy() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function fechaCorta(iso) {
+  const [a, m, d] = iso.split("-");
+  return `${d}/${m}/${a}`;
+}
+
+function escapar(texto) {
+  return String(texto ?? "").replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+const $ = id => document.getElementById(id);
+
+// Pregunta "¿Seguro?" dentro de la app (no usa la ventana del navegador,
+// que no funciona en algunos lugares, como las páginas de claude.ai).
+// Devuelve una promesa: true si toca "Sí", false si toca "No".
+function preguntar(texto, si = "Sí", no = "No") {
+  return new Promise(resolver => {
+    const caja = $("pregunta");
+    $("pregunta-texto").textContent = texto;
+    $("pregunta-si").textContent = si;
+    $("pregunta-no").textContent = no;
+    caja.hidden = false;
+    $("pregunta-si").focus();
+    const cerrar = valor => {
+      caja.hidden = true;
+      $("pregunta-si").onclick = $("pregunta-no").onclick = null;
+      resolver(valor);
+    };
+    $("pregunta-si").onclick = () => cerrar(true);
+    $("pregunta-no").onclick = () => cerrar(false);
+  });
+}
+
+// ---------- Datos ----------
+const Datos = {
+  actual: null,
+
+  origen: null, // "propios" (mis-datos.json) o "ejemplo"
+
+  // Devuelve las cifras a usar, o null si es la primera vez en este dispositivo
+  cargar() {
+    const propios = Almacen.leerDatos();
+    if (propios) {
+      this.actual = propios;
+      this.origen = "propios";
+    } else if (Almacen.leerConfig().usarEjemplo) {
+      if (!window.DATOS_EJEMPLO) throw new Error("No se encontró datos-ejemplo.js.");
+      this.actual = window.DATOS_EJEMPLO;
+      this.origen = "ejemplo";
+    }
+    return this.actual;
+  },
+
+  deudas() {
+    return this.actual.deudasAtrasadas;
+  },
+
+  // Saldo de una deuda = monto en datos.js - pagos registrados ± ajustes a mano
+  saldoDeuda(deudaId) {
+    const deuda = this.deudas().find(d => d.id === deudaId);
+    if (!deuda) return 0;
+    const cambio = Almacen.leerMovimientos()
+      .filter(m => m.deudaId === deudaId)
+      .reduce((s, m) => {
+        if (m.tipo === "pagoDeuda") return s - m.monto;
+        if (m.tipo === "ajuste") return s + m.diferencia;
+        return s;
+      }, 0);
+    return redondear(deuda.monto + cambio);
+  },
+
+  deudaTotal() {
+    return redondear(this.deudas().reduce((s, d) => s + Math.max(0, this.saldoDeuda(d.id)), 0));
+  }
+};
+
+// ---------- Formularios ----------
+const CATEGORIAS = ["Comida", "Transporte", "Teléfono", "Luz", "Internet", "Hijos", "Otros"];
+
+const campoMonto = () => `
+  <div class="campo">
+    <label for="f-monto">Monto</label>
+    <input id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+  </div>`;
+
+const campoFecha = () => `
+  <div class="campo">
+    <label for="f-fecha">Fecha</label>
+    <input id="f-fecha" type="date" value="${hoy()}">
+  </div>`;
+
+const Formularios = {
+  ingreso: {
+    titulo: "Me pagaron",
+    campos: () => campoMonto() + campoFecha() + `
+      <div class="campo">
+        <label for="f-horas">Horas trabajadas <span class="opcional">(opcional)</span></label>
+        <input id="f-horas" type="number" inputmode="decimal" step="0.5" min="0">
+      </div>`,
+    leer(base) {
+      const horasTxt = $("f-horas").value.trim();
+      if (horasTxt !== "") {
+        const horas = Number(horasTxt);
+        if (!(horas > 0)) return { error: "Las horas deben ser mayores que 0, o deja el campo vacío." };
+        base.horas = horas;
+        base.nota = `${horas} horas`;
+        // Bloque 7: lo que la app estimaba para esas horas (solo informativo)
+        base.estimado = redondear(Jornadas.netoDeHoras(horas));
+      }
+      return base;
+    }
+  },
+
+  gasto: {
+    titulo: "Gasté",
+    campos: () => `
+      <p class="ayuda">Las facturas de <strong>este mes</strong> (teléfono, luz, internet) van aquí.
+        Lo que debes de meses anteriores va en "Pagué una deuda".</p>` + campoMonto() + `
+      <div class="campo">
+        <label for="f-categoria">Categoría</label>
+        <select id="f-categoria">
+          <option value="">Elige una…</option>
+          ${CATEGORIAS.map(c => `<option>${c}</option>`).join("")}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="f-nota">Nota <span class="opcional">(opcional)</span></label>
+        <input id="f-nota" type="text" maxlength="80">
+      </div>` + campoFecha(),
+    leer(base) {
+      const categoria = $("f-categoria").value;
+      if (!categoria) return { error: "Elige una categoría." };
+      base.categoria = categoria;
+      const nota = $("f-nota").value.trim();
+      if (nota) base.nota = nota;
+      return base;
+    }
+  },
+
+  pagoDeuda: {
+    titulo: "Pagué una deuda",
+    campos: () => `
+      <p class="ayuda">Aquí va lo que debes de <strong>meses anteriores</strong>.
+        Las facturas de este mes (teléfono, luz, internet) van en "Gasté".</p>
+      <div class="campo">
+        <label for="f-deuda">¿A cuál deuda?</label>
+        <select id="f-deuda">
+          <option value="">Elige una…</option>
+          ${Datos.deudas().map(d =>
+            `<option value="${d.id}">${escapar(d.nombre)} (debes ${dinero(Datos.saldoDeuda(d.id))})</option>`
+          ).join("")}
+        </select>
+      </div>` + campoMonto() + campoFecha(),
+    leer(base) {
+      const deudaId = $("f-deuda").value;
+      if (!deudaId) return { error: "Elige a cuál deuda le pagaste." };
+      const saldo = Datos.saldoDeuda(deudaId);
+      if (base.monto > saldo) {
+        return { error: `El monto es mayor que lo que debes en esa deuda (${dinero(saldo)}).` };
+      }
+      base.deudaId = deudaId;
+      base.nota = Datos.deudas().find(d => d.id === deudaId).nombre;
+      return base;
+    }
+  },
+
+  // Bloque 4: corregir el saldo de una deuda a mano
+  ajuste: {
+    titulo: "Ajustar saldo",
+    permiteCero: true,
+    campos: () => `
+      <div class="campo">
+        <label for="f-deuda">Deuda</label>
+        <select id="f-deuda">
+          ${Datos.deudas().map(d =>
+            `<option value="${d.id}">${escapar(d.nombre)} (ahora ${dinero(Datos.saldoDeuda(d.id))})</option>`
+          ).join("")}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="f-monto">Saldo real</label>
+        <input id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+      </div>` + campoFecha(),
+    leer(base) {
+      const deudaId = $("f-deuda").value;
+      const diferencia = redondear(base.monto - Datos.saldoDeuda(deudaId));
+      if (diferencia === 0) return { error: "Ese ya es el saldo que tienes registrado." };
+      base.deudaId = deudaId;
+      base.saldoNuevo = base.monto;
+      base.diferencia = diferencia;
+      base.nota = Datos.deudas().find(d => d.id === deudaId).nombre;
+      return base;
+    }
+  }
+};
+
+let formularioAbierto = null;
+let formularioExtra = null; // datos extra para el movimiento (ej.: qué vencimiento se pagó)
+
+// "valores" (opcional) rellena el formulario, ej.: { deudaId: "deudaLuz", monto: 100 }
+function abrirFormulario(tipo, valores = {}) {
+  formularioAbierto = tipo;
+  formularioExtra = valores.extra || null;
+  const f = Formularios[tipo];
+  $("form-titulo").textContent = f.titulo;
+  $("form-campos").innerHTML = f.campos();
+  if (valores.deudaId && $("f-deuda")) $("f-deuda").value = valores.deudaId;
+  if (valores.categoria && $("f-categoria")) $("f-categoria").value = valores.categoria;
+  if (valores.monto != null) $("f-monto").value = redondear(valores.monto).toFixed(2);
+  if (valores.fecha && $("f-fecha")) $("f-fecha").value = valores.fecha;
+  if (valores.horas != null && $("f-horas")) $("f-horas").value = valores.horas;
+  $("form-error").textContent = "";
+  $("ventana").hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function cerrarFormulario() {
+  $("ventana").hidden = true;
+  formularioAbierto = null;
+  document.body.style.overflow = "";
+}
+
+function guardarFormulario(evento) {
+  evento.preventDefault();
+  const f = Formularios[formularioAbierto];
+  const mostrarError = msg => { $("form-error").textContent = msg; };
+  // Formularios que no son de dinero (ej.: jornadas) se guardan a su manera
+  if (f.guardar) return f.guardar(mostrarError);
+
+  const montoTxt = $("f-monto").value.trim();
+  const monto = redondear(Number(montoTxt));
+  if (montoTxt === "") return mostrarError("Escribe el monto.");
+  if (f.permiteCero) {
+    if (!(monto >= 0)) return mostrarError("El saldo no puede ser negativo.");
+  } else if (!(monto > 0)) return mostrarError("El monto debe ser mayor que 0.");
+
+  const fecha = $("f-fecha").value;
+  if (!fecha) return mostrarError("Elige la fecha.");
+
+  const mov = f.leer({ tipo: formularioAbierto, monto, fecha });
+  if (mov.error) return mostrarError(mov.error);
+
+  if (formularioExtra) Object.assign(mov, formularioExtra);
+  if (!registrarMovimiento(mov)) {
+    return mostrarError("No se pudo guardar en este dispositivo.");
+  }
+  cerrarFormulario();
+}
+
+// Guarda un movimiento ya validado (lo usan el formulario y los registros rápidos)
+function registrarMovimiento(mov) {
+  // Pago a la renta: se descuenta del sobre de Renta (Bloque 3)
+  const descuentoRenta = Plan.cuantoDescontarDeRenta(mov);
+  if (descuentoRenta > 0) mov.descontadoSobreRenta = descuentoRenta;
+  // Gasto en teléfono, luz o internet: se descuenta del sobre de Servicios (Bloque 5)
+  const descuentoServicios = Plan.cuantoDescontarDeServicios(mov);
+  if (descuentoServicios > 0) mov.descontadoSobreServicios = descuentoServicios;
+
+  if (!Almacen.agregarMovimiento(mov)) return false;
+  Plan.moverSobreRenta(-descuentoRenta);
+  Plan.moverSobreServicios(-descuentoServicios);
+  Pantalla.actualizar();
+  if (mov.estimado != null) Pantalla.aviso(textoComparacion(mov), 6000);
+  else Pantalla.aviso("Guardado");
+  avisarCambioMovimientos();
+  return true;
+}
+
+// "Estimé $X, te llegaron $Y, diferencia $Z" (Bloque 7)
+function textoComparacion(mov) {
+  const dif = redondear(mov.monto - mov.estimado);
+  const signo = dif > 0 ? "+" : dif < 0 ? "−" : "";
+  return `Estimé ${dinero(mov.estimado)}, te llegaron ${dinero(mov.monto)}, diferencia ${signo}${dinero(Math.abs(dif))}`;
+}
+
+// Avisa a otras pantallas (ej.: Mis deudas) que los movimientos cambiaron
+function avisarCambioMovimientos() {
+  window.dispatchEvent(new Event("movimientos-cambiaron"));
+}
+
+// ---------- Pantalla ----------
+const NOMBRES_TIPO = { ingreso: "Ingreso", gasto: "Gasto", pagoDeuda: "Pago de deuda", ajuste: "Ajuste de saldo" };
+
+const Pantalla = {
+  actualizar() {
+    $("deuda-total").textContent = dinero(Datos.deudaTotal());
+
+    // Lunes a viernes, si no hay movimientos con fecha de hoy
+    const diaSemana = new Date().getDay();
+    const nadaHoy = !Almacen.leerMovimientos().some(m => m.fecha === hoy());
+    $("aviso-hoy").hidden = !(diaSemana >= 1 && diaSemana <= 5 && nadaHoy);
+
+    const ultimos = Almacen.leerMovimientos()
+      .slice()
+      .sort((a, b) => (b.fecha + b.creado).localeCompare(a.fecha + a.creado))
+      .slice(0, 10);
+
+    $("movimientos").innerHTML = ultimos.length === 0
+      ? `<p class="vacio">Todavía no hay movimientos.</p>`
+      : ultimos.map(m => {
+          const esIngreso = m.tipo === "ingreso";
+          const esAjuste = m.tipo === "ajuste";
+          const titulo = m.tipo === "gasto" ? `Gasto · ${m.categoria}` : NOMBRES_TIPO[m.tipo];
+          const detalle = [fechaCorta(m.fecha), m.nota, m.estimado != null ? textoComparacion(m) : ""]
+            .filter(Boolean).map(escapar).join(" · ");
+          return `
+            <li>
+              <div class="mov-info">
+                <div class="mov-tipo">${escapar(titulo)}</div>
+                <div class="mov-detalle">${detalle}</div>
+              </div>
+              <span class="mov-monto ${esAjuste ? "neutro" : esIngreso ? "positivo" : "negativo"}">
+                ${esAjuste ? "Saldo: " : esIngreso ? "+" : "−"}${dinero(m.monto)}
+              </span>
+              <button class="borrar" data-borrar="${m.id}" aria-label="Borrar">✕</button>
+            </li>`;
+        }).join("");
+  },
+
+  aviso(texto, duracion = 1800) {
+    const el = $("aviso");
+    el.textContent = texto;
+    el.hidden = false;
+    clearTimeout(this._t);
+    this._t = setTimeout(() => { el.hidden = true; }, duracion);
+  },
+
+  mostrarError(mensaje) {
+    $("estado-carga").innerHTML = `<span class="error">✗ No se pudieron cargar los datos.</span> ${escapar(mensaje)}`;
+    document.querySelectorAll(".botones button").forEach(b => { b.disabled = true; });
+  }
+};
+
+async function borrarMovimiento(id) {
+  const mov = Almacen.leerMovimientos().find(m => m.id === id);
+  if (!mov) return;
+  const texto = `¿Borrar este movimiento?\n${NOMBRES_TIPO[mov.tipo]} de ${dinero(mov.monto)} (${fechaCorta(mov.fecha)})`;
+  if (!(await preguntar(texto, "Sí, borrar"))) return;
+  Almacen.borrarMovimiento(id);
+  // Si ese pago había salido del sobre de Renta, vuelve al sobre
+  Plan.moverSobreRenta(mov.descontadoSobreRenta || 0);
+  Plan.moverSobreServicios(mov.descontadoSobreServicios || 0);
+  Pantalla.actualizar();
+  Pantalla.aviso("Borrado");
+  avisarCambioMovimientos();
+}
+
+// ---------- Registros rápidos (Bloque 5) ----------
+function costoTransporteDia() {
+  return Datos.actual.gastosFijos.find(g => g.id === "transporte").porDia;
+}
+
+async function registrarTransporteHoy() {
+  const monto = costoTransporteDia();
+  if (!(await preguntar(`¿Registrar ${dinero(monto)} de transporte de hoy?`, "Sí, registrar"))) return;
+  registrarMovimiento({ tipo: "gasto", monto, fecha: hoy(), categoria: "Transporte" });
+}
+
+// ---------- Instalar en el celular (solo cuando se abre desde una dirección web) ----------
+function prepararInstalacion() {
+  if (!/^https?:$/.test(location.protocol)) return; // abierto como archivo: no aplica
+  if (window.MI_DINERO_SIN_INSTALAR) return;         // copia publicada en claude.ai: no se instala
+  const enlace = document.createElement("link");
+  enlace.rel = "manifest";
+  enlace.href = "manifest.json";
+  document.head.appendChild(enlace);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+}
+prepararInstalacion();
+
+// ---------- Arranque ----------
+try {
+  // Primera vez en este dispositivo: respaldo.js muestra "Primera vez: cargar mis datos"
+  if (!Datos.cargar()) throw "primera-vez";
+  document.querySelectorAll("[data-form]").forEach(b =>
+    b.addEventListener("click", () => abrirFormulario(b.dataset.form)));
+  $("formulario").addEventListener("submit", guardarFormulario);
+  $("cancelar").addEventListener("click", cerrarFormulario);
+  $("movimientos").addEventListener("click", e => {
+    const b = e.target.closest("[data-borrar]");
+    if (b) borrarMovimiento(b.dataset.borrar);
+  });
+  $("rapido-transporte").addEventListener("click", registrarTransporteHoy);
+  $("rapido-comida").addEventListener("click", () => abrirFormulario("gasto", { categoria: "Comida" }));
+  $("rapido-transporte").textContent = `Transporte de hoy (${dinero(costoTransporteDia())})`;
+  Pantalla.actualizar();
+} catch (e) {
+  if (e !== "primera-vez") Pantalla.mostrarError(e.message);
+}

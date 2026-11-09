@@ -1,0 +1,9 @@
+# Mis cifras reales: NUNCA se publican
+mis-datos.json
+
+# Respaldos descargados desde la app
+mi-dinero-*.json
+*respaldo*.json
+
+# Copias generadas para descargar
+descargar/
