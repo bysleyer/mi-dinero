@@ -72,7 +72,7 @@ const Resumen = {
   // ---------- Pantalla ----------
   abrir() {
     this.periodo = "semana";
-    $("r-dinero").value = "";
+    $("r-dinero").value = Dinero.actual(); // el calculado; se puede cambiar a mano
     $("r-resultado").textContent = "";
     $("pantalla-inicio").hidden = true;
     $("pantalla-resumen").hidden = false;
@@ -167,7 +167,7 @@ const Resumen = {
     }
     // Lo escrito hoy pasa a ser el nuevo punto de partida
     Almacen.guardarRevision({ monto, momento: new Date().toISOString() });
-    $("r-dinero").value = "";
+    $("r-dinero").value = Dinero.actual();
     this.mostrarUltimaRevision();
   },
 

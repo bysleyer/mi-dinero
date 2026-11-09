@@ -5,7 +5,7 @@
  * en segundo plano (los cambios se ven la siguiente vez que abras la app).
  * Solo guarda archivos de la app; nunca tus datos (esos están en el almacén del navegador).
  */
-const CACHE = "mi-dinero-v9";
+const CACHE = "mi-dinero-v10";
 const ARCHIVOS = [
   "./",
   "./index.html",

@@ -92,8 +92,9 @@ const Alcanza = {
 
   // ---------- Pantalla ----------
   abrir() {
-    const guardado = Almacen.leerLineaTiempo();
-    $("a-dinero").value = guardado && guardado.dineroHoy != null ? guardado.dineroHoy : "";
+    // El dinero calculado de arriba; si hoy lo cambiaste a mano (y no hubo movimientos después), ese
+    const manual = Dinero.manualVigente();
+    $("a-dinero").value = manual != null ? manual : Dinero.actual();
     $("pantalla-inicio").hidden = true;
     $("pantalla-alcanza").hidden = false;
     window.scrollTo(0, 0);
@@ -110,7 +111,7 @@ const Alcanza = {
     if ($("pantalla-alcanza").hidden) return;
     const txt = $("a-dinero").value.trim();
     const dineroHoy = Number(txt);
-    if (txt === "" || !(dineroHoy >= 0)) {
+    if (txt === "" || !isFinite(dineroHoy)) {
       $("a-lista").innerHTML = `<p class="vacio">Escribe cuánto dinero tienes hoy para ver si te alcanza.</p>`;
       return;
     }
@@ -144,10 +145,13 @@ const Alcanza = {
     $("a-dinero").addEventListener("input", e => {
       const v = Number(e.target.value);
       const vacio = e.target.value.trim() === "";
-      if (vacio || v >= 0) Almacen.guardarLineaTiempo(vacio ? null : v);
+      if (vacio || isFinite(v)) Almacen.guardarLineaTiempo(vacio ? null : v);
       this.mostrar();
     });
-    window.addEventListener("movimientos-cambiaron", () => this.mostrar());
+    window.addEventListener("movimientos-cambiaron", () => {
+      if (!$("pantalla-alcanza").hidden && Dinero.manualVigente() == null) $("a-dinero").value = Dinero.actual();
+      this.mostrar();
+    });
     window.addEventListener("jornadas-cambiaron", () => this.mostrar());
   }
 };

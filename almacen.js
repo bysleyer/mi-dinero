@@ -14,6 +14,7 @@
  *   jornadas     días trabajados (fecha y horas). No son dinero.
  *   lineaTiempo  "Dinero que tengo hoy" de la pantalla ¿Me alcanza?
  *   escenarios   montos de "¿Y si cobro...?" (menos, esperado, más, % colchón)
+ *   dineroInicial  "Corregir mi dinero": { monto, fecha, momento }
  */
 const Almacen = {
   prefijo: "midinero:",
@@ -175,6 +176,15 @@ const Almacen = {
     return this.guardar("lineaTiempo", { dineroHoy, momento: this.ahora() });
   },
 
+  // ---------- Dinero que tengo ----------
+  leerDineroInicial() {
+    return this.leer("dineroInicial");
+  },
+
+  guardarDineroInicial(valor) {
+    return this.guardar("dineroInicial", valor);
+  },
+
   // ---------- ¿Y si cobro...? (Bloque 11) ----------
   leerEscenarios() {
     return this.leer("escenarios"); // { menos, esperado, mas, porcentajeColchon } (null = valor por defecto)
@@ -226,7 +236,8 @@ const Almacen = {
       revision: this.leerRevision(),
       jornadas: this.leerTodasLasJornadas(),
       lineaTiempo: this.leerLineaTiempo(),
-      escenarios: this.leerEscenarios()
+      escenarios: this.leerEscenarios(),
+      dineroInicial: this.leerDineroInicial()
     };
   },
 
@@ -240,6 +251,8 @@ const Almacen = {
     else this.borrar("lineaTiempo");
     if (respaldo.escenarios) this.guardar("escenarios", respaldo.escenarios);
     else this.borrar("escenarios");
+    if (respaldo.dineroInicial) this.guardar("dineroInicial", respaldo.dineroInicial);
+    else this.borrar("dineroInicial");
     if (respaldo.revision) this.guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {

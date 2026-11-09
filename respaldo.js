@@ -25,12 +25,18 @@ const Respaldo = {
 
     const gastos = Array.isArray(d.gastosFijos) ? d.gastosFijos : [];
     if (!gastos.length) errores.push("Falta la lista gastosFijos");
-    ["renta", "telefono", "luz", "internet", "comida", "transporte", "prestamoSemanal"].forEach(id => {
+    ["renta", "telefono", "luz", "internet", "comida", "prestamoSemanal"].forEach(id => {
       const g = gastos.find(x => x.id === id);
       if (!g || !esNum(g.monto)) errores.push(`Falta el gasto fijo "${id}" con su monto`);
     });
+    // Transporte: trae su detalle por día (tren y taxi; el monto se calcula solo)
+    // o, en archivos viejos, monto y porDia
     const transporte = gastos.find(x => x.id === "transporte");
-    if (transporte && !esNum(transporte.porDia)) errores.push("Falta transporte.porDia");
+    const detalle = transporte && transporte.detalleDia;
+    if (!transporte) errores.push('Falta el gasto fijo "transporte"');
+    else if (!(detalle && esNum(detalle.trenIda)) && !(esNum(transporte.monto) && esNum(transporte.porDia))) {
+      errores.push("Falta transporte.detalleDia (trenIda, trenVuelta, taxi)");
+    }
 
     const deudas = Array.isArray(d.deudasAtrasadas) ? d.deudasAtrasadas : [];
     if (!deudas.length) errores.push("Falta la lista deudasAtrasadas");

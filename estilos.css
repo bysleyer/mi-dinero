@@ -380,3 +380,19 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .montos-rapidos .boton-chico { margin-top: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
 .montos-rapidos small { font-weight: 400; font-size: .75rem; color: var(--suave); }
 .aviso-flotante { width: max-content; max-width: calc(100% - 32px); text-align: center; }
+
+/* ---------- Dinero que tengo (arriba a la derecha) ---------- */
+.cabeza-inicio { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 4px; }
+.cabeza-inicio h1 { margin: 0; }
+.dinero-tengo {
+  flex: none; min-height: 56px; padding: 6px 14px; border-radius: 14px; border: 2px solid var(--borde);
+  background: var(--tarjeta); color: var(--texto); cursor: pointer; text-align: right;
+  display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; font: inherit;
+}
+.dinero-etiqueta { font-size: .75rem; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .4px; }
+.dinero-cifra { font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dinero-tengo.positivo { border-color: #b7dfc2; background: #e9f5ec; }
+.dinero-tengo.positivo .dinero-cifra { color: var(--ok); }
+.dinero-tengo.negativo { border-color: #f2b8b4; background: #fbe3e1; }
+.dinero-tengo.negativo .dinero-cifra { color: var(--error); }
+.rapidos #rapido-transporte { min-height: 56px; }

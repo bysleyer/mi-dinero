@@ -16,7 +16,10 @@
 </head>
 <body>
   <main id="pantalla-inicio" class="contenedor">
-    <h1>Mi dinero</h1>
+    <div class="cabeza-inicio">
+      <h1>Mi dinero</h1>
+      <button id="dinero-tengo" class="dinero-tengo" aria-label="Dinero que tengo. Toca para corregirlo"></button>
+    </div>
     <p id="estado-carga" class="estado"></p>
     <button id="aviso-ejemplo" class="aviso-hoy aviso-boton" hidden>Estás viendo datos de ejemplo. Toca aquí para cargar mis-datos.json.</button>
     <button id="aviso-respaldo" class="aviso-hoy aviso-boton" hidden></button>
@@ -28,7 +31,6 @@
       <button class="boton-grande deuda" data-form="pagoDeuda">Pagué una deuda</button>
       <div class="rapidos">
         <button id="rapido-transporte" class="boton-chico">Transporte</button>
-        <button id="rapido-comida" class="boton-chico">Comida: $___</button>
       </div>
       <div class="rapidos jornada-botones">
         <button id="trabaje-hoy" class="boton-mediano">Trabajé hoy</button>

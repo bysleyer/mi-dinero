@@ -69,7 +69,18 @@ const Datos = {
       this.actual = window.DATOS_EJEMPLO;
       this.origen = "ejemplo";
     }
+    if (this.actual) this.calcularTransporte();
     return this.actual;
+  },
+
+  // Transporte: por día = tren de ida + tren de vuelta + meta del taxi;
+  // por semana = por día × días de trabajo. Se calcula de "detalleDia" en mis datos.
+  calcularTransporte() {
+    const t = this.actual.gastosFijos.find(g => g.id === "transporte");
+    if (!t || !t.detalleDia) return;
+    const d = t.detalleDia;
+    t.porDia = redondear((d.trenIda || 0) + (d.trenVuelta || 0) + (d.taxi || 0));
+    t.monto = redondear(t.porDia * (t.diasPorSemana || 4));
   },
 
   deudas() {
@@ -328,12 +339,77 @@ function avisarCambioMovimientos() {
   window.dispatchEvent(new Event("movimientos-cambiaron"));
 }
 
+// ---------- Dinero que tengo (arriba a la derecha) ----------
+// Dinero inicial + ingresos − gastos − pagos de deuda registrados desde ese momento.
+// Los ajustes de saldo y las jornadas no cuentan.
+const Dinero = {
+  actual() {
+    const inicial = Almacen.leerDineroInicial(); // { monto, fecha, momento } o null
+    const desde = inicial ? inicial.momento : "";
+    return redondear(Almacen.leerMovimientos()
+      .filter(m => !desde || m.creado > desde)
+      .reduce((s, m) => {
+        if (m.tipo === "ingreso") return s + m.monto;
+        if (m.tipo === "gasto" || m.tipo === "pagoDeuda") return s - m.monto;
+        return s;
+      }, inicial ? inicial.monto : 0));
+  },
+
+  // Valor escrito a mano en ¿Me alcanza?: vale solo hoy y hasta el siguiente movimiento
+  manualVigente() {
+    const l = Almacen.leerLineaTiempo();
+    if (!l || l.dineroHoy == null || !l.momento) return null;
+    const d = new Date(l.momento);
+    const p = n => String(n).padStart(2, "0");
+    const dia = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    if (dia !== hoy()) return null;
+    if (Almacen.leerMovimientos().some(m => m.creado > l.momento)) return null;
+    return l.dineroHoy;
+  },
+
+  mostrar() {
+    const n = this.actual();
+    const b = $("dinero-tengo");
+    b.innerHTML = `<span class="dinero-etiqueta">Tengo</span><span class="dinero-cifra">${n < 0 ? "−" + dinero(-n) : dinero(n)}</span>`;
+    b.classList.toggle("positivo", n > 0);
+    b.classList.toggle("negativo", n < 0);
+  }
+};
+
+// Formulario "Corregir mi dinero"
+Formularios.corregirDinero = {
+  titulo: "Corregir mi dinero",
+  campos: () => `
+    <p class="ayuda">Escribe cuánto tienes realmente hoy (efectivo + cuenta). Desde ahora se cuenta a partir de ese número.</p>
+    <div class="campo">
+      <label for="f-monto">Dinero que tengo hoy</label>
+      <input id="f-monto" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+    </div>`,
+  async guardar(mostrarError) {
+    const txt = $("f-monto").value.trim();
+    const monto = redondear(Number(txt));
+    if (txt === "" || !isFinite(monto)) return mostrarError("Escribe cuánto dinero tienes hoy.");
+    const ok = await preguntar(
+      `¿Guardar ${dinero(monto)} como tu dinero de hoy?\nLos movimientos anteriores ya no cuentan para este número (no se borran).`,
+      "Sí, guardar");
+    if (!ok) return;
+    if (!Almacen.guardarDineroInicial({ monto, fecha: hoy(), momento: Almacen.ahora() })) {
+      return mostrarError("No se pudo guardar en este dispositivo.");
+    }
+    cerrarFormulario();
+    Pantalla.actualizar();
+    Pantalla.aviso(`Guardado: tienes ${dinero(monto)}`);
+    avisarCambioMovimientos();
+  }
+};
+
 // ---------- Pantalla ----------
 const NOMBRES_TIPO = { ingreso: "Ingreso", gasto: "Gasto", pagoDeuda: "Pago de deuda", ajuste: "Ajuste de saldo" };
 
 const Pantalla = {
   actualizar() {
     $("deuda-total").textContent = dinero(Datos.deudaTotal());
+    Dinero.mostrar();
 
     // Lunes a viernes, si no hay movimientos con fecha de hoy
     const diaSemana = new Date().getDay();
@@ -410,12 +486,9 @@ const Transporte = {
   montosRapidos() {
     const g = this.gasto();
     if (Array.isArray(g.montosRapidos) && g.montosRapidos.length) return g.montosRapidos;
+    // Un solo botón rápido: el tren. El taxi varía y se escribe a mano.
     const d = g.detalleDia || {};
-    return [
-      d.trenIda && { nombre: "Tren", monto: d.trenIda },
-      d.taxi && { nombre: "Taxi", monto: d.taxi },
-      { nombre: "Día completo", monto: g.porDia }
-    ].filter(Boolean);
+    return d.trenIda ? [{ nombre: "Tren", monto: d.trenIda }] : [];
   },
 
   resumen() {
@@ -473,12 +546,12 @@ try {
     if (b) borrarMovimiento(b.dataset.borrar);
   });
   $("rapido-transporte").addEventListener("click", () => abrirFormulario("transporte"));
+  $("dinero-tengo").addEventListener("click", () => abrirFormulario("corregirDinero", { monto: Dinero.actual() }));
   $("form-campos").addEventListener("click", e => {
     const b = e.target.closest("[data-llenar-monto]");
     if (b) { $("f-monto").value = Number(b.dataset.llenarMonto).toFixed(2); $("f-monto").focus(); }
     if (e.target.closest("#deshacer-transporte")) Transporte.deshacerUltimo();
   });
-  $("rapido-comida").addEventListener("click", () => abrirFormulario("gasto", { categoria: "Comida" }));
   $("rapido-transporte").textContent = "Transporte";
   Pantalla.actualizar();
 } catch (e) {

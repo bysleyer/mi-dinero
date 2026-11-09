@@ -42,7 +42,7 @@ window.DATOS_EJEMPLO = {
     {
       id: "transporte", nombre: "Transporte", monto: 50, frecuencia: "semanal",
       porDia: 10, diasPorSemana: 5, detalleDia: { trenIda: 5, taxi: 0, trenVuelta: 5 },
-      montosRapidos: [{ nombre: "Tren", monto: 5 }, { nombre: "Día completo", monto: 10 }]
+      montosRapidos: [{ nombre: "Tren", monto: 5 }]
     },
     { id: "prestamoSemanal", nombre: "Préstamo semanal", monto: 50, frecuencia: "semanal", semanasRestantes: 3, confirmar: false }
   ],

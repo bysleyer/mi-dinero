@@ -40,9 +40,10 @@ const Escenarios = {
     };
   },
 
+  // El dinero de ¿Me alcanza?: el calculado, o el escrito a mano hoy
   dineroHoy() {
-    const l = Almacen.leerLineaTiempo();
-    return l && l.dineroHoy != null ? l.dineroHoy : null;
+    const manual = Dinero.manualVigente();
+    return manual != null ? manual : Dinero.actual();
   },
 
   // ---------- Costos de atrasar ----------
@@ -221,9 +222,8 @@ const Escenarios = {
     if ($("pantalla-escenarios").hidden) return;
     const c = this.config();
     const hoyDinero = this.dineroHoy();
-    $("e-dinero-hoy").innerHTML = hoyDinero == null
-      ? "No escribiste tu dinero de hoy en ¿Me alcanza?: se usa $0."
-      : `Dinero que tengo hoy: <strong>${dinero(hoyDinero)}</strong> (de ¿Me alcanza?)`;
+    $("e-dinero-hoy").innerHTML = `Dinero que tengo hoy: <strong>${dinero(hoyDinero)}</strong>` +
+      (Dinero.manualVigente() != null ? " (escrito a mano en ¿Me alcanza?)" : " (calculado de tus movimientos)");
 
     const resultados = this.ESCENARIOS.map(e => ({ ...e, monto: c[e.id], r: this.repartir(c[e.id], hoyDinero || 0, c.porcentajeColchon) }));
     const menos = resultados[0].r;
