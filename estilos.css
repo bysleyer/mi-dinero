@@ -441,3 +441,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .cal-libre-aviso { background: #dceafc; color: #174a8c; font-weight: 700; }
 #abrir-libres { width: 100%; margin-bottom: 8px; }
 #cal-libres .boton-chico { margin-top: 0; }
+
+/* ---------- Versión al final de la pantalla principal ---------- */
+.version-app { margin: 14px 0 0; text-align: center; font-size: .8rem; color: var(--suave); }
