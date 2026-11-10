@@ -94,6 +94,7 @@
         <li><span class="muestra hoy"></span> Hoy</li>
         <li><span class="muestra">$↑</span> Cobro: cheque de la semana de arriba</li>
         <li><span class="muestra"><span class="marca-vence">L</span></span> Vence: R renta, L luz, I internet, T teléfono</li>
+        <li><span class="muestra"><span class="marca-vence movido">T↻</span></span> Pago movido a este día</li>
         <li><span class="muestra dia-15">15<small>!</small></span> Si queda saldo de renta, la administradora inicia acción legal</li>
       </ul>
     </section>
@@ -147,6 +148,41 @@
       <p class="estado">"Lo esperado" vacío = estimación del Próximo cheque.</p>
     </section>
     <div id="e-resultados"></div>
+  </main>
+
+  <!-- Pantalla: Mover este pago (Bloque 12) -->
+  <main id="pantalla-mover" class="contenedor" hidden>
+    <button id="volver-mover" class="volver">← Volver</button>
+    <h1>Mover este pago</h1>
+    <section id="mv-cabeza" class="tarjeta"></section>
+    <section class="tarjeta">
+      <h2>Sugerencia</h2>
+      <div id="mv-sugerencias"></div>
+    </section>
+    <section class="tarjeta cal-tarjeta">
+      <h2>Próximos días</h2>
+      <div class="cal-dias cal-nombres" aria-hidden="true">
+        <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+      </div>
+      <div id="mv-calendario" class="mv-calendario"></div>
+      <ul class="cal-leyenda">
+        <li><span class="muestra mv-verde"></span> Alcanza, sin recargo</li>
+        <li><span class="muestra mv-amarillo"></span> Alcanza, con recargo o fuera de la gracia</li>
+        <li><span class="muestra mv-rojo"></span> No alcanza o riesgo alto</li>
+        <li><span class="muestra mv-gris"></span> Todavía no tienes dinero</li>
+        <li><span class="muestra">$</span> Cheque esperado · letras: otros vencimientos</li>
+      </ul>
+      <p class="estado">Toca un día para ver qué pasa si pagas ese día.</p>
+    </section>
+    <section id="mv-detalle" class="tarjeta" hidden></section>
+    <section class="tarjeta">
+      <label class="mv-check"><input id="mv-acordado" type="checkbox"> Ya lo acordé con la empresa</label>
+      <div class="campo">
+        <label for="mv-nota">Nota <span class="opcional">(ej.: quién te atendió)</span></label>
+        <input id="mv-nota" type="text" maxlength="120">
+      </div>
+      <p class="estado">Esto solo guarda la fecha. No registra el pago ni cambia saldos.</p>
+    </section>
   </main>
 
   <!-- Pantalla: Respaldo (Bloque 6) -->
@@ -361,7 +397,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, app, plan, jornadas, deudas, resumen, calendario, pagos, alcanza, escenarios, respaldo -->
+  <!-- Orden: datos de ejemplo, almacén, app, plan, jornadas, deudas, resumen, calendario, pagos, alcanza, escenarios, mover, respaldo -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="app.js"></script>
@@ -373,6 +409,7 @@
   <script src="pagos.js"></script>
   <script src="alcanza.js"></script>
   <script src="escenarios.js"></script>
+  <script src="mover.js"></script>
   <script src="respaldo.js"></script>
 </body>
 </html>

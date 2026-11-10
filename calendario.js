@@ -101,7 +101,9 @@ const Calendario = {
     // Bloque 9: iniciales de lo que vence ese día (R, L, I, T). En el día 1 ya dice "Renta".
     const letras = [...new Set((this._vencimientos[fecha] || []).map(v => v.letra).filter(Boolean))]
       .filter(l => !(esRenta && l === "R"));
-    if (letras.length) marcas.push(`<span class="marca-vence">${letras.join(" ")}</span>`);
+    // Bloque 12: lo movido a este día lleva "↻"
+    const movido = (this._vencimientos[fecha] || []).some(v => v.movido);
+    if (letras.length) marcas.push(`<span class="marca-vence${movido ? " movido" : ""}">${letras.join(" ")}${movido ? "↻" : ""}</span>`);
     const es15 = dia === this.diaDelMes("accionLegal", 15);
     if (es15) clases.push("dia-15");
 
@@ -110,7 +112,7 @@ const Calendario = {
       j ? (j.horas > 0 ? `${redondear(j.horas)} horas` : "No trabajé") : (fecha < hoyClave ? "sin registrar" : ""),
       f.getDay() === this.diaDeCobro() ? "día de cobro" : "",
       es15 ? this.PISTA_15 : "",
-      ...(this._vencimientos[fecha] || []).map(v => `vence ${v.nombre}`)
+      ...(this._vencimientos[fecha] || []).map(v => `vence ${v.nombre}${v.movido ? " (movido)" : ""}`)
     ].filter(Boolean).join(", ");
 
     return `

@@ -76,6 +76,16 @@ window.DATOS_EJEMPLO = {
     semanaBuena: { porcentajeColchon: 50 }
   },
 
+  moverPagos: {
+    horizonteDias: 30,
+    chequeDisponible: { dia: "viernes", retrasoDias: 0 },
+    pagos: {
+      internet: { gracia_dias: 2, recargo: 5, riesgoAlto: true, riesgo: "Ejemplo: puede cortarse el servicio" },
+      luz: { gracia_dias: 0, recargo: 5, riesgo: "Ejemplo" },
+      telefono: { gracia_dias: 0, recargo: 5, riesgo: "Ejemplo" }
+    }
+  },
+
   fechasImportantes: [
     { id: "venceRenta", nombre: "Vence la renta", diaDelMes: 1, critica: false },
     { id: "accionLegal", nombre: "Acción legal si queda saldo de renta", diaDelMes: 15, critica: true }

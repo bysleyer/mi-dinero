@@ -396,3 +396,35 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .dinero-tengo.negativo { border-color: #f2b8b4; background: #fbe3e1; }
 .dinero-tengo.negativo .dinero-cifra { color: var(--error); }
 .rapidos #rapido-transporte { min-height: 56px; }
+
+/* ---------- Bloque 12: Mover este pago ---------- */
+.mv-nombre { color: var(--texto); font-size: 1.3rem; }
+.mv-guardado { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #eef3fa; font-size: .95rem; }
+.mv-guardado .boton-chico { width: 100%; }
+.aviso-movido { margin-top: 4px; padding: 3px 8px; border-radius: 8px; background: #fff4e0; color: #8a5a00; font-weight: 700; font-size: .85rem; }
+.marca-movido { font-size: .7rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: #5c6670; color: #fff; }
+.marca-vence.movido { background: #8a5a00; }
+.mv-opcion { padding: 10px 0; border-top: 1px solid var(--borde); }
+.mv-opcion:first-child { border-top: none; padding-top: 0; }
+.mv-opcion p { margin: 6px 0; }
+.mv-opcion .boton-chico { margin-top: 0; margin-right: 6px; }
+.mv-etiqueta { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .3px; }
+.mv-etiqueta.mejor { background: #1e8e3e; color: #fff; }
+.mv-etiqueta.segunda { background: #e6e9ec; color: var(--texto); }
+.mv-calendario { display: grid; gap: 4px; }
+.dia.mv-verde, .muestra.mv-verde { background: #cdebd6; border-color: #8fd0a2; }
+.dia.mv-amarillo, .muestra.mv-amarillo { background: #ffe8b8; border-color: #f0c66a; }
+.dia.mv-rojo, .muestra.mv-rojo { background: #f8cfcb; border-color: #e99a93; }
+.dia.mv-gris, .muestra.mv-gris { background: #e6e9ec; color: #8a949c; }
+.dia.mv-fuera { opacity: .3; cursor: default; }
+.dia.mv-elegido { outline: 3px solid #1a5fb4; outline-offset: 1px; }
+.mv-vence { font-size: .55rem; font-weight: 700; color: var(--error); line-height: 1; }
+.mv-sugerida { font-size: .55rem; font-weight: 700; padding: 1px 3px; border-radius: 4px; background: #1e8e3e; color: #fff; margin-top: auto; }
+.mv-riesgo { margin: 10px 0; padding: 8px 10px; border-radius: 10px; background: #fbe3e1; color: #8c1d18; font-weight: 700; font-size: .9rem; }
+.mv-check { display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 44px; margin-bottom: 8px; }
+.mv-check input { width: 24px; height: 24px; }
+.esc-lado { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; max-width: 42%; }
+.esc-lado .esc-estado { max-width: none; }
+.esc-lado .boton-chico, .pago-lado .boton-chico + .boton-chico { margin-top: 0; min-height: 36px; padding: 0 10px; font-size: .85rem; }
+#mv-detalle .resumen li span:last-child, #mv-cabeza .resumen li span:last-child { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+#mv-detalle .resumen li span:first-child, #mv-cabeza .resumen li span:first-child { flex: none; max-width: 45%; }

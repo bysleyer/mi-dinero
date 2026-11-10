@@ -67,8 +67,39 @@ const Vencimientos = {
     return lista;
   },
 
-  // Todos los vencimientos entre dos fechas (AAAA-MM-DD), ordenados por fecha
+  MOVIBLES: ["luz", "telefono", "internet"], // Bloque 12: lo que se puede mover
+
+  // Todos los vencimientos entre dos fechas, con los pagos movidos (Bloque 12) ya en su fecha nueva.
+  // Cada uno trae "claveMov" (id@fecha original) y, si se movió, "movido".
   entre(desde, hasta) {
+    const movidos = Almacen.leerPagosMovidos();
+    const originales = Object.values(movidos).map(m => m.fechaOriginal);
+    const desdeAmplio = [desde, ...originales].sort()[0];
+    const hastaAmplio = [hasta, ...originales].sort().slice(-1)[0];
+    const pagados = this.pagados();
+    const items = [];
+    this.entreBase(desdeAmplio, hastaAmplio).forEach(item => {
+      item.claveMov = `${item.id}@${item.fecha}`;
+      const m = this.MOVIBLES.includes(item.id) && movidos[item.claveMov];
+      if (!m) { items.push(item); return; }
+      const info = { fechaOriginal: m.fechaOriginal, acordado: !!m.acordado, nota: m.nota || "", dividido: m.partes.length > 1 };
+      if (m.partes.length === 1) {
+        items.push({ ...item, fecha: m.partes[0].fecha, movido: info });
+      } else {
+        const accion = item.partes[0].accion;
+        m.partes.forEach((pt, i) => {
+          const clave = `${item.claveMov}#${i + 1}`;
+          items.push({ ...item, fecha: pt.fecha, movido: { ...info, parte: i + 1 },
+            partes: [{ nombre: `${item.nombre} (parte ${i + 1} de ${m.partes.length})`, monto: pt.monto, accion, clave, pagado: pagados.has(clave) }] });
+        });
+      }
+    });
+    return items.filter(i => i.fecha >= desde && i.fecha <= hasta)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
+  },
+
+  // Vencimientos según las fechas normales (sin mover)
+  entreBase(desde, hasta) {
     const hoyClave = hoy();
     const pagados = this.pagados();
     const items = [];
@@ -173,16 +204,26 @@ const Vencimientos = {
     $("proximos-pagos").innerHTML = filas.length === 0
       ? `<p class="vacio">No hay pagos en los próximos ${this.DIAS_ADELANTE} días.</p>`
       : filas.map(({ item, p, dias }) => {
-          const color = p.pagado ? "pagado" : dias <= 3 ? "rojo" : dias <= 7 ? "amarillo" : "";
+          const sinAcuerdo = item.movido && !item.movido.acordado && !p.pagado;
+          const color = p.pagado ? "pagado" : dias <= 3 ? "rojo" : dias <= 7 || sinAcuerdo ? "amarillo" : "";
           const simbolo = p.pagado ? "✓" : dias <= 3 ? "⚠" : dias <= 7 ? "!" : "";
+          // Bloque 12: "Mover" en luz, teléfono e internet que no alcanzan (o ya movidos)
+          const puedeMover = !p.pagado && this.MOVIBLES.includes(item.id) && typeof Mover !== "undefined"
+            && (item.movido || Mover.noAlcanza(item));
           const boton = p.pagado
             ? `<span class="pago-hecho">✓ Pagado</span>`
-            : `<button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo pagué</button>`;
+            : `<button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo pagué</button>` +
+              (puedeMover ? `<button class="boton-chico" data-mover="${escapar(item.claveMov)}">Mover</button>` : "");
+          const movido = item.movido
+            ? `<div class="mov-detalle"><span class="marca-movido">movido</span> del ${Jornadas.textoDia(item.movido.fechaOriginal).toLowerCase()}</div>` +
+              (sinAcuerdo ? `<div class="aviso-movido">⚠ Falta acordarlo con la empresa</div>` : "")
+            : "";
           return `
             <li class="pago-fila ${color}">
               <div class="mov-info">
                 <div class="mov-tipo">${simbolo ? `<span aria-hidden="true">${simbolo}</span> ` : ""}${escapar(p.nombre)}</div>
                 <div class="mov-detalle">${Jornadas.textoDia(item.fecha)} · ${this.textoCuando(dias)}</div>
+                ${movido}
               </div>
               <div class="pago-lado">
                 <span class="mov-monto">${dinero(p.monto)}</span>
@@ -211,6 +252,8 @@ const Vencimientos = {
     $("proximos-pagos").addEventListener("click", e => {
       const b = e.target.closest("[data-pagar-venc]");
       if (b) this.pagar(b.dataset.pagarVenc);
+      const m = e.target.closest("[data-mover]");
+      if (m) Mover.abrir(m.dataset.mover, "pantalla-inicio");
     });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
     this.mostrar();

@@ -15,6 +15,7 @@
  *   lineaTiempo  "Dinero que tengo hoy" de la pantalla ¿Me alcanza?
  *   escenarios   montos de "¿Y si cobro...?" (menos, esperado, más, % colchón)
  *   dineroInicial  "Corregir mi dinero": { monto, fecha, momento }
+ *   pagosMovidos   fechas nuevas elegidas en "Mover este pago" (no son pagos)
  */
 const Almacen = {
   prefijo: "midinero:",
@@ -176,6 +177,24 @@ const Almacen = {
     return this.guardar("lineaTiempo", { dineroHoy, momento: this.ahora() });
   },
 
+  // ---------- Pagos movidos (Bloque 12): solo fechas, no dinero ----------
+  leerPagosMovidos() {
+    return this.leer("pagosMovidos") || {};
+  },
+
+  guardarPagoMovido(clave, datos) {
+    const todos = this.leerPagosMovidos();
+    const momento = this.ahora();
+    todos[clave] = { ...(todos[clave] || { creado: momento }), ...datos, clave, modificado: momento };
+    return this.guardar("pagosMovidos", todos);
+  },
+
+  quitarPagoMovido(clave) {
+    const todos = this.leerPagosMovidos();
+    delete todos[clave];
+    return this.guardar("pagosMovidos", todos);
+  },
+
   // ---------- Dinero que tengo ----------
   leerDineroInicial() {
     return this.leer("dineroInicial");
@@ -237,7 +256,8 @@ const Almacen = {
       jornadas: this.leerTodasLasJornadas(),
       lineaTiempo: this.leerLineaTiempo(),
       escenarios: this.leerEscenarios(),
-      dineroInicial: this.leerDineroInicial()
+      dineroInicial: this.leerDineroInicial(),
+      pagosMovidos: this.leerPagosMovidos()
     };
   },
 
@@ -253,6 +273,7 @@ const Almacen = {
     else this.borrar("escenarios");
     if (respaldo.dineroInicial) this.guardar("dineroInicial", respaldo.dineroInicial);
     else this.borrar("dineroInicial");
+    this.guardar("pagosMovidos", respaldo.pagosMovidos || {});
     if (respaldo.revision) this.guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {

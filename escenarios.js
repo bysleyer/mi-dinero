@@ -92,7 +92,8 @@ const Escenarios = {
       .map(i => {
         const monto = i.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0);
         const reglas = r.nivel2[i.id] || {};
-        return { id: i.id, nombre: i.nombre, monto, fecha: i.fecha, reglas, riesgo: reglas.riesgo };
+        return { id: i.id, nombre: i.nombre, monto, fecha: i.fecha, reglas, riesgo: reglas.riesgo,
+                 claveMov: i.claveMov, movido: i.movido };
       })
       .filter(i => i.monto > 0)
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -245,7 +246,11 @@ const Escenarios = {
                   <div class="mov-detalle">${f.fecha ? Jornadas.textoDia(f.fecha) + " · " : ""}${dinero(f.monto)}</div>
                   ${f.costo ? `<div class="esc-costo">${escapar(f.costo)}</div>` : ""}
                 </div>
-                <span class="esc-estado">${escapar(f.estado)}</span>
+                <div class="esc-lado">
+                  <span class="esc-estado">${escapar(f.estado)}</span>
+                  ${f.nivel === 2 && f.clase !== "paga" && Vencimientos.MOVIBLES.includes(f.id)
+                    ? `<button class="boton-chico" data-mover="${escapar(f.claveMov)}">Mover</button>` : ""}
+                </div>
               </li>`).join("") || '<li class="vacio">Nada en estas fechas.</li>'}`).join("")}
         </ul>
         <div class="esc-resumen">
@@ -292,6 +297,8 @@ const Escenarios = {
     $("e-resultados").addEventListener("click", e => {
       const b = e.target.closest("[data-ver-plan]");
       if (b) this.verEnPlan(b.dataset.verPlan);
+      const m = e.target.closest("[data-mover]");
+      if (m) Mover.abrir(m.dataset.mover, "pantalla-escenarios");
     });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
   }
