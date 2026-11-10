@@ -18,7 +18,7 @@ const Plan = {
     const normales = Math.min(horas, this.HORAS_NORMALES);
     const extra = Math.max(0, horas - this.HORAS_NORMALES);
     const bruto = normales * ing.pagoPorHora + extra * pagoExtra;
-    const proporcion = ing.netoSemanal.monto / ing.brutoSemanal; // ≈ 0.898
+    const proporcion = ing.netoSemanal.monto / ing.brutoSemanal; // neto ÷ bruto de mis datos
     return { bruto, neto: bruto * proporcion };
   },
 
@@ -28,7 +28,7 @@ const Plan = {
 
   gastosFijos() {
     const lineas = Datos.actual.gastosFijos.map(g => {
-      // Teléfono: usa el monto de después (250) si existe
+      // Si hay un "monto de después" (ej.: teléfono), usa ese
       let base = g.montoDespues ?? g.monto;
       // Bloque 9: si el monto cambia desde una fecha (ej.: internet), usa el vigente
       if (g.cambio && hoy() >= g.cambio.desde) base = g.cambio.monto;
@@ -70,12 +70,13 @@ const Plan = {
   },
 
   // ---------- Colchón y reparto del extra (ajuste al Bloque 11) ----------
-  META_COLCHON_DEFECTO: 300,
   DEUDAS_PRIMERO: ["deudaRenta", "deudaInternet"], // renta atrasada y luego internet atrasado
 
   metaColchon() {
     const c = Datos.actual.colchon;
-    return c && typeof c.meta === "number" ? c.meta : this.META_COLCHON_DEFECTO;
+    if (c && typeof c.meta === "number") return c.meta;
+    // Sin meta en mis datos: lo que falta en una semana mala (gastos fijos − semana mala)
+    return Math.max(0, redondear(this.gastosFijos().total - Datos.actual.ingresos.semanaMala.netoMinimo));
   },
 
   // Deudas con prioridad (Bloque 4), en su orden

@@ -11,9 +11,9 @@ const Escenarios = {
   DIAS: 14, // vencimientos de hoy a 13 días después (ej.: del 9 al 22)
 
   DEFECTO: {
-    nivel1: { pagos: ["renta", "prestamoSemanal", "transporte", "comida"], comidaMinima: 150 },
-    nivel2: { telefono: { sePuedeDividir: true, pagos: 2 }, deudaInternet: { riesgo: "alto" } },
-    recargos: { renta: 50, internetPorFactura: 10, luz: { monto: null }, telefono: { monto: null } },
+    nivel1: { pagos: ["renta", "prestamoSemanal", "transporte", "comida"], comidaMinima: null },
+    nivel2: {},
+    recargos: { renta: null, internetPorFactura: null, luz: { monto: null }, telefono: { monto: null } },
     semanaBuena: { porcentajeColchon: 50 }
   },
 
@@ -27,15 +27,26 @@ const Escenarios = {
     };
   },
 
+  // Montos iniciales de "Menos" y "Más": de mis datos (reglasDePrioridad.escenarios);
+  // si no están, la semana mala de mis datos y 20% más que el cheque esperado
+  porDefecto() {
+    const e = (Datos.actual.reglasDePrioridad || {}).escenarios || {};
+    const esperado = Alcanza.chequeEsperado(Jornadas.periodoProximoCheque().cobro).monto;
+    return {
+      menos: e.menos ?? Datos.actual.ingresos.semanaMala.netoMinimo,
+      mas: e.mas ?? redondear(esperado * 1.2)
+    };
+  },
+
   // ---------- Montos de los escenarios (editables, guardados) ----------
   config() {
     const g = Almacen.leerEscenarios() || {};
     const cobro = Jornadas.periodoProximoCheque().cobro;
     return {
-      menos: g.menos ?? Datos.actual.ingresos.semanaMala.netoMinimo ?? 450,
+      menos: g.menos ?? this.porDefecto().menos,
       esperado: g.esperado ?? redondear(Alcanza.chequeEsperado(cobro).monto),
       esperadoAuto: g.esperado == null,
-      mas: g.mas ?? 1100,
+      mas: g.mas ?? this.porDefecto().mas,
       porcentajeColchon: g.porcentajeColchon ?? this.reglas().semanaBuena.porcentajeColchon
     };
   },
@@ -54,11 +65,11 @@ const Escenarios = {
 
   costo(id) {
     const rec = this.reglas().recargos;
-    if (id === "renta") return `Recargo de ${dinero(rec.renta)} y acción legal el día ${Calendario.diaDelMes("accionLegal", 15)}`;
+    if (id === "renta") return `${this.textoRecargo(rec.renta).replace(/^r/, "R")} y acción legal el día ${Calendario.diaDelMes("accionLegal", 15)}`;
     if (id === "luz") return `Cargo por atraso (${this.textoRecargo(rec.luz)})`;
     if (id === "telefono") return `Cargo por atraso (${this.textoRecargo(rec.telefono)})`;
-    if (id === "internet") return `Recargo de ${dinero(rec.internetPorFactura)} por factura vencida`;
-    if (id === "deudaInternet") return `Recargo de ${dinero(rec.internetPorFactura)} por factura vencida · RIESGO ALTO: ya hubo suspensión`;
+    if (id === "internet") return `${this.textoRecargo(rec.internetPorFactura).replace(/^r/, "R")} por factura vencida`;
+    if (id === "deudaInternet") return `${this.textoRecargo(rec.internetPorFactura).replace(/^r/, "R")} por factura vencida · RIESGO ALTO: ${(this.reglas().nivel2.deudaInternet || {}).nota || "pago inmediato"}`;
     return "";
   },
 
@@ -91,7 +102,7 @@ const Escenarios = {
         if (nivel === 1) {
           // Nivel 1, en orden dentro del día (la renta antes que el préstamo)
           const antes = saldo;
-          const minimo = l.id === "comida" ? r.nivel1.comidaMinima : monto;
+          const minimo = l.id === "comida" ? (r.nivel1.comidaMinima ?? monto) : monto;
           if (antes >= monto - 0.005) { paga = monto; estado = "Se paga"; clase = "paga"; }
           else if (l.id === "comida" && antes >= minimo) { paga = minimo; estado = `Se paga, bajada a ${dinero(minimo)}`; clase = "baja"; }
           else { paga = Math.max(0, antes); estado = paga > 0 ? `Parcial (${dinero(paga)})` : "Se atrasa"; clase = "falta"; }

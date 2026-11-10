@@ -73,7 +73,8 @@ window.DATOS_EJEMPLO = {
     },
     nivel3: { descripcion: "Puede esperar", pagos: ["deudaAmigo", "colchon", "deudaLuz"] },
     recargos: { renta: 40, internetPorFactura: 5, luz: { monto: 5, confirmar: false }, telefono: { monto: 5, confirmar: false } },
-    semanaBuena: { porcentajeColchon: 50 }
+    semanaBuena: { porcentajeColchon: 50 },
+    escenarios: { menos: 400, mas: 900 }
   },
 
   moverPagos: {

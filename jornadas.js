@@ -8,20 +8,26 @@
 const Jornadas = {
   editando: null, // id de la jornada que se está editando
 
-  // Valores por defecto si mis datos todavía no traen "periodoDePago"
-  DEFECTO: {
-    diaDeCobro: "viernes",
-    pagoPorHora: 26,
-    horasNormales: 40,
-    pagoHoraExtra: 39,
-    proporcionNeto: 0.898,
-    diasDeTrabajoPorSemana: 4,
-    horasPorDia: 10
-  },
   DIAS: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
 
+  // Si mis datos no traen "periodoDePago", se calcula de "ingresos" (no hay cifras escritas en el código)
+  defecto() {
+    const ing = Datos.actual.ingresos;
+    const t = Datos.actual.gastosFijos.find(g => g.id === "transporte") || {};
+    const dias = t.diasPorSemana || 5;
+    return {
+      diaDeCobro: ing.diaDeCobro || "viernes",
+      pagoPorHora: ing.pagoPorHora,
+      horasNormales: ing.horasPorSemana,
+      pagoHoraExtra: ing.pagoPorHora * 1.5,
+      proporcionNeto: ing.netoSemanal.monto / ing.brutoSemanal,
+      diasDeTrabajoPorSemana: dias,
+      horasPorDia: ing.horasPorSemana / dias
+    };
+  },
+
   config() {
-    return { ...this.DEFECTO, ...(Datos.actual.periodoDePago || {}) };
+    return { ...this.defecto(), ...(Datos.actual.periodoDePago || {}) };
   },
 
   // ---------- Cálculos de pago ----------

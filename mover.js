@@ -14,8 +14,9 @@ const Mover = {
   config() {
     const m = Datos.actual.moverPagos || {};
     const rec = (Datos.actual.reglasDePrioridad || {}).recargos || {};
+    // Si mis datos no traen "moverPagos": sin gracia y recargo por confirmar (nada escrito en el código)
     const defecto = {
-      internet: { gracia_dias: 2, recargo: rec.internetPorFactura ?? 10, riesgoAlto: true, riesgo: "" },
+      internet: { gracia_dias: 0, recargo: rec.internetPorFactura ?? null, riesgoAlto: false, riesgo: "" },
       luz: { gracia_dias: 0, recargo: null, riesgo: "" },
       telefono: { gracia_dias: 0, recargo: null, riesgo: "" }
     };

@@ -282,6 +282,9 @@ const Respaldo = {
       avisoRespaldo.hidden = true;
     }
     $("aviso-ejemplo").hidden = Datos.origen !== "ejemplo";
+    // Mis datos de una versión anterior: la app usa valores genéricos para lo que falta
+    const faltan = ["periodoDePago", "reglasDePrioridad", "colchon", "moverPagos"].filter(k => !Datos.actual[k]);
+    $("aviso-datos-viejos").hidden = !(Datos.origen === "propios" && faltan.length);
   },
 
   iniciar() {
@@ -292,6 +295,7 @@ const Respaldo = {
     this.conectarPegado("pegar-respaldo", "revisar-pegado", "respaldo-revision");
     $("aviso-ejemplo").addEventListener("click", () => this.abrir());
     $("aviso-respaldo").addEventListener("click", () => this.abrir());
+    $("aviso-datos-viejos").addEventListener("click", () => this.abrir());
     this.conectarSelector("cargar-respaldo", "respaldo-revision");
     this.mostrarAvisos();
   },
