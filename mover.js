@@ -21,7 +21,7 @@ const Mover = {
       telefono: { gracia_dias: 0, recargo: null, riesgo: "" },
       renta: { gracia_dias: 0, recargo: rec.renta && typeof rec.renta === "object" ? rec.renta.monto ?? null : rec.renta ?? null, riesgoAlto: true,
                riesgo: "Después de la fecha límite puede haber recargo y acción legal. Pide el acuerdo por escrito." },
-      prestamo: { gracia_dias: 0, recargo: null, riesgo: "Avisa antes a quien te prestó y acuerden la fecha nueva." },
+      prestamo: { gracia_dias: 0, recargo: null, riesgo: "Sin recargo, salvo que lo acuerden. Avisa antes a quien te prestó." },
       deudaInternet: { gracia_dias: 0, recargo: rec.internetPorFactura ?? null, riesgoAlto: false,
                        riesgo: (((Datos.actual.reglasDePrioridad || {}).nivel2 || {}).deudaInternet || {}).nota || "Pago atrasado: acuerda la fecha con la empresa." }
     };
@@ -86,6 +86,20 @@ const Mover = {
     return !dia || dia.saldoFin - pago.monto < -0.005;
   },
 
+  esDeuda(pago) { return !!(pago && pago.item && pago.item.inmediato); },
+
+  // Préstamo de una persona: recargo acordado (opcional) y si los pagos que siguen se corren
+  opcionesPrestamo() {
+    if (!this._ev || this._ev.pago.id !== "prestamo") return {};
+    return { recargo: redondear(Math.max(0, Number($("mv-recargo").value) || 0)), correr: $("mv-correr").value === "si" };
+  },
+
+  // Cómo quedaría guardado con estas fechas (para probarlo sin guardarlo)
+  movidoCon(partes) {
+    const pago = this._ev.pago;
+    return { id: pago.id, nombre: pago.nombre, fechaOriginal: pago.fecha, monto: pago.monto, partes, ...this.opcionesPrestamo() };
+  },
+
   // ---------- ¿Qué pasa en tu mes? (misma cuenta de proyeccion.js) ----------
   metricas(pr, largo) {
     const fechas = Object.keys(pr.porDia).sort();
@@ -103,10 +117,13 @@ const Mover = {
   efecto(partes) {
     const op = { chequeEscenario: this.escenario ? this.escenario.monto : null, horizonte: this.horizonte };
     if (!this._antes) this._antes = this.metricas(Proyeccion.calcular(op), Proyeccion.calcular({ ...op, horizonte: 730 }));
-    const pago = this._ev.pago;
-    const extras = partes.map(p => ({ fecha: p.fecha, monto: -p.monto, nombre: pago.nombre }));
-    const con = { ...op, excluir: this.clave, extras };
-    return { antes: this._antes, despues: this.metricas(Proyeccion.calcular(con), Proyeccion.calcular({ ...con, horizonte: 730 })) };
+    // Se prueba como si ya estuviera guardado (mismas reglas: partes, recargo, pagos corridos), sin guardarlo
+    Vencimientos._simular = { [this.clave]: this.movidoCon(partes) };
+    try {
+      return { antes: this._antes, despues: this.metricas(Proyeccion.calcular(op), Proyeccion.calcular({ ...op, horizonte: 730 })) };
+    } finally {
+      Vencimientos._simular = null;
+    }
   },
 
   htmlEfecto(e, titulo) {
@@ -177,7 +194,8 @@ const Mover = {
       const antes = pr.porDia[f].saldoFin;
       const despues = redondear(antes - pago.monto);
       const atraso = this.diferencia(f, pago.fecha);
-      const fueraDeGracia = atraso > reglas.gracia_dias;
+      // Deuda atrasada (internet atrasado): se puede aplazar; no hay "atraso" ni recargo nuevo
+      const fueraDeGracia = !this.esDeuda(pago) && atraso > reglas.gracia_dias;
       let color;
       if (!primerDisponible || f < primerDisponible) color = "gris";
       else if (despues < -0.005) color = "rojo";
@@ -234,6 +252,9 @@ const Mover = {
     const original = this.pagoOriginal(clave);
     this.horizonte = Math.max(this.config().horizonte, this.diferencia(original.fecha, hoy()) + 15);
     this.ajuste = guardado ? guardado.partes.map(p => ({ ...p })) : [{ fecha: original.fecha < hoy() ? hoy() : original.fecha, monto: original.monto }];
+    $("mv-prestamo-opciones").hidden = !clave.startsWith("prestamo@");
+    $("mv-recargo").value = guardado && guardado.recargo ? guardado.recargo : "";
+    $("mv-correr").value = guardado && guardado.correr ? "si" : "no";
     $("mv-acordado").checked = !!(guardado && guardado.acordado);
     $("mv-nota").value = guardado ? guardado.nota || "" : "";
     document.querySelectorAll("main.contenedor").forEach(m => { m.hidden = true; });
@@ -282,9 +303,11 @@ const Mover = {
       <h2 class="mv-nombre">${escapar(pago.nombre)}</h2>
       <ul class="resumen">
         <li><span>Monto</span><span>${dinero(pago.monto)}</span></li>
-        <li><span>Vencimiento original</span><span>${Jornadas.textoDia(pago.fecha)}</span></li>
+        ${this.esDeuda(pago)
+          ? `<li><span>Fecha</span><span>Sin fecha (deuda atrasada)</span></li>`
+          : `<li><span>Vencimiento original</span><span>${Jornadas.textoDia(pago.fecha)}</span></li>`}
         <li><span>Para cubrirlo hoy te falta</span><span class="${faltaHoy > 0 ? "error" : "ok"}">${dinero(faltaHoy)}</span></li>
-        ${estadoFecha ? `<li><span>En su fecha</span><span class="${estadoFecha.startsWith("No") ? "error" : "ok"}">${estadoFecha}</span></li>` : ""}
+        ${estadoFecha && !this.esDeuda(pago) ? `<li><span>En su fecha</span><span class="${estadoFecha.startsWith("No") ? "error" : "ok"}">${estadoFecha}</span></li>` : ""}
       </ul>
       ${this.escenario ? `<p class="estado">Escenario: ${escapar(this.escenario.titulo)} (${dinero(this.escenario.monto)})</p>` : ""}
       <p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(pr))}</p>
@@ -326,7 +349,7 @@ const Mover = {
       if (dia.lineas.some(l => l.tipo === "cheque")) marcas.push(`<span class="marca-cobro">$</span>`);
       const letras = [...new Set(dia.lineas.filter(l => l.letra).map(l => l.letra + (l.movido ? "↻" : "")))];
       if (letras.length) marcas.push(`<span class="marca-vence">${letras.join(" ")}</span>`);
-      if (f === pago.fecha) marcas.push(`<span class="mv-vence">vence</span>`);
+      if (f === pago.fecha && !this.esDeuda(pago)) marcas.push(`<span class="mv-vence">vence</span>`);
       if (etiquetas[f]) marcas.push(`<span class="mv-sugerida">${etiquetas[f]}</span>`);
       const nombreColor = { verde: "alcanza sin recargo", amarillo: "alcanza con recargo", rojo: "no alcanza o riesgo alto", gris: "todavía sin dinero" }[e.color];
       return `<button class="dia mv-${e.color}${f === this.seleccion ? " mv-elegido" : ""}${f === hoy() ? " hoy" : ""}" data-mv-dia="${f}"
@@ -344,7 +367,10 @@ const Mover = {
     const e = this._ev.evaluacion[this.seleccion];
     const atraso = e.atraso > 0 ? `${e.atraso} ${e.atraso === 1 ? "día" : "días"} de atraso`
       : e.atraso === 0 ? "El mismo día del vencimiento (a tiempo)" : `${-e.atraso} ${e.atraso === -1 ? "día" : "días"} antes del vencimiento (a tiempo)`;
-    const recargo = !e.fueraDeGracia
+    const op = this.opcionesPrestamo();
+    const recargo = pago.id === "prestamo"
+      ? (op.recargo > 0 ? `Recargo acordado: ${dinero(op.recargo)}` : "Sin recargo (si acuerdan uno, ponlo arriba)")
+      : !e.fueraDeGracia
       ? (e.atraso > 0 ? `Dentro de la gracia (${reglas.gracia_dias} días): sin recargo` : "Sin recargo")
       : reglas.recargo == null ? "Recargo por confirmar" : `Recargo estimado: ${dinero(reglas.recargo)}`;
     const choques = pr.porDia[this.seleccion].lineas.filter(l => l.tipo !== "cheque").map(l => `${l.nombre} (${dinero(-l.monto)})`);
@@ -358,8 +384,9 @@ const Mover = {
     caja.innerHTML = `
       <h2>${Jornadas.textoDia(this.seleccion)}</h2>
       <ul class="resumen">
-        <li><span>Atraso</span><span>${atraso}</span></li>
-        <li><span>Recargo</span><span>${recargo}</span></li>
+        ${this.esDeuda(pago)
+          ? `<li><span>Deuda atrasada</span><span>Puedes elegir la fecha; no genera recargo nuevo</span></li>`
+          : `<li><span>Atraso</span><span>${atraso}</span></li><li><span>Recargo</span><span>${recargo}</span></li>`}
         <li><span>Saldo después de pagar</span><span class="${e.despues < 0 ? "error" : "ok"}">${e.despues < 0 ? `−${dinero(-e.despues)} · Falta ${dinero(-e.despues)}` : dinero(e.despues)}</span></li>
         <li><span>Ese día también</span><span>${choques.length ? escapar(choques.join(", ")) : "Nada más"}</span></li>
         <li><span>Cheque</span><span>${cheque}</span></li>
@@ -371,10 +398,8 @@ const Mover = {
   },
 
   elegir(partes) {
-    const pago = this._ev.pago;
     Almacen.guardarPagoMovido(this.clave, {
-      id: pago.id, nombre: pago.nombre, fechaOriginal: pago.fecha, monto: pago.monto, partes,
-      acordado: $("mv-acordado").checked, nota: $("mv-nota").value.trim()
+      ...this.movidoCon(partes), acordado: $("mv-acordado").checked, nota: $("mv-nota").value.trim()
     });
     Pantalla.aviso(partes.length > 1 ? `Guardado: pago dividido en ${partes.length} fechas` : `Guardado: ${Jornadas.textoDia(partes[0].fecha).toLowerCase()}`);
     this.ajuste = partes.map(p => ({ ...p }));
@@ -389,6 +414,8 @@ const Mover = {
     this.ajuste = [{ fecha: original.fecha < hoy() ? hoy() : original.fecha, monto: original.monto }];
     $("mv-acordado").checked = false;
     $("mv-nota").value = "";
+    $("mv-recargo").value = "";
+    $("mv-correr").value = "no";
     Pantalla.aviso("Vuelve a su fecha original");
     this.mostrar();
   },
@@ -396,7 +423,7 @@ const Mover = {
   // La casilla y la nota se guardan solas si el pago ya está movido
   guardarAcuerdo() {
     if (!Almacen.leerPagosMovidos()[this.clave]) return;
-    Almacen.guardarPagoMovido(this.clave, { acordado: $("mv-acordado").checked, nota: $("mv-nota").value.trim() });
+    Almacen.guardarPagoMovido(this.clave, { acordado: $("mv-acordado").checked, nota: $("mv-nota").value.trim(), ...this.opcionesPrestamo() });
     this.mostrar();
   },
 
@@ -432,6 +459,15 @@ const Mover = {
       const q = e.target.closest("[data-mv-quitar-parte]");
       if (q) { this.ajuste.splice(+q.dataset.mvQuitarParte, 1); this.mostrarAjuste(); }
       if (e.target.closest("#mv-guardar-ajuste")) this.guardarAjuste();
+    });
+    // Préstamo: recargo y pagos corridos (si ya está movido se guarda; si no, solo cambia lo que ves)
+    $("mv-recargo").addEventListener("change", () => {
+      const v = $("mv-recargo").value;
+      $("mv-error-prestamo").textContent = v !== "" && !(Number(v) >= 0) ? "El recargo tiene que ser 0 o más." : "";
+      if (Almacen.leerPagosMovidos()[this.clave]) this.guardarAcuerdo(); else this.mostrar();
+    });
+    $("mv-correr").addEventListener("change", () => {
+      if (Almacen.leerPagosMovidos()[this.clave]) this.guardarAcuerdo(); else this.mostrar();
     });
     $("mv-acordado").addEventListener("change", () => this.guardarAcuerdo());
     $("mv-nota").addEventListener("change", () => this.guardarAcuerdo());

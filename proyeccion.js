@@ -155,6 +155,7 @@ const Proyeccion = {
     Vencimientos.entre(hoyClave, fin).forEach(item => {
       if (item.alerta || item.claveMov === excluir) return;
       if (item.id === "renta") return; // la renta se cuenta aparte (rentaLineas)
+      if (item.inmediato && !item.movido) return; // deuda atrasada sin fecha (internet atrasado): no se asume que la pagas
       if (excluirPlaneado && item.planeadoId === excluirPlaneado) return;
       const pendientes = item.partes.filter(p => !p.pagado);
       const pendiente = pendientes.reduce((s, p) => s + p.monto, 0);
@@ -254,7 +255,7 @@ const Proyeccion = {
       lineas.push({ fecha: p.fecha, monto: -monto, nombre: "Renta atrasada (acuerdo de pago)", atrasada: true });
     });
     // 2) La renta de cada mes: vence el 15 (o en las fechas a las que la moviste)
-    const movidos = opciones.sinMover ? {} : Almacen.leerPagosMovidos();
+    const movidos = opciones.sinMover ? {} : typeof Vencimientos !== "undefined" ? Vencimientos.movidos() : Almacen.leerPagosMovidos();
     this.rentaMeses(hoyClave, fin).forEach(c => {
       if (c.pendiente <= 0.005) return;
       const clave = `renta@${c.limite}`;
@@ -302,6 +303,9 @@ const Proyeccion = {
     const saldos = {};
     // La renta del mes ya está en la cuenta; aquí solo se reparte la renta ATRASADA
     orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id)); });
+    // Deudas atrasadas sin fecha (internet atrasado): las fechas estimadas no suponen que las pagas
+    // (si las programas con "Mover", ya están en la cuenta día por día)
+    Datos.deudas().filter(d => d.venceInmediato).forEach(d => { if (saldos[d.id] != null) saldos[d.id] = 0; });
     // Lo que cubre un acuerdo de pago ya está en la cuenta día por día: no se reparte otra vez
     let acuerdoHasta = null;
     if (saldos.deudaRenta != null) {

@@ -69,6 +69,23 @@ const Vencimientos = {
 
   MOVIBLES: ["luz", "telefono", "internet", "prestamo", "renta", "deudaInternet"], // lo que se puede mover (la renta del mes, en la cuenta)
 
+  // Pagos movidos guardados (+ uno que "Mover este pago" solo está probando, sin guardarlo)
+  _simular: null,
+  movidos() {
+    return { ...Almacen.leerPagosMovidos(), ...(this._simular || {}) };
+  },
+
+  // Préstamo: si al moverlo elegiste que los pagos que siguen se corran, esas semanas quedan sin pago
+  saltosPrestamo() {
+    return Object.entries(this.movidos()).filter(([k, v]) => k.startsWith("prestamo@") && v.correr && v.partes && v.partes.length)
+      .map(([k, v]) => {
+        const F = k.split("@")[1];
+        const ultima = v.partes.map(p => p.fecha).sort().slice(-1)[0];
+        const semanas = Math.max(0, Math.ceil(Math.round((Jornadas.aFecha(ultima) - Jornadas.aFecha(F)) / 86400000) / 7));
+        return { desde: F, hasta: Jornadas.sumarDias(F, 7 * semanas) };
+      });
+  },
+
   // Clave con la que "Mover este pago" conoce este pago (la renta del mes vence el 15)
   claveMover(item) {
     return item.id === "renta" ? `renta@${Proyeccion.limiteRenta(item.fecha)}` : item.claveMov;
@@ -77,7 +94,7 @@ const Vencimientos = {
   // Todos los vencimientos entre dos fechas, con los pagos movidos (Bloque 12) ya en su fecha nueva.
   // Cada uno trae "claveMov" (id@fecha original) y, si se movió, "movido".
   entre(desde, hasta) {
-    const movidos = Almacen.leerPagosMovidos();
+    const movidos = this.movidos();
     const originales = Object.values(movidos).map(m => m.fechaOriginal);
     const desdeAmplio = [desde, ...originales].sort()[0];
     const hastaAmplio = [hasta, ...originales].sort().slice(-1)[0];
@@ -100,6 +117,15 @@ const Vencimientos = {
             partes: [{ nombre: `${item.nombre} (parte ${i + 1} de ${m.partes.length})`, monto: pt.monto, accion, clave,
                        sinClave: !!item.inmediato, pagado: !item.inmediato && pagados.has(clave) }] });
         });
+      }
+      // Recargo acordado al mover un pago (ej.: préstamo de una persona): línea aparte en la última fecha.
+      // "Ya lo pagué" lo registra como gasto, no como pago de la deuda.
+      if (m.recargo > 0) {
+        const fecha = m.partes.map(p => p.fecha).sort().slice(-1)[0];
+        const clave = `recargo-${item.claveMov}`;
+        items.push({ id: "recargo", letra: "", nombre: `Recargo de ${item.nombre} (acordado)`, orden: 21, fecha, claveMov: clave,
+          partes: [{ nombre: `Recargo de ${item.nombre} (acordado)`, monto: m.recargo, clave, pagado: pagados.has(clave),
+                     accion: { tipo: "gasto", categoria: "Otros" } }] });
       }
     });
     // Bloque 15: gastos planeados con fecha elegida (cada parte en su fecha), menos lo ya comprado
@@ -193,6 +219,7 @@ const Vencimientos = {
     const gp = this.gasto(Plan.ID_GASTO_PRESTAMO);
     if (gp) {
       let resta = Math.max(0, Datos.saldoDeuda(Plan.ID_DEUDA_PRESTAMO));
+      const saltos = this.saltosPrestamo();
       const diaCobro = Calendario.diaDeCobro();
       let f = Jornadas.sumarDias(hoyClave, (diaCobro - Jornadas.aFecha(hoyClave).getDay() + 7) % 7);
       for (; f <= hasta; f = Jornadas.sumarDias(f, 7)) {
@@ -202,6 +229,7 @@ const Vencimientos = {
             partes: [{ nombre: gp.nombre, monto: gp.monto, clave, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_PRESTAMO } }] }, f);
           continue;
         }
+        if (saltos.some(x => f > x.desde && f <= x.hasta)) continue; // semana corrida: sin pago
         if (resta <= 0) break;
         const monto = Math.min(gp.monto, resta);
         resta -= monto;
@@ -244,8 +272,10 @@ const Vencimientos = {
       ? `<p class="vacio">No hay pagos en los próximos ${this.DIAS_ADELANTE} días.</p>`
       : filas.map(({ item, p, dias }) => {
           const sinAcuerdo = item.movido && !item.movido.acordado && !p.pagado;
-          const color = p.pagado ? "pagado" : dias <= 3 ? "rojo" : dias <= 7 || sinAcuerdo ? "amarillo" : "";
-          const simbolo = p.pagado ? "✓" : dias <= 3 ? "⚠" : dias <= 7 ? "!" : "";
+          // Deuda atrasada sin fecha (internet atrasado): se ve, pero no se exige hoy
+          const sinFecha = item.inmediato && !item.movido;
+          const color = p.pagado ? "pagado" : sinFecha ? "" : dias <= 3 ? "rojo" : dias <= 7 || sinAcuerdo ? "amarillo" : "";
+          const simbolo = p.pagado ? "✓" : sinFecha ? "" : dias <= 3 ? "⚠" : dias <= 7 ? "!" : "";
           // Bloque 12: "Mover" en luz, teléfono e internet que no alcanzan (o ya movidos)
           const puedeMover = !p.pagado && this.MOVIBLES.includes(item.id) && typeof Mover !== "undefined"
             && !!Mover.pagoOriginal(this.claveMover(item));
@@ -274,7 +304,7 @@ const Vencimientos = {
             <li class="pago-fila ${color}">
               <div class="mov-info">
                 <div class="mov-tipo">${simbolo ? `<span aria-hidden="true">${simbolo}</span> ` : ""}${escapar(p.nombre)}</div>
-                <div class="mov-detalle">${Jornadas.textoDia(item.fecha)} · ${this.textoCuando(dias)}</div>
+                <div class="mov-detalle">${sinFecha ? "Sin fecha · lo puedes pagar más adelante" : `${Jornadas.textoDia(item.fecha)} · ${this.textoCuando(dias)}`}</div>
                 ${movido}
               </div>
               <div class="pago-lado">

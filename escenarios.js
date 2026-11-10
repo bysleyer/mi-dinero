@@ -69,7 +69,7 @@ const Escenarios = {
     if (id === "luz") return `Cargo por atraso (${this.textoRecargo(rec.luz)})`;
     if (id === "telefono") return `Cargo por atraso (${this.textoRecargo(rec.telefono)})`;
     if (id === "internet") return `${this.textoRecargo(rec.internetPorFactura).replace(/^r/, "R")} por factura vencida`;
-    if (id === "deudaInternet") return `${this.textoRecargo(rec.internetPorFactura).replace(/^r/, "R")} por factura vencida · RIESGO ALTO: ${(this.reglas().nivel2.deudaInternet || {}).nota || "pago inmediato"}`;
+    if (id === "deudaInternet") return "Deuda atrasada: se puede aplazar";
     return "";
   },
 
@@ -130,6 +130,12 @@ const Escenarios = {
             costo = this.costo(l.id); clase = reglas.riesgo ? "falta" : "mueve";
           }
           l.riesgo = reglas.riesgo;
+          // Deuda atrasada (internet atrasado): no es urgente; se puede aplazar
+          if (l.inmediato) {
+            l.riesgo = false;
+            costo = this.costo(l.id);
+            if (clase === "falta") { clase = "mueve"; estado = "Se puede aplazar"; }
+          }
         }
         if (conCheque && clase === "paga") estado = textoCheque(conCheque);
         saldo = redondear(saldo + l.monto);

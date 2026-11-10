@@ -339,6 +339,22 @@
     <h1>Mover este pago</h1>
     <section id="mv-cabeza" class="tarjeta"></section>
     <div id="mv-colchon"></div>
+    <section id="mv-prestamo-opciones" class="tarjeta" hidden>
+      <h2>Préstamo de una persona</h2>
+      <div class="campo">
+        <label for="mv-recargo">Recargo acordado <span class="opcional">(opcional; vacío = sin recargo)</span></label>
+        <input id="mv-recargo" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="campo">
+        <label for="mv-correr">¿Qué pasa con los pagos que siguen?</label>
+        <select id="mv-correr">
+          <option value="no">Se quedan igual (esa semana pagas doble)</option>
+          <option value="si">Se corren (el préstamo termina después)</option>
+        </select>
+      </div>
+      <p class="estado">Depende de lo que acuerdes con quien te prestó. Lo ves abajo en "¿Qué pasa en tu mes?" antes de guardar.</p>
+      <p id="mv-error-prestamo" class="error"></p>
+    </section>
     <section class="tarjeta">
       <h2>Sugerencia</h2>
       <div id="mv-sugerencias"></div>
