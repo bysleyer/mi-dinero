@@ -22,7 +22,7 @@ const Almacen = {
 
   // Versión del formato de datos. Súbela si cambia la forma de guardar algo
   // y agrega el cambio en migrar().
-  VERSION_FORMATO: 3,
+  VERSION_FORMATO: 4,
 
   // ---------- Funciones básicas ----------
   leer(clave) {
@@ -75,6 +75,12 @@ const Almacen = {
       this.guardar("movimientos", lista);
     }
     // v3: se agregan las jornadas (clave nueva, no hay que convertir nada)
+    if (version < 4) {
+      // v4: los ingresos tienen tipo; los que ya existían quedan como "cheque"
+      const lista = (this.leer("movimientos") || []).map(m =>
+        m.tipo === "ingreso" && !m.tipoIngreso ? { ...m, tipoIngreso: "cheque" } : m);
+      this.guardar("movimientos", lista);
+    }
     this.guardar("formato", this.VERSION_FORMATO);
   },
 
@@ -134,6 +140,13 @@ const Almacen = {
     mov.modificado = momento;
     lista.push(mov);
     return this.guardar("movimientos", lista) ? mov : null;
+  },
+
+  // Cambia algunos campos de un movimiento (ej.: el tipo de ingreso)
+  actualizarMovimiento(id, cambios) {
+    const lista = this.leerTodosLosMovimientos().map(m =>
+      m.id === id ? { ...m, ...cambios, modificado: this.ahora() } : m);
+    return this.guardar("movimientos", lista);
   },
 
   borrarMovimiento(id) {

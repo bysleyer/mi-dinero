@@ -31,6 +31,10 @@ function escapar(texto) {
 
 const $ = id => document.getElementById(id);
 
+// Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
+// Los ingresos viejos sin tipo se toman como cheque.
+const esCheque = m => m.tipo === "ingreso" && m.tipoIngreso !== "otro";
+
 // Pregunta "¿Seguro?" dentro de la app (no usa la ventana del navegador,
 // que no funciona en algunos lugares, como las páginas de claude.ai).
 // Devuelve una promesa: true si toca "Sí", false si toca "No".
@@ -124,12 +128,31 @@ const campoFecha = () => `
 const Formularios = {
   ingreso: {
     titulo: "Me pagaron",
-    campos: () => campoMonto() + campoFecha() + `
+    campos: () => `
       <div class="campo">
+        <label for="f-tipo-ingreso">Tipo</label>
+        <select id="f-tipo-ingreso">
+          <option value="cheque">Cheque</option>
+          <option value="otro">Otro ingreso</option>
+        </select>
+      </div>` + campoMonto() + campoFecha() + `
+      <div class="campo" id="campo-horas">
         <label for="f-horas">Horas trabajadas <span class="opcional">(opcional)</span></label>
         <input id="f-horas" type="number" inputmode="decimal" step="0.5" min="0">
+      </div>
+      <div class="campo" id="campo-nota-ingreso" hidden>
+        <label for="f-nota">Nota <span class="opcional">(opcional)</span></label>
+        <input id="f-nota" type="text" maxlength="80">
       </div>`,
     leer(base) {
+      // "Otro ingreso": sin horas, con nota. No cuenta como cheque.
+      if ($("f-tipo-ingreso").value === "otro") {
+        base.tipoIngreso = "otro";
+        const nota = $("f-nota").value.trim();
+        if (nota) base.nota = nota;
+        return base;
+      }
+      base.tipoIngreso = "cheque";
       const horasTxt = $("f-horas").value.trim();
       if (horasTxt !== "") {
         const horas = Number(horasTxt);
@@ -426,14 +449,16 @@ const Pantalla = {
       : ultimos.map(m => {
           const esIngreso = m.tipo === "ingreso";
           const esAjuste = m.tipo === "ajuste";
-          const titulo = m.tipo === "gasto" ? `Gasto · ${m.categoria}` : NOMBRES_TIPO[m.tipo];
-          const detalle = [fechaCorta(m.fecha), m.nota, m.estimado != null ? textoComparacion(m) : ""]
+          const esOtro = esIngreso && !esCheque(m);
+          const titulo = m.tipo === "gasto" ? `Gasto · ${m.categoria}` : esOtro ? "Otro ingreso" : NOMBRES_TIPO[m.tipo];
+          const detalle = [fechaCorta(m.fecha), m.nota, m.estimado != null && !esOtro ? textoComparacion(m) : ""]
             .filter(Boolean).map(escapar).join(" · ");
           return `
             <li>
               <div class="mov-info">
                 <div class="mov-tipo">${escapar(titulo)}</div>
                 <div class="mov-detalle">${detalle}</div>
+                ${esIngreso ? `<button class="enlace cambiar-tipo" data-cambiar-tipo="${m.id}">${esOtro ? "Cambiar a Cheque" : "Cambiar a Otro ingreso"}</button>` : ""}
               </div>
               <span class="mov-monto ${esAjuste ? "neutro" : esIngreso ? "positivo" : "negativo"}">
                 ${esAjuste ? "Saldo: " : esIngreso ? "+" : "−"}${dinero(m.monto)}
@@ -468,6 +493,17 @@ async function borrarMovimiento(id) {
   Plan.moverSobreServicios(mov.descontadoSobreServicios || 0);
   Pantalla.actualizar();
   Pantalla.aviso("Borrado");
+  avisarCambioMovimientos();
+}
+
+// Cambia un ingreso entre "Cheque" y "Otro ingreso" (no cambia el monto ni la fecha)
+function cambiarTipoIngreso(id) {
+  const mov = Almacen.leerMovimientos().find(m => m.id === id);
+  if (!mov || mov.tipo !== "ingreso") return;
+  const nuevo = esCheque(mov) ? "otro" : "cheque";
+  Almacen.actualizarMovimiento(id, { tipoIngreso: nuevo });
+  Pantalla.actualizar();
+  Pantalla.aviso(nuevo === "otro" ? "Ahora es Otro ingreso" : "Ahora es Cheque");
   avisarCambioMovimientos();
 }
 
@@ -544,6 +580,15 @@ try {
   $("movimientos").addEventListener("click", e => {
     const b = e.target.closest("[data-borrar]");
     if (b) borrarMovimiento(b.dataset.borrar);
+    const c = e.target.closest("[data-cambiar-tipo]");
+    if (c) cambiarTipoIngreso(c.dataset.cambiarTipo);
+  });
+  // "Me pagaron": con "Otro ingreso" se ocultan las horas y se muestra la nota
+  $("form-campos").addEventListener("change", e => {
+    if (e.target.id !== "f-tipo-ingreso") return;
+    const otro = e.target.value === "otro";
+    $("campo-horas").hidden = otro;
+    $("campo-nota-ingreso").hidden = !otro;
   });
   $("rapido-transporte").addEventListener("click", () => abrirFormulario("transporte"));
   $("dinero-tengo").addEventListener("click", () => abrirFormulario("corregirDinero", { monto: Dinero.actual() }));

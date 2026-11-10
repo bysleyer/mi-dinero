@@ -432,3 +432,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 /* ---------- Misma cuenta en ¿Y si cobro? y Mover ---------- */
 .esc-cuenta { font-size: .8rem; margin-top: 4px; }
 .mover-igual { font-size: .8rem; padding: 2px 0; }
+
+/* ---------- Tipo de ingreso ---------- */
+.cambiar-tipo { font-size: .8rem; padding: 2px 0; }

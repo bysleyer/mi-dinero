@@ -22,7 +22,7 @@ const Proyeccion = {
     let cobro = Jornadas.sumarDias(inicioBusqueda, (diaCheque - Jornadas.aFecha(inicioBusqueda).getDay() + 7) % 7);
     const comida = Vencimientos.gasto("comida");
     const transporte = Vencimientos.gasto("transporte");
-    const ingresos = Almacen.leerMovimientos().filter(m => m.tipo === "ingreso");
+    const ingresos = Almacen.leerMovimientos().filter(esCheque); // "Otro ingreso" no reemplaza al cheque
     let escenarioUsado = false;
     for (; Jornadas.sumarDias(cobro, cfg.chequeRetraso) <= fin; cobro = Jornadas.sumarDias(cobro, 7)) {
       const disponible = Jornadas.sumarDias(cobro, cfg.chequeRetraso);

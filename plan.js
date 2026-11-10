@@ -64,7 +64,7 @@ const Plan = {
     const p = n => String(n).padStart(2, "0");
     const domingo = `${dom.getFullYear()}-${p(dom.getMonth() + 1)}-${p(dom.getDate())}`;
     const lista = Almacen.leerMovimientos()
-      .filter(x => x.tipo === "ingreso" && x.fecha >= lunes && x.fecha <= domingo)
+      .filter(x => esCheque(x) && x.fecha >= lunes && x.fecha <= domingo) // "Otro ingreso" no cuenta
       .sort((x, y) => (x.fecha + x.creado).localeCompare(y.fecha + y.creado));
     return { lista, total: redondear(lista.reduce((s, x) => s + x.monto, 0)) };
   },
@@ -341,14 +341,14 @@ const Plan = {
       if (opcion.dataset.cobre === "corregir") {
         // Corregir = borrar el anterior (queda marcado como borrado) y registrar el nuevo con su misma fecha
         Almacen.borrarMovimiento(ultimo.id);
-        const mov = { tipo: "ingreso", monto, fecha: ultimo.fecha };
+        const mov = { tipo: "ingreso", tipoIngreso: "cheque", monto, fecha: ultimo.fecha };
         if (ultimo.horas != null) { mov.horas = ultimo.horas; mov.nota = ultimo.nota; mov.estimado = ultimo.estimado; }
         this.registrarCobro(monto, mov);
       }
     };
   },
 
-  registrarCobro(monto, mov = { tipo: "ingreso", monto, fecha: hoy() }) {
+  registrarCobro(monto, mov = { tipo: "ingreso", tipoIngreso: "cheque", monto, fecha: hoy() }) {
     if (!registrarMovimiento(mov)) {
       $("p-cobre-error").textContent = "No se pudo guardar en este dispositivo.";
       return;
