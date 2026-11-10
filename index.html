@@ -38,7 +38,7 @@
         <button id="no-trabaje-hoy" class="boton-chico">No trabajé hoy</button>
       </div>
       <button id="abrir-calendario" class="boton-mediano">Calendario</button>
-      <button id="abrir-alcanza" class="boton-mediano">¿Me alcanza?</button>
+      <button id="abrir-futuro" class="boton-grande futuro">Mi futuro</button>
       <button id="abrir-plan" class="boton-mediano">Plan de la semana</button>
       <button id="abrir-deudas" class="boton-mediano">Mis deudas</button>
       <button id="abrir-resumen" class="boton-mediano">A dónde se va mi dinero</button>
@@ -113,6 +113,60 @@
       <ul id="cal-mes" class="resumen"></ul>
     </section>
   </main>
+
+  <!-- Pantalla: Mi futuro (Bloque 14) - solo muestra -->
+  <main id="pantalla-futuro" class="contenedor" hidden>
+    <button id="volver-futuro" class="volver">← Volver</button>
+    <h1>Mi futuro</h1>
+
+    <p id="fu-frase" class="fu-frase"></p>
+    <button id="fu-cuenta" class="enlace fu-cuenta"></button>
+
+    <div id="fu-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
+
+    <section class="tarjeta">
+      <div class="selector fu-vistas" role="group" aria-label="Vista">
+        <button data-fu-vista="mes">Mes</button>
+        <button data-fu-vista="semana">Semana</button>
+      </div>
+      <div id="fu-mes">
+        <div id="fu-grafica" class="fu-grafica"></div>
+        <div id="fu-leyenda" class="fu-leyenda"></div>
+        <div class="cal-dias cal-nombres" aria-hidden="true">
+          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        </div>
+        <div id="fu-calendario" class="cal-dias fu-calendario"></div>
+        <p class="estado">Toca un día para ver lo que pasa. Verde: bien · amarillo: cerca de cero · rojo: bajo cero · azul ◇: día libre.</p>
+      </div>
+      <div id="fu-semana" hidden>
+        <div class="cal-cabeza">
+          <button id="fu-sem-anterior" class="cal-flecha" aria-label="Semana anterior">‹</button>
+          <h2 id="fu-sem-titulo" class="cal-titulo fu-sem-titulo"></h2>
+          <button id="fu-sem-siguiente" class="cal-flecha" aria-label="Semana siguiente">›</button>
+        </div>
+        <ul id="fu-sem-lista" class="fu-sem-lista"></ul>
+      </div>
+    </section>
+
+    <div id="fu-tarjetas" class="fu-tarjetas"></div>
+
+    <button id="fu-libre" class="boton-mediano">No voy a trabajar un día</button>
+
+    <details id="fu-detalle" class="tarjeta fu-detalle">
+      <summary>Ver detalle</summary>
+      <p class="estado">Las mismas cuentas, en lista.</p>
+      <button id="abrir-alcanza" class="boton-mediano">¿Me alcanza? (día por día)</button>
+      <button id="fu-abrir-escenarios" class="boton-mediano">¿Y si cobro...? (por niveles, montos editables)</button>
+    </details>
+  </main>
+
+  <!-- Ventana de un día (Mi futuro) -->
+  <div id="fu-dia" class="ventana" hidden>
+    <div class="ventana-caja" role="dialog" aria-labelledby="fu-dia-contenido">
+      <div id="fu-dia-contenido"></div>
+      <button id="fu-dia-cerrar" class="boton-grande cancelar">Cerrar</button>
+    </div>
+  </div>
 
   <!-- Pantalla: ¿Me alcanza? (Bloque 9) -->
   <main id="pantalla-alcanza" class="contenedor" hidden>
@@ -408,7 +462,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, pagos, alcanza, escenarios, mover, respaldo -->
+  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, pagos, alcanza, escenarios, mover, futuro, respaldo -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="app.js"></script>
@@ -422,6 +476,7 @@
   <script src="alcanza.js"></script>
   <script src="escenarios.js"></script>
   <script src="mover.js"></script>
+  <script src="futuro.js"></script>
   <script src="respaldo.js"></script>
 </body>
 </html>

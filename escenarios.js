@@ -174,8 +174,9 @@ const Escenarios = {
   },
 
   // ---------- Pantalla ----------
-  abrir() {
-    $("pantalla-alcanza").hidden = true;
+  abrir(origen = "pantalla-alcanza") {
+    this.origen = origen;
+    $(origen).hidden = true;
     $("pantalla-escenarios").hidden = false;
     window.scrollTo(0, 0);
     const c = this.config();
@@ -189,9 +190,10 @@ const Escenarios = {
 
   cerrar() {
     $("pantalla-escenarios").hidden = true;
-    $("pantalla-alcanza").hidden = false;
+    $(this.origen || "pantalla-alcanza").hidden = false;
     window.scrollTo(0, 0);
     Alcanza.mostrar();
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
   },
 
   ESCENARIOS: [

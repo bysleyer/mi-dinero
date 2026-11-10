@@ -17,6 +17,7 @@
  *   dineroInicial  "Corregir mi dinero": { monto, fecha, momento }
  *   pagosMovidos   fechas nuevas elegidas en "Mover este pago" (no son pagos)
  *   diasLibres     días que NO voy a trabajar (planeados, futuros): { id, desde, hasta, motivo }
+ *   futuro         "Mi futuro": escenario y vista elegidos { escenario, vista }
  */
 const Almacen = {
   prefijo: "midinero:",
@@ -191,6 +192,15 @@ const Almacen = {
     return this.guardar("lineaTiempo", { dineroHoy, momento: this.ahora() });
   },
 
+  // ---------- Mi futuro (Bloque 14) ----------
+  leerFuturo() {
+    return this.leer("futuro") || {};
+  },
+
+  guardarFuturo(cambios) {
+    return this.guardar("futuro", { ...this.leerFuturo(), ...cambios });
+  },
+
   // ---------- Días libres planeados (Bloque 13) ----------
   // Separados de las faltas reales (jornadas de 0 horas). Los borrados se marcan.
   leerTodosLosDiasLibres() {
@@ -297,7 +307,8 @@ const Almacen = {
       escenarios: this.leerEscenarios(),
       dineroInicial: this.leerDineroInicial(),
       pagosMovidos: this.leerPagosMovidos(),
-      diasLibres: this.leerTodosLosDiasLibres()
+      diasLibres: this.leerTodosLosDiasLibres(),
+      futuro: this.leerFuturo()
     };
   },
 
@@ -315,6 +326,7 @@ const Almacen = {
     else this.borrar("dineroInicial");
     this.guardar("pagosMovidos", respaldo.pagosMovidos || {});
     this.guardar("diasLibres", respaldo.diasLibres || []);
+    this.guardar("futuro", respaldo.futuro || {});
     if (respaldo.revision) this.guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {

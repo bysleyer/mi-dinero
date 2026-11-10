@@ -444,3 +444,64 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 
 /* ---------- Versión al final de la pantalla principal ---------- */
 .version-app { margin: 14px 0 0; text-align: center; font-size: .8rem; color: var(--suave); }
+
+/* ---------- Bloque 14: Mi futuro ---------- */
+.boton-grande.futuro { background: #5b3ea8; }
+.fu-frase { font-size: 1.45rem; font-weight: 800; line-height: 1.25; margin: 8px 0 4px; text-wrap: balance; }
+.fu-frase.negativo { color: var(--error); }
+.fu-frase.positivo { color: var(--ok); }
+.fu-cuenta { display: block; text-align: left; font-size: .8rem; font-weight: 400; color: var(--suave); padding: 4px 0 8px; }
+.fu-escenarios button { display: flex; flex-direction: column; align-items: center; line-height: 1.15; min-height: 56px; }
+.fu-escenarios small { font-weight: 400; font-size: .75rem; }
+.fu-vistas { margin: 0 0 12px; }
+.fu-grafica svg { width: 100%; height: auto; display: block; }
+.fu-rejilla { stroke: #e6e9ec; stroke-width: 1; }
+.fu-cero { stroke: #8a949c; stroke-width: 1.5; stroke-dasharray: 4 3; }
+.fu-eje { font-size: 10px; fill: var(--suave); font-variant-numeric: tabular-nums; }
+.fu-linea { fill: none; stroke: #1a5fb4; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.fu-linea-roja { stroke: var(--error); }
+.fu-linea-otra { fill: none; stroke: #9aa3ab; stroke-width: 1.5; stroke-linejoin: round; }
+.fu-etiqueta { font-size: 10px; fill: var(--suave); }
+.fu-etiqueta.elegido { fill: var(--texto); font-weight: 700; }
+.fu-cobro { font-size: 11px; font-weight: 800; fill: var(--ok); color: var(--ok); }
+.fu-vence { font-size: 9px; font-weight: 700; fill: var(--suave); color: var(--suave); letter-spacing: .5px; }
+.fu-toque { fill: transparent; cursor: pointer; }
+.fu-toque:hover { fill: rgba(26, 95, 180, .08); }
+.fu-leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78rem; color: var(--suave); margin: 4px 0 12px; }
+.fu-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.fu-muestra { display: inline-block; width: 18px; height: 0; border-top: 3px solid #1a5fb4; }
+.fu-muestra.otra { border-top: 1.5px solid #9aa3ab; }
+.fu-muestra.roja { border-top-color: var(--error); }
+.fu-calendario { margin-top: 2px; }
+.fu-calendario .dia { min-height: 54px; }
+.dia.fu-verde { background: #e3f3e8; border-color: #b7dfc2; }
+.dia.fu-amarillo { background: #fff1cc; border-color: #f0c66a; }
+.dia.fu-rojo { background: #fbe3e1; border-color: #f2b8b4; }
+.dia.fu-verde.libre, .dia.fu-amarillo.libre, .dia.fu-rojo.libre { background: #dceafc; border-color: #9cc0ef; }
+.fu-saldo { margin-top: auto; font-size: .5rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.35px; white-space: nowrap; line-height: 1.1; }
+.fu-calendario .dia { padding-left: 1px; padding-right: 1px; }
+.dia.fu-rojo .fu-saldo { color: var(--error); }
+.fu-sem-titulo { font-size: 1.05rem; text-transform: none; }
+.fu-sem-lista { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+.fu-sem-dia { border: 1px solid var(--borde); border-radius: 12px; }
+.fu-sem-dia.libre { background: #dceafc; border-color: #9cc0ef; }
+.fu-sem-dia.fuera { padding: 10px 12px; opacity: .6; }
+.fu-sem-boton { display: block; width: 100%; text-align: left; background: none; border: none; font: inherit; color: inherit; padding: 10px 12px; cursor: pointer; }
+.fu-sem-fecha { font-weight: 700; }
+.fu-sem-lineas { list-style: none; padding: 0; margin: 6px 0; font-size: .88rem; }
+.fu-sem-lineas li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+.fu-sem-lineas li.entra span:last-child { color: var(--ok); font-weight: 700; }
+.fu-sem-lineas li.sale span:last-child { color: var(--error); }
+.fu-sem-nada { font-size: .85rem; color: var(--suave); margin: 4px 0; }
+.fu-sem-saldo { font-size: .9rem; }
+.fu-sem-saldo.negativo strong { color: var(--error); }
+.fu-libre { font-size: .75rem; font-weight: 700; color: #174a8c; }
+.fu-tarjetas { display: grid; gap: 0; }
+.fu-pregunta h2 { margin-bottom: 4px; }
+.fu-grande { font-size: 1.35rem; font-weight: 800; margin: 0; line-height: 1.25; }
+.fu-grande.negativo { color: var(--error); }
+.fu-grande.positivo { color: var(--ok); }
+#fu-libre { width: 100%; margin-top: 16px; }
+.fu-detalle summary { font-weight: 700; color: #1a5fb4; cursor: pointer; min-height: 32px; }
+.fu-detalle .boton-mediano { width: 100%; margin-top: 10px; }
+.fu-dia-lista li { gap: 10px; }

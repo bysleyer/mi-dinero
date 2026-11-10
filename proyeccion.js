@@ -12,8 +12,14 @@
  */
 const Proyeccion = {
   // ---------- Días libres planeados ----------
+  _cache: null, // mientras se calcula, días libres y jornadas se leen una sola vez
+
+  libres() {
+    return this._cache ? this._cache.libres : Almacen.leerDiasLibres();
+  },
+
   esLibre(fecha) {
-    return Almacen.leerDiasLibres().some(d => fecha >= d.desde && fecha <= (d.hasta || d.desde));
+    return this.libres().some(d => fecha >= d.desde && fecha <= (d.hasta || d.desde));
   },
 
   diasLibresEntre(desde, hasta) {
@@ -31,7 +37,7 @@ const Proyeccion = {
   horasSemana(lunes) {
     const c = Jornadas.config();
     const jornadas = {};
-    Almacen.leerJornadas().forEach(j => { jornadas[j.fecha] = j; });
+    (this._cache ? this._cache.jornadas : Almacen.leerJornadas()).forEach(j => { jornadas[j.fecha] = j; });
     const r = { horas: 0, horasRegistradas: 0, diasRegistrados: 0, diasTrabajados: 0,
                 diasFaltan: 0, diasLibres: 0, diasConTrabajo: 0 };
     for (let i = 0; i < 7; i++) {
@@ -65,12 +71,23 @@ const Proyeccion = {
   // ---------- Saldo día por día ----------
   // opciones: { excluir: claveMov de un pago que no se cuenta,
   //             chequeEscenario: monto para el próximo cheque sin registrar (¿Y si cobro...?),
-  //             inicial: dinero de hoy escrito a mano (¿Me alcanza?); si no, el número de arriba }
+  //             inicial: dinero de hoy escrito a mano (¿Me alcanza?); si no, el número de arriba,
+  //             horizonte: días a calcular (por defecto el de mis datos, 30) }
   calcular(opciones = {}) {
-    const { excluir = null, chequeEscenario = null, inicial: inicialManual = null } = opciones;
+    const propio = !this._cache;
+    if (propio) this._cache = { libres: Almacen.leerDiasLibres(), jornadas: Almacen.leerJornadas() };
+    try {
+      return this._calcular(opciones);
+    } finally {
+      if (propio) this._cache = null;
+    }
+  },
+
+  _calcular(opciones) {
+    const { excluir = null, chequeEscenario = null, inicial: inicialManual = null, horizonte = null } = opciones;
     const cfg = Mover.config();
     const hoyClave = hoy();
-    const fin = Jornadas.sumarDias(hoyClave, cfg.horizonte - 1);
+    const fin = Jornadas.sumarDias(hoyClave, (horizonte || cfg.horizonte) - 1);
     const lineas = [];
     const cheques = [];
 
@@ -137,6 +154,54 @@ const Proyeccion = {
       cheques: lineas.filter(l => l.tipo === "cheque").map(l => l.fecha),
       chequesInfo: cheques
     };
+  },
+
+  // ---------- Largo plazo: ¿cuándo se pagan las deudas? ----------
+  // Con la misma cuenta y un horizonte largo: en cada cheque, el dinero que nunca hace falta
+  // más adelante (el saldo más bajo de ahí en adelante) se reparte con las reglas del Bloque 11
+  // y del colchón (Plan.repartirExtra): renta atrasada → internet atrasado → colchón → amigo → plan de luz.
+  planDeudas(opciones = {}) {
+    const dias = opciones.dias || 730;
+    const pr = this.calcular({ chequeEscenario: opciones.chequeEscenario ?? null, horizonte: dias });
+    const orden = Plan.deudasEnOrden();
+    const saldos = {};
+    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id)); });
+    const plan = Almacen.leerPlan();
+    let colchon = plan.sobres.colchon;
+    const meta = Plan.metaColchon();
+    const pct = plan.porcentajeColchon / 100;
+
+    // Saldo más bajo de cada día hasta el final
+    const fechas = Object.keys(pr.porDia).sort();
+    const minDesde = {};
+    let minimo = Infinity;
+    for (let i = fechas.length - 1; i >= 0; i--) {
+      minimo = Math.min(minimo, pr.porDia[fechas[i]].saldoFin);
+      minDesde[fechas[i]] = minimo;
+    }
+
+    const r = {
+      dias,
+      rentaCero: saldos.deudaRenta != null && saldos.deudaRenta <= 0.005 ? "ya" : null,
+      amigoInicio: null,
+      amigoCero: saldos.deudaAmigo != null && saldos.deudaAmigo <= 0.005 ? "ya" : null,
+      hayRenta: saldos.deudaRenta != null,
+      hayAmigo: saldos.deudaAmigo != null
+    };
+    let apartado = 0; // lo que ya se usó para deudas o colchón (no está disponible después)
+    pr.cheques.forEach(fecha => {
+      const libre = redondear(minDesde[fecha] - apartado);
+      if (libre > 0.005) {
+        const rep = Plan.repartirExtra(libre, { pct, colchon, meta, saldos, orden });
+        const usado = Object.values(rep.deudas).reduce((s, m) => s + m, 0) + rep.aColchon;
+        apartado += usado;
+        colchon += rep.aColchon;
+        if (rep.deudas.deudaAmigo && !r.amigoInicio) r.amigoInicio = fecha;
+      }
+      if (!r.rentaCero && r.hayRenta && saldos.deudaRenta <= 0.005) r.rentaCero = fecha;
+      if (!r.amigoCero && r.hayAmigo && saldos.deudaAmigo <= 0.005) r.amigoCero = fecha;
+    });
+    return r;
   },
 
   // Último cheque que llega en o antes de una fecha

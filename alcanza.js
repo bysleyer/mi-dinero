@@ -73,11 +73,12 @@ const Alcanza = {
   },
 
   // ---------- Pantalla ----------
-  abrir() {
+  abrir(origen = "pantalla-inicio") {
+    this.origen = origen;
     // El dinero calculado de arriba; si hoy lo cambiaste a mano (y no hubo movimientos después), ese
     const manual = Dinero.manualVigente();
     $("a-dinero").value = manual != null ? manual : Dinero.actual();
-    $("pantalla-inicio").hidden = true;
+    $(origen).hidden = true;
     $("pantalla-alcanza").hidden = false;
     window.scrollTo(0, 0);
     this.mostrar();
@@ -85,7 +86,8 @@ const Alcanza = {
 
   cerrar() {
     $("pantalla-alcanza").hidden = true;
-    $("pantalla-inicio").hidden = false;
+    $(this.origen || "pantalla-inicio").hidden = false;
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
     window.scrollTo(0, 0);
   },
 
@@ -123,7 +125,7 @@ const Alcanza = {
   },
 
   iniciar() {
-    $("abrir-alcanza").addEventListener("click", () => this.abrir());
+    $("abrir-alcanza").addEventListener("click", () => this.abrir("pantalla-futuro"));
     $("volver-alcanza").addEventListener("click", () => this.cerrar());
     $("a-dinero").addEventListener("input", e => {
       const v = Number(e.target.value);
