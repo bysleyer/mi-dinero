@@ -46,7 +46,34 @@ const Planeados = {
     const op = { chequeEscenario: cheque, excluirPlaneado: g.id, ...extra };
     const pr = Proyeccion.calcular(op);
     const prLargo = Proyeccion.calcular({ ...op, horizonte: 730 });
-    return { escenario, pr, prLargo, fechas: Object.keys(pr.porDia).sort() };
+    return { escenario, op, pr, prLargo, fechas: Object.keys(pr.porDia).sort(), _con: {} };
+  },
+
+  // ---------- Efecto del gasto: la cuenta SIN el gasto contra la cuenta CON el gasto ----------
+  // Cambios de menos de $1 no cuentan (redondeo).
+  TOLERANCIA: 1,
+  NIVEL1: ["renta", "prestamo", "comida", "transporte"],
+
+  // La proyección (proyeccion.js) con estos gastos puestos en sus días
+  prCon(m, ajustes) {
+    if (!ajustes.length) return m.pr;
+    const clave = JSON.stringify(ajustes);
+    if (!m._con[clave]) m._con[clave] = Proyeccion.calcular({ ...m.op,
+      extras: ajustes.map(a => ({ fecha: a.fecha, monto: -a.monto, nombre: "Gasto planeado (prueba)" })) });
+    return m._con[clave];
+  },
+
+  falta(pr, f) { return Math.max(0, -pr.porDia[f].saldoFin); },
+
+  // Hueco que ya existe SIN el gasto: el día más bajo bajo cero y el pago que no se cubre
+  hueco(m) {
+    const pr = m.pr;
+    let peor = null;
+    m.fechas.forEach(f => { if (pr.porDia[f].saldoFin < -0.005 && (!peor || pr.porDia[f].saldoFin < pr.porDia[peor].saldoFin)) peor = f; });
+    if (!peor) return null;
+    const sinCubrir = pr.porDia[peor].lineas.filter(l => l.monto < 0 && l.saldo < -0.005);
+    const pago = sinCubrir.find(l => this.NIVEL1.includes(l.id)) || sinCubrir[0];
+    return { fecha: peor, falta: redondear(-pr.porDia[peor].saldoFin), pago: pago ? pago.nombre : "tus pagos" };
   },
 
   // Cuánto cabe ese día: lo más que se puede gastar sin dejar el saldo bajo cero ningún día después
@@ -77,9 +104,9 @@ const Planeados = {
     return m.pr.porDia[f].saldoFin - ajustes.reduce((s, a) => s + (a.fecha <= f ? a.monto : 0), 0);
   },
 
-  minimo(m, ajustes) {
+  minimo(pr) {
     let r = null;
-    m.fechas.forEach(f => { const s = this.saldo(m, f, ajustes); if (!r || s < r.saldo) r = { fecha: f, saldo: redondear(s) }; });
+    Object.keys(pr.porDia).sort().forEach(f => { const s = pr.porDia[f].saldoFin; if (!r || s < r.saldo) r = { fecha: f, saldo: redondear(s) }; });
     return r;
   },
 
@@ -99,28 +126,33 @@ const Planeados = {
     return "";
   },
 
-  // Efecto de gastar "monto" el día "dia" (con otras partes ya puestas en "otros")
+  // Efecto de gastar "monto" el día "dia" (con otras partes ya puestas en "otros").
+  // Mide la DIFERENCIA entre la cuenta sin el gasto y con el gasto: el hueco que ya existía no se le culpa.
   evaluar(m, dia, monto, otros = []) {
     if (!m.pr.porDia[dia]) return { color: "gris", fuera: true };
-    const primero = m.fechas.find(f => this.saldo(m, f, otros) > 0.005);
-    if (!primero || dia < primero) return { color: "gris", sinDinero: true };
     const con = [...otros, { fecha: dia, monto }];
-    // Pagos que dejan de alcanzar desde ese día
+    const prSin = this.prCon(m, otros), prCon = this.prCon(m, con);
+    let agrega = 0, diaAgrega = null, nivel1Nuevo = false;
     const cambian = [];
-    let rojo = false;
-    m.fechas.filter(f => f >= dia).forEach(f => {
-      const s0 = this.saldo(m, f, otros), s1 = this.saldo(m, f, con);
-      if (s1 < -0.005) {
-        rojo = true;
-        // Pagos de ese día que dejan de alcanzar (o que ya faltaban y quedan más cortos)
-        const empeora = s0 < -0.005;
-        m.pr.porDia[f].lineas.filter(l => l.monto < 0 && !l.planeado).forEach(l => {
-          if (cambian.some(c => c.nombre === l.nombre && c.fecha === f)) return;
-          cambian.push({ nombre: l.nombre, fecha: f, empeora, costo: this.costo(l),
-                         nivel1: ["renta", "prestamo", "comida", "transporte"].includes(l.id) || !!l.inmediato });
-        });
-      }
+    m.fechas.forEach(f => {
+      const f0 = this.falta(prSin, f), f1 = this.falta(prCon, f);
+      const d = redondear(f1 - f0);
+      if (d > agrega + 0.005) { agrega = d; diaAgrega = f; }
+      prCon.porDia[f].lineas.forEach(l => {
+        if (l.monto >= 0 || l.planeado || l.tipo === "simulado") return;
+        const l0 = prSin.porDia[f].lineas.find(x => x.id === l.id && x.nombre === l.nombre);
+        const antes = l0 ? l0.saldo : 0;
+        // Pago que pasa a no cubrirse, o que ya no se cubría y queda más corto
+        if (l.saldo < -0.005 && antes - l.saldo >= this.TOLERANCIA) {
+          const nivel1 = this.NIVEL1.includes(l.id) || !!l.inmediato;
+          const empeora = antes < -0.005;
+          if (nivel1 && !empeora) nivel1Nuevo = true;
+          if (!cambian.some(c => c.nombre === l.nombre && c.fecha === f))
+            cambian.push({ nombre: l.nombre, fecha: f, empeora, costo: this.costo(l), nivel1 });
+        }
+      });
     });
+    if (agrega < this.TOLERANCIA) { agrega = 0; diaAgrega = null; }
     // Cuánto se corren las fechas de las deudas (misma regla del Bloque 11 y del colchón)
     const base = Proyeccion.planDeudas({ pr: m.prLargo, ajustes: otros });
     const despues = Proyeccion.planDeudas({ pr: m.prLargo, ajustes: con });
@@ -130,30 +162,26 @@ const Planeados = {
       amigo: this.diasEntre(base.amigoCero, despues.amigoCero)
     };
     const efecto = Object.values(corre).reduce((s, d) => s + (d === Infinity ? 10000 : Math.max(0, d)), 0);
-    const color = rojo ? "rojo" : efecto > 0 ? "amarillo" : "verde";
-    return { color, cambian, corre, efecto, minSin: this.minimo(m, otros), minCon: this.minimo(m, con), base, despues };
+    const color = agrega > 0 || nivel1Nuevo ? "rojo" : efecto > 0 ? "amarillo" : "verde";
+    return { color, agrega, diaAgrega, nivel1Nuevo, cambian, corre, efecto,
+             minSin: this.minimo(prSin), minCon: this.minimo(prCon), base, despues };
   },
 
-  // Mejor fecha y segunda opción (siempre hasta la fecha límite)
+  textoAgrega(e) { return `agrega ${dinero(e.agrega || 0)}`; },
+
+  // Mejor fecha: el día con menor "agrega $X" hasta la fecha límite; si hay empate, el más tardío
   sugerencias(m, g) {
     const dias = m.fechas.filter(f => f <= g.fechaLimite);
     const ev = {};
     dias.forEach(f => { ev[f] = this.evaluar(m, f, g.monto); });
-    const verdes = dias.filter(f => ev[f].color === "verde");
-    const amarillos = dias.filter(f => ev[f].color === "amarillo").sort((a, b) => ev[a].efecto - ev[b].efecto || a.localeCompare(b));
-    const lista = [...verdes, ...amarillos].slice(0, 2);
+    const orden = dias.slice().sort((a, b) => ev[a].agrega - ev[b].agrega || b.localeCompare(a));
+    const mejor = orden[0] || null, segunda = orden[1] || null;
     let problema = null;
-    if (!lista.length) {
-      const rojos = dias.filter(f => ev[f].color === "rojo");
-      const menosMalo = rojos.sort((a, b) => ev[b].minCon.saldo - ev[a].minCon.saldo)[0];
-      // La renta va primero: se nombra primero un pago de Nivel 1 (renta, préstamo, comida, transporte)
-      const afectados = menosMalo ? ev[menosMalo].cambian : [];
-      const primero = afectados.find(c => c.nivel1) || afectados[0];
-      const pago = primero ? primero.nombre : "tu saldo (queda bajo cero)";
-      problema = `Antes del ${this.textoDia(g.fechaLimite)} no hay un día sin afectar ${pago}. ` +
-        "Opciones: comprarlo en partes, comprar menos o mover la fecha límite.";
+    if (mejor && ev[mejor].color === "rojo") {
+      problema = `Antes del ${this.textoDia(g.fechaLimite)} no hay un día en que no agregue a lo que falta ` +
+        `(lo menos: ${dinero(ev[mejor].agrega)}). Opciones: comprarlo en partes, comprar menos o mover la fecha límite.`;
     }
-    return { ev, mejor: lista[0] || null, segunda: lista[1] || null, problema };
+    return { ev, mejor, segunda, problema, hueco: this.hueco(m) };
   },
 
   // Partes: el monto repartido en los días de cobro con más sobrante (después del Nivel 1 de ese día)
@@ -298,12 +326,15 @@ const Planeados = {
       <button class="${e.id === est.escenario ? "activo" : ""}" data-pc-escenario="${e.id}" aria-pressed="${e.id === est.escenario}">
         ${e.titulo}<small>${dinero(Escenarios.config()[e.id])}</small></button>`).join("");
 
-    $("pc-sugerencias").innerHTML = s.problema
-      ? `<p class="mensaje-sobrante negativo pc-problema">${escapar(s.problema)}</p>`
-      : [["Mejor fecha", s.mejor, "mejor"], ["Segunda opción", s.segunda, "segunda"]].filter(([, f]) => f).map(([t, f, id]) => `
+    const textoOp = e => e.color === "verde" ? "no afecta nada"
+      : e.color === "amarillo" ? "no agrega a lo que falta, pero corre otras fechas" : `${this.textoAgrega(e)} a lo que falta`;
+    $("pc-sugerencias").innerHTML =
+      (s.hueco ? `<p class="pc-hueco">Aunque no lo compres, el ${this.textoDia(s.hueco.fecha)} te faltan ${dinero(s.hueco.falta)} para ${escapar(s.hueco.pago)}.</p>` : "") +
+      (s.problema ? `<p class="mensaje-sobrante negativo pc-problema">${escapar(s.problema)}</p>` : "") +
+      [["Mejor fecha", s.mejor, "mejor"], ["Segunda opción", s.segunda, "segunda"]].filter(([, f]) => f).map(([t, f, id]) => `
           <div class="mv-opcion">
             <span class="mv-etiqueta ${id}">${t}</span>
-            <p>${Jornadas.textoDia(f)}: ${s.ev[f].color === "verde" ? "no afecta nada" : "alcanza, pero corre otras fechas"}</p>
+            <p>${Jornadas.textoDia(f)}: ${textoOp(s.ev[f])}</p>
             <button class="boton-chico lleno" data-pc-elegir="${f}">Elegir</button>
             <button class="boton-chico" data-pc-dia="${f}">Ver impacto</button>
           </div>`).join("");
@@ -331,7 +362,7 @@ const Planeados = {
           <span class="dia-num">${num}</span>
           ${f === g.fechaLimite ? `<span class="mv-vence">límite</span>` : ""}
           ${etiqueta(f) ? `<span class="mv-sugerida">${etiqueta(f)}</span>` : ""}
-          <span class="pc-cabe ${this.margen(m, f) < -0.005 ? "falta" : ""}">${this.textoCabe(m, f)}</span>
+          <span class="pc-cabe ${evDia(f).agrega > 0 ? "falta" : ""}">agrega<br>$${Math.round(evDia(f).agrega)}</span>
         </button>`;
       }).join("");
     } else {
@@ -342,11 +373,11 @@ const Planeados = {
       $("pc-sem-lista").innerHTML = dias.map(f => {
         if (!m.pr.porDia[f]) return `<li class="fu-sem-dia fuera"><div class="fu-sem-fecha">${Jornadas.textoDia(f)}</div><div class="vacio">Fuera de los próximos 30 días</div></li>`;
         const e = evDia(f);
-        const texto = { verde: "No afecta nada", amarillo: "Alcanza, pero corre otras fechas", rojo: "Deja algo sin cubrir", gris: "Todavía no hay dinero" }[e.color];
+        const texto = { verde: "No afecta nada", amarillo: "Corre otras fechas", rojo: "Agrega a lo que falta" }[e.color];
         return `<li class="fu-sem-dia"><button class="fu-sem-boton" data-pc-dia="${f}">
             <div class="fu-sem-fecha">${Jornadas.textoDia(f)} ${f === g.fechaLimite ? '<span class="mv-vence">límite</span>' : ""}</div>
             <div><span class="pc-chip mv-${e.color}">${texto}</span>${etiqueta(f) ? ` <span class="mv-sugerida">${etiqueta(f)}</span>` : ""}</div>
-            <div class="fu-sem-saldo">Caben hasta <strong>${dinero(this.caben(m, f))}</strong> ese día${this.margen(m, f) < -0.005 ? ` (ya faltan ${dinero(-this.margen(m, f))} más adelante)` : ""}</div>
+            <div class="fu-sem-saldo">Este gasto ${this.textoAgrega(e)} a lo que falta${e.diaAgrega ? ` (el ${this.textoDia(e.diaAgrega)})` : ""}</div>
           </button></li>`;
       }).join("");
     }
@@ -364,11 +395,9 @@ const Planeados = {
     const g = this._g, m = this._m;
     if (!this.dia || !m.pr.porDia[this.dia]) { caja.hidden = true; return; }
     const e = this.evaluar(m, this.dia, g.monto);
-    const cabe = this.caben(m, this.dia);
     caja.hidden = false;
     if (e.color === "gris") {
       caja.innerHTML = `<h2>${Jornadas.textoDia(this.dia)}</h2><p class="vacio">Ese día todavía no tienes dinero para gastar.</p>
-        <p>Caben hasta <strong>${dinero(cabe)}</strong> ese día.</p>
         <button id="pc-elegir-dia" class="boton-grande deuda">Elegir esta fecha de todos modos</button>`;
       this.mostrarOpciones(e);
       return;
@@ -378,8 +407,9 @@ const Planeados = {
       : "<p>Ningún pago cambia.</p>";
     caja.innerHTML = `
       <h2>Si lo compras el ${this.textoDia(this.dia)}</h2>
-      <p class="pc-semaforo"><span class="pc-chip mv-${e.color}">${{ verde: "No afecta nada", amarillo: "Alcanza, pero corre otras fechas", rojo: "Deja algo sin cubrir" }[e.color]}</span></p>
-      <p class="pc-caben">Caben hasta <strong>${dinero(cabe)}</strong> ese día.${this.margen(m, this.dia) < -0.005 ? ` De ese día en adelante ya faltan ${dinero(-this.margen(m, this.dia))}, aun sin este gasto.` : ""}</p>
+      <p class="pc-semaforo"><span class="pc-chip mv-${e.color}">${{ verde: "No afecta nada", amarillo: "Corre otras fechas", rojo: "Agrega a lo que falta" }[e.color]}</span></p>
+      <p class="pc-caben">Este gasto <strong>${this.textoAgrega(e)}</strong> a lo que falta${e.diaAgrega ? ` (el ${this.textoDia(e.diaAgrega)})` : ""}.
+        ${e.nivel1Nuevo ? " Deja sin cubrir un pago de Nivel 1 que antes sí se cubría." : ""}</p>
       <ul class="resumen">
         <li><span>Saldo más bajo del mes, sin el gasto</span><span>${this.plata(e.minSin.saldo)} · ${this.textoDia(e.minSin.fecha)}</span></li>
         <li><span>Con el gasto</span><span class="${e.minCon.saldo < 0 ? "error" : ""}">${this.plata(e.minCon.saldo)} · ${this.textoDia(e.minCon.fecha)}</span></li>
@@ -523,7 +553,7 @@ const Planeados = {
     const suma = redondear(todas.reduce((s, p) => s + p.monto, 0));
     const base = Proyeccion.planDeudas({ pr: m.prLargo });
     const con = Proyeccion.planDeudas({ pr: m.prLargo, ajustes: todas });
-    const minCon = this.minimo(m, todas.filter(p => m.pr.porDia[p.fecha] || p.fecha < m.fechas[0]));
+    const minCon = this.minimo(this.prCon(m, todas.filter(p => m.pr.porDia[p.fecha] || p.fecha < m.fechas[0])));
     const corre = { renta: this.diasEntre(base.rentaCero, con.rentaCero), colchon: this.diasEntre(base.colchonLleno, con.colchonLleno), amigo: this.diasEntre(base.amigoCero, con.amigoCero) };
     const despuesLimite = todas.some(p => p.fecha > g.fechaLimite);
     caja.innerHTML = `<h2>Comprar en partes</h2>
