@@ -435,3 +435,9 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 
 /* ---------- Tipo de ingreso ---------- */
 .cambiar-tipo { font-size: .8rem; padding: 2px 0; }
+
+/* ---------- Bloque 13: Días libres ---------- */
+.dia.libre, .muestra.libre { background: #dceafc; border-color: #9cc0ef; color: #174a8c; }
+.cal-libre-aviso { background: #dceafc; color: #174a8c; font-weight: 700; }
+#abrir-libres { width: 100%; margin-bottom: 8px; }
+#cal-libres .boton-chico { margin-top: 0; }

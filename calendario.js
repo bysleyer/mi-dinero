@@ -46,6 +46,7 @@ const Calendario = {
   // ---------- Pantalla ----------
   abrir() {
     this.irAHoy(false);
+    this.mostrarLibres();
     $("pantalla-inicio").hidden = true;
     $("pantalla-calendario").hidden = false;
     window.scrollTo(0, 0);
@@ -85,6 +86,9 @@ const Calendario = {
     } else if (j) {
       clases.push("no-trabajo");
       estado = `<span class="dia-horas">✕ no</span>`;
+    } else if (Proyeccion.esLibre(fecha)) {
+      clases.push("libre");
+      estado = `<span class="dia-horas">◇ libre</span>`;
     } else if (fecha < hoyClave) {
       clases.push("pendiente");
       estado = `<span class="dia-punto" aria-hidden="true">•</span>`;
@@ -109,7 +113,7 @@ const Calendario = {
 
     const descripcion = [
       Jornadas.textoDia(fecha),
-      j ? (j.horas > 0 ? `${redondear(j.horas)} horas` : "No trabajé") : (fecha < hoyClave ? "sin registrar" : ""),
+      j ? (j.horas > 0 ? `${redondear(j.horas)} horas` : "No trabajé") : Proyeccion.esLibre(fecha) ? "día libre planeado" : (fecha < hoyClave ? "sin registrar" : ""),
       f.getDay() === this.diaDeCobro() ? "día de cobro" : "",
       es15 ? this.PISTA_15 : "",
       ...(this._vencimientos[fecha] || []).map(v => `vence ${v.nombre}${v.movido ? " (movido)" : ""}`)
@@ -151,9 +155,13 @@ const Calendario = {
 
       // El cheque de esta semana se cobra el día de cobro de la semana siguiente
       const cobro = Jornadas.sumarDias(semana[0], 7 + ((this.diaDeCobro() + 6) % 7));
+      const proy = Proyeccion.horasSemana(semana[0]);
+      const libres = proy.diasLibres ? ` · ${proy.diasLibres} ${proy.diasLibres === 1 ? "día libre" : "días libres"}` : "";
+      const proyectado = proy.diasFaltan || proy.diasLibres
+        ? ` <span class="cal-cobro">· cheque proyectado ${redondear(proy.horas)} h · ${dinero(Jornadas.netoDeHoras(proy.horas))}${libres}</span>` : "";
       const resumen = delaSemana.length
-        ? `${redondear(horas)} h · ${dinero(Jornadas.netoDeHoras(horas))} <span class="cal-cobro">→ se cobra el ${Jornadas.textoDia(cobro).toLowerCase()} ($↑)</span>`
-        : `<span class="cal-cobro">Sin días registrados · se cobra el ${Jornadas.textoDia(cobro).toLowerCase()}</span>`;
+        ? `${redondear(horas)} h · ${dinero(Jornadas.netoDeHoras(horas))}${proyectado} <span class="cal-cobro">→ se cobra el ${Jornadas.textoDia(cobro).toLowerCase()} ($↑)</span>`
+        : `<span class="cal-cobro">Sin días registrados${proyectado} · se cobra el ${Jornadas.textoDia(cobro).toLowerCase()}</span>`;
       return `
         <div class="cal-semana">
           <div class="cal-dias">${semana.map(f => this.celda(f, jornadas, hoyClave)).join("")}</div>
@@ -191,7 +199,18 @@ const Calendario = {
     if (j) {
       extra.push(`<button type="button" id="cal-borrar" class="boton-chico boton-borrar">Borrar esta jornada</button>`);
     }
+    if (!j && Proyeccion.esLibre(fecha)) {
+      const libre = this.libreDe(fecha);
+      $("form-campos").insertAdjacentHTML("afterbegin", `<p class="ayuda cal-libre-aviso">◇ Día libre planeado (${escapar(libre.motivo)}).</p>`);
+      if (fecha <= hoy()) extra.push(`<button type="button" id="cal-convertir" class="boton-chico boton-borrar">Convertir en falta real (No trabajé)</button>`);
+    }
     if (extra.length) $("form-campos").insertAdjacentHTML("beforeend", extra.join(""));
+    const convertir = $("cal-convertir");
+    if (convertir) {
+      convertir.addEventListener("click", async () => {
+        if (await Jornadas.guardarJornada(fecha, 0)) { Jornadas.editando = null; cerrarFormulario(); }
+      });
+    }
     const borrar = $("cal-borrar");
     if (borrar) {
       borrar.addEventListener("click", async () => {
@@ -204,8 +223,91 @@ const Calendario = {
     }
   },
 
+  // ---------- Días que no voy a trabajar (Bloque 13) ----------
+  MOTIVOS: ["Feriado", "Enfermedad", "Vacaciones", "Otro"],
+
+  libreDe(fecha) {
+    return Almacen.leerDiasLibres().find(d => fecha >= d.desde && fecha <= (d.hasta || d.desde));
+  },
+
+  textoRango(d) {
+    const corto = f => Jornadas.aFecha(f).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
+    return d.hasta && d.hasta !== d.desde ? `del ${corto(d.desde)} al ${corto(d.hasta)}` : corto(d.desde);
+  },
+
+  mostrarLibres() {
+    const lista = Almacen.leerDiasLibres().slice().sort((a, b) => a.desde.localeCompare(b.desde));
+    const hoyClave = hoy();
+    $("cal-libres").innerHTML = lista.length === 0
+      ? `<p class="vacio">No tienes días libres planeados.</p>`
+      : lista.map(d => {
+          // Días de este rango que ya llegaron y no tienen jornada: se pueden convertir en falta real
+          const pendientes = [];
+          for (let f = d.desde; f <= (d.hasta || d.desde) && f <= hoyClave; f = Jornadas.sumarDias(f, 1)) {
+            if (!Almacen.leerJornadas().some(j => j.fecha === f)) pendientes.push(f);
+          }
+          return `
+            <li>
+              <div class="mov-info">
+                <div class="mov-tipo">◇ ${escapar(this.textoRango(d))}</div>
+                <div class="mov-detalle">${escapar(d.motivo)}</div>
+                ${pendientes.length ? `<button class="enlace" data-convertir-libre="${d.id}">Convertir en falta real (${pendientes.length} ${pendientes.length === 1 ? "día" : "días"})</button>` : ""}
+              </div>
+              <button class="boton-chico" data-editar-libre="${d.id}">Editar</button>
+              <button class="borrar" data-borrar-libre="${d.id}" aria-label="Borrar">✕</button>
+            </li>`;
+        }).join("");
+  },
+
+  abrirLibre(dia = null) {
+    this.editandoLibre = dia ? dia.id : null;
+    abrirFormulario("diaLibre");
+    if (dia) {
+      $("form-titulo").textContent = "Editar día libre";
+      $("f-fecha").value = dia.desde;
+      $("f-hasta").value = dia.hasta && dia.hasta !== dia.desde ? dia.hasta : "";
+      $("f-motivo").value = dia.motivo;
+    }
+  },
+
+  async borrarLibre(id) {
+    const d = Almacen.leerDiasLibres().find(x => x.id === id);
+    if (!d || !(await preguntar(`¿Borrar el día libre ${this.textoRango(d)}?`, "Sí, borrar"))) return;
+    Almacen.borrarDiaLibre(id);
+    this.alCambiarLibres("Borrado");
+  },
+
+  // Convierte en falta real (jornada de 0 horas, Bloque 7) los días del rango que ya llegaron
+  async convertirLibre(id) {
+    const d = Almacen.leerDiasLibres().find(x => x.id === id);
+    if (!d) return;
+    const hoyClave = hoy();
+    for (let f = d.desde; f <= (d.hasta || d.desde) && f <= hoyClave; f = Jornadas.sumarDias(f, 1)) {
+      if (!Almacen.leerJornadas().some(j => j.fecha === f)) await Jornadas.guardarJornada(f, 0);
+    }
+    this.mostrarLibres();
+  },
+
+  alCambiarLibres(aviso) {
+    this.mostrar();
+    this.mostrarLibres();
+    Jornadas.mostrar();
+    if (aviso) Pantalla.aviso(aviso);
+    window.dispatchEvent(new Event("jornadas-cambiaron"));
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
+  },
+
   iniciar() {
     $("abrir-calendario").addEventListener("click", () => this.abrir());
+    $("abrir-libres").addEventListener("click", () => this.abrirLibre());
+    $("cal-libres").addEventListener("click", e => {
+      const ed = e.target.closest("[data-editar-libre]");
+      if (ed) this.abrirLibre(Almacen.leerDiasLibres().find(x => x.id === ed.dataset.editarLibre));
+      const bo = e.target.closest("[data-borrar-libre]");
+      if (bo) this.borrarLibre(bo.dataset.borrarLibre);
+      const co = e.target.closest("[data-convertir-libre]");
+      if (co) this.convertirLibre(co.dataset.convertirLibre);
+    });
     $("volver-calendario").addEventListener("click", () => this.cerrar());
     $("cal-anterior").addEventListener("click", () => this.moverMes(-1));
     $("cal-siguiente").addEventListener("click", () => this.moverMes(1));
@@ -214,7 +316,36 @@ const Calendario = {
       const d = e.target.closest("[data-fecha]");
       if (d) this.tocarDia(d.dataset.fecha);
     });
-    window.addEventListener("jornadas-cambiaron", () => this.mostrar());
+    window.addEventListener("jornadas-cambiaron", () => { this.mostrar(); if (!$("pantalla-calendario").hidden) this.mostrarLibres(); });
+  }
+};
+
+// Formulario "Días que no voy a trabajar"
+Formularios.diaLibre = {
+  titulo: "Días que no voy a trabajar",
+  campos: () => `
+    <div class="campo">
+      <label for="f-fecha">Fecha de inicio</label>
+      <input id="f-fecha" type="date" value="${hoy()}">
+    </div>
+    <div class="campo">
+      <label for="f-hasta">Fecha de fin <span class="opcional">(opcional, para varios días)</span></label>
+      <input id="f-hasta" type="date">
+    </div>
+    <div class="campo">
+      <label for="f-motivo">Motivo</label>
+      <select id="f-motivo">${Calendario.MOTIVOS.map(m => `<option>${m}</option>`).join("")}</select>
+    </div>`,
+  guardar(mostrarError) {
+    const desde = $("f-fecha").value;
+    const hasta = $("f-hasta").value || desde;
+    if (!desde) return mostrarError("Elige la fecha de inicio.");
+    if (hasta < desde) return mostrarError("La fecha de fin no puede ser antes de la de inicio.");
+    const ok = Almacen.guardarDiaLibre({ id: Calendario.editandoLibre || undefined, desde, hasta, motivo: $("f-motivo").value });
+    if (!ok) return mostrarError("No se pudo guardar en este dispositivo.");
+    Calendario.editandoLibre = null;
+    cerrarFormulario();
+    Calendario.alCambiarLibres("Guardado");
   }
 };
 

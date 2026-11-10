@@ -7,13 +7,10 @@
 const Alcanza = {
   DIAS: 21,
 
-  // Cheque esperado de un día de cobro: con los días registrados (Bloque 7);
-  // si ese periodo no tiene días registrados, el neto semanal de mis datos.
+  // Cheque esperado: el del cálculo único (proyeccion.js)
   chequeEsperado(fechaCobro) {
-    const p = Jornadas.prediccion(fechaCobro);
-    return p.hayJornadas
-      ? { monto: p.netoProyectado, detalle: "según tus días registrados" }
-      : { monto: Datos.actual.ingresos.netoSemanal.monto, detalle: "neto semanal de tus datos" };
+    const c = Proyeccion.chequeEsperado(fechaCobro);
+    return { monto: c.monto, horas: c.horas, libres: c.libres, detalle: `${redondear(c.horas)} h` };
   },
 
   // Prioridad para la sugerencia: renta, luego deudas en su orden, luego lo demás por fecha
@@ -24,37 +21,22 @@ const Alcanza = {
     return 20;
   },
 
+  // Las líneas salen del cálculo único (proyeccion.js), con el dinero de hoy de esta pantalla
   lineas(dineroHoy) {
     const hoyClave = hoy();
     const hasta = Jornadas.sumarDias(hoyClave, this.DIAS - 1);
-    const lineas = [];
-
-    // Cheques esperados (día de cobro) + comida y transporte de la semana que empieza
-    const diaCobro = Calendario.diaDeCobro();
-    const comida = Vencimientos.gasto("comida");
-    const transporte = Vencimientos.gasto("transporte");
-    let f = Jornadas.sumarDias(hoyClave, (diaCobro - Jornadas.aFecha(hoyClave).getDay() + 7) % 7);
-    for (; f <= hasta; f = Jornadas.sumarDias(f, 7)) {
-      const ch = this.chequeEsperado(f);
-      lineas.push({ fecha: f, orden: -1, tipo: "cheque", nombre: `Cheque (${ch.detalle})`, monto: ch.monto });
-      if (comida) lineas.push({ fecha: f, orden: 40, tipo: "semanal", nombre: "Comida de la semana", monto: -comida.monto });
-      if (transporte) lineas.push({ fecha: f, orden: 41, tipo: "semanal", nombre: "Transporte de la semana", monto: -transporte.monto });
-    }
-
-    // Vencimientos sin pagar (lo ya pagado no se cuenta: ya salió de tu dinero de hoy)
-    Vencimientos.entre(hoyClave, hasta).forEach(item => {
-      if (item.alerta) {
-        lineas.push({ fecha: item.fecha, orden: 0, tipo: "alerta", nombre: item.partes[0].nombre, monto: 0 });
-        return;
-      }
-      const pendiente = item.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0);
-      if (pendiente > 0) {
-        const detalle = item.partes.length > 1 ? item.partes.filter(p => !p.pagado).map(p => dinero(p.monto)).join(" + ") : "";
-        lineas.push({ fecha: item.fecha, orden: item.orden, tipo: "pago", id: item.id, inmediato: item.inmediato,
-                      base: item.nombre, nombre: item.nombre + (detalle ? ` (${detalle})` : ""), monto: -pendiente });
-      }
+    const pr = Proyeccion.calcular({ inicial: dineroHoy });
+    this._pr = pr;
+    const lineas = pr.lineas.filter(l => l.fecha <= hasta).map(l => ({
+      fecha: l.fecha, orden: l.orden, tipo: l.tipo, id: l.id, inmediato: l.inmediato, monto: l.monto, saldo: l.saldo,
+      base: l.nombre, nombre: l.nombre + (l.detalle ? ` (${l.detalle})` : "")
+    }));
+    // Avisos (día 15): solo informan, no mueven dinero
+    Vencimientos.entre(hoyClave, hasta).filter(i => i.alerta).forEach(i => {
+      const antes = lineas.filter(l => l.fecha <= i.fecha).slice(-1)[0];
+      lineas.push({ fecha: i.fecha, orden: 99, tipo: "alerta", nombre: i.partes[0].nombre, monto: 0,
+                    saldo: antes ? antes.saldo : dineroHoy });
     });
-
     lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
     let saldo = dineroHoy;
     lineas.forEach(l => { saldo = redondear(saldo + l.monto); l.saldo = saldo; });
@@ -137,6 +119,7 @@ const Alcanza = {
       }
     });
     $("a-lista").innerHTML = html;
+    $("a-cuenta").textContent = Proyeccion.textoCuenta(this._pr, Jornadas.sumarDias(hoy(), this.DIAS - 1));
   },
 
   iniciar() {

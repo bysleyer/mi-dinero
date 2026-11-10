@@ -52,7 +52,9 @@ const Plan = {
   // salvo que las haya cambiado a mano para ese mismo periodo.
   horasEfectivas(plan) {
     const auto = Jornadas.horasParaPlan();
-    if (auto && plan.horasManualPeriodo !== auto.periodo) return { horas: auto.horas, auto: true, sugeridas: auto.horas };
+    if (auto && plan.horasManualPeriodo !== auto.periodo) {
+      return { horas: auto.horas, auto: true, sugeridas: auto.horas, registrados: auto.registrados, libres: auto.libres };
+    }
     return { horas: plan.horas, auto: false, sugeridas: auto ? auto.horas : null };
   },
 
@@ -120,7 +122,9 @@ const Plan = {
 
   calcular(opciones = {}) {
     const plan = Almacen.leerPlan();
-    const estimado = this.ingreso(this.horasEfectivas(plan).horas);
+    // Estimación con el cálculo del Bloque 7 (el mismo de proyeccion.js)
+    const horasPlan = this.horasEfectivas(plan).horas;
+    const estimado = { bruto: Jornadas.bruto(horasPlan), neto: redondear(Jornadas.netoDeHoras(horasPlan)) };
     // Si hay cheque real esta semana (y no pediste usar la estimación), manda el cheque real
     const real = this.ingresoReal();
     const usaReal = real.lista.length > 0 && plan.ignorarRealSemana !== this.claveSemana();
@@ -231,7 +235,8 @@ const Plan = {
     // 1. Ingreso
     const origen = this.horasEfectivas(c.plan);
     $("p-horas-origen").innerHTML = origen.auto
-      ? "Basado en tus días registrados"
+      ? (origen.registrados ? "Basado en tus días registrados" : "Basado en tus días de trabajo") +
+        (origen.libres ? ` (${origen.libres} ${origen.libres === 1 ? "día libre" : "días libres"})` : "")
       : origen.sugeridas != null
         ? `Lo cambiaste a mano. <button id="p-usar-dias" class="enlace">Usar mis días registrados (${origen.sugeridas} h)</button>`
         : "";
@@ -250,6 +255,7 @@ const Plan = {
       $("p-neto-nombre").textContent = "Ingreso (vista previa)";
     }
     $("p-bruto").textContent = c.bruto == null ? "—" : dinero(c.bruto);
+    $("p-cuenta").textContent = Proyeccion.textoCuenta(Proyeccion.calcular(), Jornadas.periodoProximoCheque().cobro);
     $("p-neto").textContent = dinero(c.neto);
 
     // 2. Gastos fijos

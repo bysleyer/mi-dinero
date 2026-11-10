@@ -1,22 +1,79 @@
 /*
- * PROYECCIÓN DEL SALDO DÍA POR DÍA (una sola cuenta para "¿Y si cobro...?" y "Mover este pago")
+ * PROYECCIÓN (Bloque 13): EL ÚNICO CÁLCULO del saldo día por día y de los cheques esperados.
+ * Lo usan "¿Me alcanza?", "¿Y si cobro...?", "Mover este pago", el Plan de la semana,
+ * la tarjeta "Próximo cheque" y el calendario.
+ *
  *   dinero que tengo hoy (el número de arriba)
- *   + cheques esperados en su fecha de cobro (si ya registraste el real de esa semana, ya está en tu dinero)
- *   − todos los vencimientos y gastos semanales (comida y transporte) en su fecha,
- * en el orden del Bloque 11 dentro de cada día: cheque, renta, préstamo, transporte, comida, luego las facturas.
+ *   + cheques esperados: cada semana (lunes a domingo) se cobra el viernes siguiente.
+ *       Horas = jornadas registradas; los días sin registrar: días de trabajo que no son libres × horas por día.
+ *       Neto con el cálculo del Bloque 7. Si ya registré el cheque real de esa semana, cuenta el real.
+ *   − todos los vencimientos y gastos semanales (comida; transporte solo los días que se trabaja),
+ * en el orden del Bloque 11 dentro de cada día: cheque, renta, préstamo, transporte, comida, facturas.
  */
 const Proyeccion = {
+  // ---------- Días libres planeados ----------
+  esLibre(fecha) {
+    return Almacen.leerDiasLibres().some(d => fecha >= d.desde && fecha <= (d.hasta || d.desde));
+  },
+
+  diasLibresEntre(desde, hasta) {
+    let n = 0;
+    for (let f = desde; f <= hasta; f = Jornadas.sumarDias(f, 1)) if (this.esLibre(f)) n++;
+    return n;
+  },
+
+  esDiaDeTrabajo(fecha) {
+    const dias = Jornadas.config().diasDeTrabajo || [];
+    return dias.includes(Jornadas.DIAS[Jornadas.aFecha(fecha).getDay()]);
+  },
+
+  // ---------- Horas de una semana (lunes a domingo) ----------
+  horasSemana(lunes) {
+    const c = Jornadas.config();
+    const jornadas = {};
+    Almacen.leerJornadas().forEach(j => { jornadas[j.fecha] = j; });
+    const r = { horas: 0, horasRegistradas: 0, diasRegistrados: 0, diasTrabajados: 0,
+                diasFaltan: 0, diasLibres: 0, diasConTrabajo: 0 };
+    for (let i = 0; i < 7; i++) {
+      const f = Jornadas.sumarDias(lunes, i);
+      const j = jornadas[f];
+      let h = 0;
+      if (j) {                                   // registrado (también "No trabajé" = 0)
+        h = j.horas;
+        r.horasRegistradas += j.horas;
+        r.diasRegistrados++;
+        if (j.horas > 0) r.diasTrabajados++;
+      } else if (this.esLibre(f)) {              // día libre planeado: 0 horas
+        if (this.esDiaDeTrabajo(f)) r.diasLibres++;
+      } else if (this.esDiaDeTrabajo(f)) {       // día de trabajo sin registrar
+        h = c.horasPorDia;
+        r.diasFaltan++;
+      }
+      r.horas += h;
+      if (h > 0) r.diasConTrabajo++;
+    }
+    return r;
+  },
+
+  // Cheque esperado de un día de cobro: paga la semana (lunes a domingo) anterior
+  chequeEsperado(cobro) {
+    const lunesTrabajo = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(cobro)), -7);
+    const s = this.horasSemana(lunesTrabajo);
+    return { monto: redondear(Jornadas.netoDeHoras(s.horas)), horas: s.horas, libres: s.diasLibres, semana: lunesTrabajo };
+  },
+
+  // ---------- Saldo día por día ----------
   // opciones: { excluir: claveMov de un pago que no se cuenta,
-  //             chequeEscenario: monto para el próximo cheque sin registrar (¿Y si cobro...?) }
+  //             chequeEscenario: monto para el próximo cheque sin registrar (¿Y si cobro...?),
+  //             inicial: dinero de hoy escrito a mano (¿Me alcanza?); si no, el número de arriba }
   calcular(opciones = {}) {
-    const { excluir = null, chequeEscenario = null } = opciones;
+    const { excluir = null, chequeEscenario = null, inicial: inicialManual = null } = opciones;
     const cfg = Mover.config();
     const hoyClave = hoy();
     const fin = Jornadas.sumarDias(hoyClave, cfg.horizonte - 1);
     const lineas = [];
     const cheques = [];
 
-    // Cheques y gastos semanales del día en que llega el dinero
     const diaCheque = Math.max(0, Jornadas.DIAS.indexOf(cfg.chequeDia));
     const inicioBusqueda = Jornadas.sumarDias(hoyClave, -cfg.chequeRetraso);
     let cobro = Jornadas.sumarDias(inicioBusqueda, (diaCheque - Jornadas.aFecha(inicioBusqueda).getDay() + 7) % 7);
@@ -29,32 +86,39 @@ const Proyeccion = {
       const lunes = Plan.claveSemana(Jornadas.aFecha(cobro));
       const domingo = Jornadas.sumarDias(lunes, 6);
       const real = ingresos.filter(m => m.fecha >= lunes && m.fecha <= domingo);
+      const esperado = this.chequeEsperado(cobro);
       if (real.length) {
         cheques.push({ fecha: disponible, monto: real.reduce((s, m) => s + m.monto, 0), origen: "real" });
       } else {
-        let monto, origen;
+        let monto = esperado.monto, origen = "esperado";
         if (chequeEscenario != null && !escenarioUsado) { monto = chequeEscenario; origen = "escenario"; escenarioUsado = true; }
-        else { monto = Alcanza.chequeEsperado(cobro).monto; origen = "esperado"; }
-        cheques.push({ fecha: disponible, monto, origen });
-        lineas.push({ fecha: disponible, orden: 0, tipo: "cheque", id: "cheque", nombre: "Cheque", monto, origen });
+        cheques.push({ fecha: disponible, monto, origen, horas: esperado.horas, libres: esperado.libres });
+        lineas.push({ fecha: disponible, orden: 0, tipo: "cheque", id: "cheque", monto, origen,
+          nombre: origen === "escenario" ? "Cheque (este escenario)"
+            : `Cheque (${redondear(esperado.horas)} h${esperado.libres ? `, ${esperado.libres} ${esperado.libres === 1 ? "día libre" : "días libres"}` : ""})` });
       }
-      if (transporte) lineas.push({ fecha: disponible, orden: 3, tipo: "semanal", id: "transporte",
-        nombre: `Transporte (${dinero(transporte.porDia)} × ${transporte.diasPorSemana || 4} días)`, monto: -transporte.monto });
+      // Transporte: solo los días que se trabaja en la semana del cobro; comida igual
+      const diasTransporte = this.horasSemana(lunes).diasConTrabajo;
+      if (transporte && diasTransporte > 0) lineas.push({ fecha: disponible, orden: 3, tipo: "semanal", id: "transporte",
+        nombre: `Transporte (${dinero(transporte.porDia)} × ${diasTransporte} ${diasTransporte === 1 ? "día" : "días"})`,
+        monto: -redondear(transporte.porDia * diasTransporte) });
       if (comida) lineas.push({ fecha: disponible, orden: 4, tipo: "semanal", id: "comida", nombre: "Comida", monto: -comida.monto });
     }
 
     // Vencimientos sin pagar (con las fechas movidas)
     Vencimientos.entre(hoyClave, fin).forEach(item => {
       if (item.alerta || item.claveMov === excluir) return;
-      const pendiente = item.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0);
+      const pendientes = item.partes.filter(p => !p.pagado);
+      const pendiente = pendientes.reduce((s, p) => s + p.monto, 0);
       if (pendiente <= 0) return;
       const orden = item.id === "renta" ? 1 : item.id === "prestamo" ? 2 : item.inmediato ? 5 : 10;
       lineas.push({ fecha: item.fecha, orden, tipo: "pago", id: item.id, nombre: item.nombre, letra: item.letra,
+        detalle: pendientes.length > 1 ? pendientes.map(p => dinero(p.monto)).join(" + ") : "",
         monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato });
     });
     lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
 
-    const inicial = Dinero.actual();
+    const inicial = inicialManual != null ? inicialManual : Dinero.actual();
     let saldo = inicial;
     let chequesHasta = 0;
     const porDia = {};
@@ -62,13 +126,14 @@ const Proyeccion = {
       const delDia = lineas.filter(l => l.fecha === f);
       delDia.forEach(l => {
         saldo = redondear(saldo + l.monto);
+        l.saldo = saldo;
         if (l.tipo === "cheque") chequesHasta += l.monto;
       });
       // saldoSinCheques: lo que quedaría sin ningún cheque (para saber si un pago depende de un cheque)
       porDia[f] = { saldoFin: saldo, saldoSinCheques: redondear(saldo - chequesHasta), lineas: delDia };
     }
     return {
-      desde: hoyClave, hasta: fin, porDia, inicial,
+      desde: hoyClave, hasta: fin, porDia, inicial, lineas,
       cheques: lineas.filter(l => l.tipo === "cheque").map(l => l.fecha),
       chequesInfo: cheques
     };
@@ -80,7 +145,6 @@ const Proyeccion = {
   },
 
   // ¿Se paga en esa fecha? Mira el saldo al final del día con todo lo de ese día ya pagado.
-  // Devuelve { alcanza, conCheque: fecha del cheque que lo hace posible (o null), falta }
   estadoEnFecha(pr, fecha) {
     const d = pr.porDia[fecha];
     if (!d) return null;
@@ -89,14 +153,14 @@ const Proyeccion = {
     return { alcanza, conCheque, falta: alcanza ? 0 : redondear(-d.saldoFin) };
   },
 
-  // Línea pequeña: con qué dinero y qué cheques se hizo la cuenta
+  // Línea pequeña: "Cuenta hecha con: dinero hoy $X, cheques [fechas y montos], días libres: N."
   textoCuenta(pr, hasta = pr.hasta) {
-    const origen = { escenario: "este escenario", esperado: "esperado", real: "ya registrado, ya está en tu dinero" };
-    const cheques = pr.chequesInfo.filter(c => c.fecha <= hasta)
-      .map(c => `${Jornadas.textoDia(c.fecha).toLowerCase()} ${dinero(c.monto)} (${origen[c.origen]})`);
+    const fecha = f => Jornadas.aFecha(f).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
+    const cheques = pr.chequesInfo.filter(c => c.fecha <= hasta).map(c =>
+      `${fecha(c.fecha)} ${dinero(c.monto)}` +
+      (c.origen === "real" ? " (real, ya en tu dinero)" : c.origen === "escenario" ? " (este escenario)" : ` (${redondear(c.horas)} h)`));
     const tengo = pr.inicial < 0 ? `−${dinero(-pr.inicial)}` : dinero(pr.inicial);
-    return `Cuenta hecha con: tienes ${tengo} hoy (el número de arriba)` +
-      (cheques.length ? ` · cheques: ${cheques.join(", ")}` : " · sin cheques en estas fechas") +
-      " · menos vencimientos, comida y transporte en su fecha.";
+    return `Cuenta hecha con: dinero hoy ${tengo}, cheques ${cheques.length ? cheques.join(", ") : "ninguno"}, ` +
+      `días libres: ${this.diasLibresEntre(pr.desde, hasta)}.`;
   }
 };

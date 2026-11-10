@@ -25,7 +25,8 @@ window.DATOS_EJEMPLO = {
     pagoHoraExtra: 30,
     proporcionNeto: 0.9,
     diasDeTrabajoPorSemana: 5,
-    horasPorDia: 8
+    horasPorDia: 8,
+    diasDeTrabajo: ["lunes", "martes", "miércoles", "jueves", "viernes"]
   },
 
   gastosFijos: [

@@ -16,6 +16,7 @@
  *   escenarios   montos de "¿Y si cobro...?" (menos, esperado, más, % colchón)
  *   dineroInicial  "Corregir mi dinero": { monto, fecha, momento }
  *   pagosMovidos   fechas nuevas elegidas en "Mover este pago" (no son pagos)
+ *   diasLibres     días que NO voy a trabajar (planeados, futuros): { id, desde, hasta, motivo }
  */
 const Almacen = {
   prefijo: "midinero:",
@@ -190,6 +191,31 @@ const Almacen = {
     return this.guardar("lineaTiempo", { dineroHoy, momento: this.ahora() });
   },
 
+  // ---------- Días libres planeados (Bloque 13) ----------
+  // Separados de las faltas reales (jornadas de 0 horas). Los borrados se marcan.
+  leerTodosLosDiasLibres() {
+    return this.leer("diasLibres") || [];
+  },
+
+  leerDiasLibres() {
+    return this.leerTodosLosDiasLibres().filter(d => !d.borrado);
+  },
+
+  guardarDiaLibre(dia) {
+    const lista = this.leerTodosLosDiasLibres();
+    const momento = this.ahora();
+    const i = dia.id ? lista.findIndex(d => d.id === dia.id) : -1;
+    if (i >= 0) lista[i] = { ...lista[i], ...dia, modificado: momento };
+    else lista.push({ ...dia, id: this.nuevoId(), creado: momento, modificado: momento });
+    return this.guardar("diasLibres", lista);
+  },
+
+  borrarDiaLibre(id) {
+    const lista = this.leerTodosLosDiasLibres().map(d =>
+      d.id === id ? { ...d, borrado: true, modificado: this.ahora() } : d);
+    return this.guardar("diasLibres", lista);
+  },
+
   // ---------- Pagos movidos (Bloque 12): solo fechas, no dinero ----------
   leerPagosMovidos() {
     return this.leer("pagosMovidos") || {};
@@ -270,7 +296,8 @@ const Almacen = {
       lineaTiempo: this.leerLineaTiempo(),
       escenarios: this.leerEscenarios(),
       dineroInicial: this.leerDineroInicial(),
-      pagosMovidos: this.leerPagosMovidos()
+      pagosMovidos: this.leerPagosMovidos(),
+      diasLibres: this.leerTodosLosDiasLibres()
     };
   },
 
@@ -287,6 +314,7 @@ const Almacen = {
     if (respaldo.dineroInicial) this.guardar("dineroInicial", respaldo.dineroInicial);
     else this.borrar("dineroInicial");
     this.guardar("pagosMovidos", respaldo.pagosMovidos || {});
+    this.guardar("diasLibres", respaldo.diasLibres || []);
     if (respaldo.revision) this.guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {

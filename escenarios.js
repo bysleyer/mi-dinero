@@ -31,7 +31,7 @@ const Escenarios = {
   // si no están, la semana mala de mis datos y 20% más que el cheque esperado
   porDefecto() {
     const e = (Datos.actual.reglasDePrioridad || {}).escenarios || {};
-    const esperado = Alcanza.chequeEsperado(Jornadas.periodoProximoCheque().cobro).monto;
+    const esperado = Proyeccion.chequeEsperado(Jornadas.periodoProximoCheque().cobro).monto;
     return {
       menos: e.menos ?? Datos.actual.ingresos.semanaMala.netoMinimo,
       mas: e.mas ?? redondear(esperado * 1.2)
@@ -44,7 +44,7 @@ const Escenarios = {
     const cobro = Jornadas.periodoProximoCheque().cobro;
     return {
       menos: g.menos ?? this.porDefecto().menos,
-      esperado: g.esperado ?? redondear(Alcanza.chequeEsperado(cobro).monto),
+      esperado: g.esperado ?? redondear(Proyeccion.chequeEsperado(cobro).monto),
       esperadoAuto: g.esperado == null,
       mas: g.mas ?? this.porDefecto().mas,
       porcentajeColchon: g.porcentajeColchon ?? this.reglas().semanaBuena.porcentajeColchon

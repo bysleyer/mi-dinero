@@ -22,7 +22,8 @@ const Jornadas = {
       pagoHoraExtra: ing.pagoPorHora * 1.5,
       proporcionNeto: ing.netoSemanal.monto / ing.brutoSemanal,
       diasDeTrabajoPorSemana: dias,
-      horasPorDia: ing.horasPorSemana / dias
+      horasPorDia: ing.horasPorSemana / dias,
+      diasDeTrabajo: this.DIAS.slice(1, 1 + dias) // de lunes en adelante
     };
   },
 
@@ -66,33 +67,31 @@ const Jornadas = {
     return { cobro, inicio, fin: this.sumarDias(inicio, 6) };
   },
 
+  // Próximo cheque con el cálculo único (proyeccion.js): jornadas registradas,
+  // y para los días sin registrar, días de trabajo que no son libres × horas por día.
   prediccion(hoyClave = hoy()) {
-    const c = this.config();
     const periodo = this.periodoProximoCheque(hoyClave);
-    const enPeriodo = Almacen.leerJornadas().filter(j => j.fecha >= periodo.inicio && j.fecha <= periodo.fin);
-    const horas = enPeriodo.reduce((s, j) => s + j.horas, 0);
-    // Los días ya registrados (también los de 0 horas) cuentan como usados
-    const diasFaltan = Math.max(0, c.diasDeTrabajoPorSemana - enPeriodo.length);
-    const horasProyectadas = horas + diasFaltan * c.horasPorDia;
+    const s = Proyeccion.horasSemana(periodo.inicio);
     return {
       ...periodo,
-      hayJornadas: enPeriodo.length > 0,
-      dias: enPeriodo.length,
-      diasTrabajados: enPeriodo.filter(j => j.horas > 0).length,
-      horas,
-      bruto: this.bruto(horas),
-      neto: this.netoDeHoras(horas),
-      diasFaltan,
-      horasProyectadas,
-      netoProyectado: this.netoDeHoras(horasProyectadas)
+      hayJornadas: s.diasRegistrados > 0,
+      dias: s.diasRegistrados,
+      diasTrabajados: s.diasTrabajados,
+      horas: s.horasRegistradas,
+      bruto: this.bruto(s.horasRegistradas),
+      neto: this.netoDeHoras(s.horasRegistradas),
+      diasFaltan: s.diasFaltan,
+      diasLibres: s.diasLibres,
+      horasProyectadas: s.horas,
+      netoProyectado: this.netoDeHoras(s.horas)
     };
   },
 
-  // Para el Plan de la semana: horas proyectadas del próximo cheque
+  // Para el Plan de la semana: horas proyectadas del próximo cheque (siempre, con días libres)
   horasParaPlan() {
     if (!Datos.actual) return null;
     const p = this.prediccion();
-    return p.hayJornadas ? { horas: p.horasProyectadas, periodo: p.inicio } : null;
+    return { horas: p.horasProyectadas, periodo: p.inicio, registrados: p.hayJornadas, libres: p.diasLibres };
   },
 
   // ---------- Textos ----------

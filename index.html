@@ -93,11 +93,18 @@
         <li><span class="muestra no-trabajo">✕</span> No trabajé</li>
         <li><span class="muestra pendiente">•</span> Falta anotar</li>
         <li><span class="muestra hoy"></span> Hoy</li>
+        <li><span class="muestra libre">◇</span> Día libre planeado (no se va a trabajar)</li>
         <li><span class="muestra">$↑</span> Cobro: cheque de la semana de arriba</li>
         <li><span class="muestra"><span class="marca-vence">L</span></span> Vence: R renta, L luz, I internet, T teléfono</li>
         <li><span class="muestra"><span class="marca-vence movido">T↻</span></span> Pago movido a este día</li>
         <li><span class="muestra dia-15">15<small>!</small></span> Si queda saldo de renta, la administradora inicia acción legal</li>
       </ul>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Días que no voy a trabajar</h2>
+      <button id="abrir-libres" class="boton-mediano">Días que no voy a trabajar</button>
+      <ul id="cal-libres" class="movimientos"></ul>
     </section>
 
     <section class="tarjeta">
@@ -121,6 +128,7 @@
     </section>
     <section class="tarjeta">
       <h2>Línea de tiempo</h2>
+      <p id="a-cuenta" class="estado esc-cuenta"></p>
       <ul id="a-lista" class="movimientos"></ul>
     </section>
   </main>
@@ -246,6 +254,7 @@
     <section class="tarjeta">
       <h2>1. Ingreso esperado</h2>
       <p id="p-ingreso-origen" class="origen-ingreso"></p>
+      <p id="p-cuenta" class="estado esc-cuenta"></p>
       <div class="campo">
         <label for="p-horas">Horas que voy a trabajar esta semana</label>
         <input id="p-horas" type="number" inputmode="decimal" step="0.5" min="0">
@@ -398,11 +407,12 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, app, plan, jornadas, deudas, resumen, calendario, pagos, alcanza, escenarios, proyeccion, mover, respaldo -->
+  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, pagos, alcanza, escenarios, mover, respaldo -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="app.js"></script>
   <script src="plan.js"></script>
+  <script src="proyeccion.js"></script>
   <script src="jornadas.js"></script>
   <script src="deudas.js"></script>
   <script src="resumen.js"></script>
@@ -410,7 +420,6 @@
   <script src="pagos.js"></script>
   <script src="alcanza.js"></script>
   <script src="escenarios.js"></script>
-  <script src="proyeccion.js"></script>
   <script src="mover.js"></script>
   <script src="respaldo.js"></script>
 </body>
