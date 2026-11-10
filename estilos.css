@@ -505,3 +505,37 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .fu-detalle summary { font-weight: 700; color: #1a5fb4; cursor: pointer; min-height: 32px; }
 .fu-detalle .boton-mediano { width: 100%; margin-top: 10px; }
 .fu-dia-lista li { gap: 10px; }
+
+/* ---------- Bloque 15: Gastos planeados ---------- */
+#pl-agregar { margin-top: 8px; }
+.pl-item .deuda-sub { margin-bottom: 4px; }
+.pl-estado { margin: 0 0 8px; font-size: .9rem; font-weight: 700; }
+.pl-estado.sin { color: var(--aviso); }
+.pl-estado.elegido { color: #1a5fb4; }
+.pl-estado.comprado { color: var(--ok); }
+.pl-botones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pl-botones .boton-chico { margin-top: 0; }
+.marca-planeado { font-size: .7rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: #5b3ea8; color: #fff; vertical-align: middle; }
+.planeado-linea span:first-child { font-weight: 400; }
+.pc-chip { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: .8rem; font-weight: 700; border: 1px solid transparent; }
+.pc-problema { font-size: 1.05rem; }
+.pc-sub { font-size: .95rem; margin: 12px 0 4px; color: var(--texto); }
+.pc-cambian { margin: 0; padding-left: 18px; font-size: .92rem; }
+.pc-cambian li { margin: 3px 0; }
+.pc-semaforo { margin: 0 0 8px; }
+.pc-partes { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.pc-parte { border: 1px solid var(--borde); border-radius: 12px; padding: 10px; }
+.pc-parte-cabeza { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pc-parte-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pc-parte-campos label { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; }
+.pc-parte-campos input { width: 100%; min-width: 0; font-size: 1.05rem; padding: 10px; border: 2px solid #c8ced4; border-radius: 10px; }
+.pc-suma { margin: 10px 0 0; }
+.dia.libre-borde { box-shadow: inset 0 0 0 2px #9cc0ef; }
+#pc-partes .boton-chico { width: 100%; }
+#fu-sin-fecha { margin-top: 2px; }
+#pc-impacto .resumen li span:last-child, #pc-cabeza .resumen li span:last-child { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+#pc-impacto .resumen li span:first-child, #pc-cabeza .resumen li span:first-child { flex: none; max-width: 48%; }
+.pc-chip.mv-verde { background: #cdebd6; border-color: #8fd0a2; color: #14632b; }
+.pc-chip.mv-amarillo { background: #ffe8b8; border-color: #f0c66a; color: #7a5200; }
+.pc-chip.mv-rojo { background: #f8cfcb; border-color: #e99a93; color: #8c1d18; }
+.pc-chip.mv-gris { background: #e6e9ec; color: #5c6670; }

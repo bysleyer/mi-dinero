@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 18, fecha: "10 nov 2026" };
+const VERSION_APP = { numero: 19, fecha: "10 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -292,7 +292,14 @@ function abrirFormulario(tipo, valores = {}) {
   $("form-titulo").textContent = f.titulo;
   $("form-campos").innerHTML = f.campos();
   if (valores.deudaId && $("f-deuda")) $("f-deuda").value = valores.deudaId;
-  if (valores.categoria && $("f-categoria")) $("f-categoria").value = valores.categoria;
+  if (valores.categoria && $("f-categoria")) {
+    // Categoría que no está en la lista (ej.: "Navidad / Fiestas" de un gasto planeado)
+    if (![...$("f-categoria").options].some(o => o.value === valores.categoria)) {
+      $("f-categoria").insertAdjacentHTML("beforeend", `<option>${escapar(valores.categoria)}</option>`);
+    }
+    $("f-categoria").value = valores.categoria;
+  }
+  if (valores.nota && $("f-nota")) $("f-nota").value = valores.nota;
   if (valores.monto != null) $("f-monto").value = redondear(valores.monto).toFixed(2);
   if (valores.fecha && $("f-fecha")) $("f-fecha").value = valores.fecha;
   if (valores.horas != null && $("f-horas")) $("f-horas").value = valores.horas;

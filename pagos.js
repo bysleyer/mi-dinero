@@ -94,6 +94,18 @@ const Vencimientos = {
         });
       }
     });
+    // Bloque 15: gastos planeados con fecha elegida (cada parte en su fecha), menos lo ya comprado
+    Almacen.leerPlaneados().filter(g => g.elegido && g.elegido.length).forEach(g => {
+      g.elegido.forEach((pt, i) => {
+        if (Planeados.parteComprada(g, i)) return;
+        const varias = g.elegido.length > 1;
+        const nombre = `${g.nombre}${varias ? ` (parte ${i + 1} de ${g.elegido.length})` : ""}`;
+        items.push({ id: "planeado", planeadoId: g.id, parte: i, planeado: true, letra: "P", orden: 15, fecha: pt.fecha, nombre,
+          claveMov: `planeado-${g.id}#${i}@${pt.fecha}`,
+          partes: [{ nombre: `${nombre} (planeado)`, monto: pt.monto, clave: `planeado-${g.id}#${i}`, sinClave: true,
+                     accion: { tipo: "gasto", categoria: g.categoria, planeadoId: g.id, parte: i } }] });
+      });
+    });
     return items.filter(i => i.fecha >= desde && i.fecha <= hasta)
       .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
   },
@@ -210,6 +222,19 @@ const Vencimientos = {
           // Bloque 12: "Mover" en luz, teléfono e internet que no alcanzan (o ya movidos)
           const puedeMover = !p.pagado && this.MOVIBLES.includes(item.id) && typeof Mover !== "undefined"
             && (item.movido || Mover.noAlcanza(item));
+          if (item.planeado) {
+            return `
+            <li class="pago-fila ${dias <= 3 ? "amarillo" : ""}">
+              <div class="mov-info">
+                <div class="mov-tipo">${escapar(item.nombre)} <span class="marca-planeado">planeado</span></div>
+                <div class="mov-detalle">${Jornadas.textoDia(item.fecha)} · ${this.textoCuando(dias).replace("vence", "toca")}</div>
+              </div>
+              <div class="pago-lado">
+                <span class="mov-monto">${dinero(p.monto)}</span>
+                <button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo compré</button>
+              </div>
+            </li>`;
+          }
           const boton = p.pagado
             ? `<span class="pago-hecho">✓ Pagado</span>`
             : `<button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo pagué</button>` +
@@ -239,7 +264,8 @@ const Vencimientos = {
     const fila = (this._filas || []).find(f => f.p.clave === clave);
     if (!fila) return;
     const { accion, monto, sinClave } = fila.p;
-    const extra = sinClave ? null : { vencimiento: clave };
+    const extra = accion.planeadoId ? { planeadoId: accion.planeadoId, planeadoParte: accion.parte }
+      : sinClave ? null : { vencimiento: clave };
     if (accion.tipo === "gasto") {
       abrirFormulario("gasto", { categoria: accion.categoria, monto, extra });
     } else {

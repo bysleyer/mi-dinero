@@ -39,6 +39,7 @@
       </div>
       <button id="abrir-calendario" class="boton-mediano">Calendario</button>
       <button id="abrir-futuro" class="boton-grande futuro">Mi futuro</button>
+      <button id="abrir-planeados" class="boton-mediano">Gastos planeados</button>
       <button id="abrir-plan" class="boton-mediano">Plan de la semana</button>
       <button id="abrir-deudas" class="boton-mediano">Mis deudas</button>
       <button id="abrir-resumen" class="boton-mediano">A dónde se va mi dinero</button>
@@ -98,6 +99,7 @@
         <li><span class="muestra">$↑</span> Cobro: cheque de la semana de arriba</li>
         <li><span class="muestra"><span class="marca-vence">L</span></span> Vence: R renta, L luz, I internet, T teléfono</li>
         <li><span class="muestra"><span class="marca-vence movido">T↻</span></span> Pago movido a este día</li>
+        <li><span class="muestra"><span class="marca-vence">P</span></span> Gasto planeado</li>
         <li><span class="muestra dia-15">15<small>!</small></span> Si queda saldo de renta, la administradora inicia acción legal</li>
       </ul>
     </section>
@@ -121,6 +123,7 @@
 
     <p id="fu-frase" class="fu-frase"></p>
     <button id="fu-cuenta" class="enlace fu-cuenta"></button>
+    <button id="fu-sin-fecha" class="aviso-hoy aviso-boton" hidden></button>
 
     <div id="fu-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
 
@@ -158,6 +161,57 @@
       <button id="abrir-alcanza" class="boton-mediano">¿Me alcanza? (día por día)</button>
       <button id="fu-abrir-escenarios" class="boton-mediano">¿Y si cobro...? (por niveles, montos editables)</button>
     </details>
+  </main>
+
+  <!-- Pantalla: Gastos planeados (Bloque 15) -->
+  <main id="pantalla-planeados" class="contenedor" hidden>
+    <button id="volver-planeados" class="volver">← Volver</button>
+    <h1>Gastos planeados</h1>
+    <button id="pl-agregar" class="boton-grande deuda">Agregar gasto planeado</button>
+    <section class="tarjeta">
+      <ul id="pl-lista" class="lista-deudas"></ul>
+    </section>
+  </main>
+
+  <!-- Pantalla: ¿Cuándo lo compro? (Bloque 15) -->
+  <main id="pantalla-cuando" class="contenedor" hidden>
+    <button id="volver-cuando" class="volver">← Volver</button>
+    <h1>¿Cuándo lo compro?</h1>
+    <section id="pc-cabeza" class="tarjeta"></section>
+    <div id="pc-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
+    <section class="tarjeta">
+      <h2>Sugerencia</h2>
+      <div id="pc-sugerencias"></div>
+    </section>
+    <section class="tarjeta">
+      <div class="selector fu-vistas" role="group" aria-label="Vista">
+        <button data-pc-vista="mes">Mes</button>
+        <button data-pc-vista="semana">Semana</button>
+      </div>
+      <div id="pc-mes">
+        <div class="cal-dias cal-nombres" aria-hidden="true">
+          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        </div>
+        <div id="pc-calendario" class="cal-dias fu-calendario"></div>
+      </div>
+      <div id="pc-semana" hidden>
+        <div class="cal-cabeza">
+          <button id="pc-sem-anterior" class="cal-flecha" aria-label="Semana anterior">‹</button>
+          <h2 id="pc-sem-titulo" class="cal-titulo fu-sem-titulo"></h2>
+          <button id="pc-sem-siguiente" class="cal-flecha" aria-label="Semana siguiente">›</button>
+        </div>
+        <ul id="pc-sem-lista" class="fu-sem-lista"></ul>
+      </div>
+      <ul class="cal-leyenda">
+        <li><span class="muestra mv-verde"></span> No afecta nada</li>
+        <li><span class="muestra mv-amarillo"></span> Alcanza, pero corre el colchón, el amigo o la renta atrasada</li>
+        <li><span class="muestra mv-rojo"></span> Deja el saldo bajo cero o un pago sin cubrir</li>
+        <li><span class="muestra mv-gris"></span> Todavía no hay dinero</li>
+      </ul>
+      <p class="estado">Toca un día para ver su impacto.</p>
+    </section>
+    <section id="pc-impacto" class="tarjeta" hidden></section>
+    <section id="pc-partes" class="tarjeta" hidden></section>
   </main>
 
   <!-- Ventana de un día (Mi futuro) -->
@@ -462,7 +516,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, pagos, alcanza, escenarios, mover, futuro, respaldo -->
+  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, respaldo -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="app.js"></script>
@@ -472,6 +526,7 @@
   <script src="deudas.js"></script>
   <script src="resumen.js"></script>
   <script src="calendario.js"></script>
+  <script src="planeados.js"></script>
   <script src="pagos.js"></script>
   <script src="alcanza.js"></script>
   <script src="escenarios.js"></script>

@@ -75,6 +75,10 @@ const Futuro = {
       ? `Tu día más apretado es el ${this.dia(bajo)}: te faltan ${dinero(-saldoBajo)}.`
       : `En el próximo mes no te quedas sin dinero. Tu punto más bajo es ${dinero(saldoBajo)} el ${this.dia(bajo)}.`;
     $("fu-cuenta").textContent = Proyeccion.textoCuenta(pr);
+    // Bloque 15: gastos planeados que todavía no tienen fecha
+    const sinFecha = Planeados.sinFecha();
+    $("fu-sin-fecha").hidden = sinFecha === 0;
+    $("fu-sin-fecha").textContent = `Tienes ${sinFecha} ${sinFecha === 1 ? "gasto planeado" : "gastos planeados"} sin fecha.`;
 
     // Vista
     document.querySelectorAll("[data-fu-vista]").forEach(b => {
@@ -310,6 +314,7 @@ const Futuro = {
     $("fu-sem-siguiente").addEventListener("click", () => { this.semana++; this.mostrar(); });
     $("fu-cuenta").addEventListener("click", () => { $("fu-detalle").open = true; $("fu-detalle").scrollIntoView({ block: "start" }); });
     $("fu-libre").addEventListener("click", () => Calendario.abrirLibre());
+    $("fu-sin-fecha").addEventListener("click", () => Planeados.abrirLista());
     $("fu-abrir-escenarios").addEventListener("click", () => Escenarios.abrir("pantalla-futuro"));
     $("fu-dia-cerrar").addEventListener("click", () => { $("fu-dia").hidden = true; });
     $("fu-dia").addEventListener("click", e => {

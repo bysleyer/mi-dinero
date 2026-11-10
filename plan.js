@@ -132,7 +132,13 @@ const Plan = {
     const bruto = vista || usaReal ? null : estimado.bruto;
     const neto = vista ? vista.monto : usaReal ? real.total : estimado.neto;
     const { lineas, total } = this.gastosFijos();
-    const sobrante = neto - total;
+    // Bloque 15: gastos planeados con fecha elegida en esta semana (lunes a domingo), sin comprar
+    const lunes = this.claveSemana();
+    const domingo = Jornadas.sumarDias(lunes, 6);
+    const planeados = Vencimientos.entre(lunes, domingo).filter(i => i.planeado)
+      .map(i => ({ nombre: i.nombre, fecha: i.fecha, monto: i.partes[0].monto }));
+    const totalPlaneados = planeados.reduce((s, p) => s + p.monto, 0);
+    const sobrante = neto - total - totalPlaneados;
     // Colchón: meta fija (mis datos); recibe su % solo después de renta e internet atrasados
     const meta = this.metaColchon();
     const pct = plan.porcentajeColchon / 100;
@@ -146,7 +152,7 @@ const Plan = {
     const semanalServicios = ["telefono", "luz", "internet"]
       .reduce((s, id) => s + this.montoDe(lineas, id), 0);
     return { plan, bruto, neto, lineas, total, sobrante, meta, aColchon, aDeudas,
-             semanalRenta, semanalServicios, usaReal, real, vista, puedePagarAmigo };
+             semanalRenta, semanalServicios, usaReal, real, vista, puedePagarAmigo, planeados, totalPlaneados };
   },
 
   // Lunes de la semana actual (AAAA-MM-DD), para no apartar dos veces
@@ -262,7 +268,9 @@ const Plan = {
     $("p-gastos").innerHTML = c.lineas.map(l => `
       <li><span>${escapar(l.nombre)}${l.detalle ? `<span class="detalle">${l.detalle}</span>` : ""}</span>
           <span>${dinero(l.monto)}</span></li>`).join("") +
-      `<li class="total"><span>Total</span><span>${dinero(c.total)}</span></li>`;
+      `<li class="total"><span>Total</span><span>${dinero(c.total)}</span></li>` +
+      c.planeados.map(p => `<li class="planeado-linea"><span>+ ${escapar(p.nombre)} <span class="marca-planeado">planeado</span>
+          <span class="detalle">${Jornadas.textoDia(p.fecha)}</span></span><span>${dinero(p.monto)}</span></li>`).join("");
 
     // 3. Sobrante
     const s = $("p-sobrante");

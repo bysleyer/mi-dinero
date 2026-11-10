@@ -38,7 +38,8 @@ const Resumen = {
     const suma = lista => lista.reduce((s, m) => s + m.monto, 0);
 
     const gastos = movs.filter(m => m.tipo === "gasto");
-    const porCategoria = CATEGORIAS.map(c => ({
+    const extras = [...new Set(gastos.map(m => m.categoria))].filter(c => c && !CATEGORIAS.includes(c));
+    const porCategoria = [...CATEGORIAS, ...extras].map(c => ({
       nombre: c,
       total: suma(gastos.filter(m => m.categoria === c))
     }));

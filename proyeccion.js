@@ -84,7 +84,7 @@ const Proyeccion = {
   },
 
   _calcular(opciones) {
-    const { excluir = null, chequeEscenario = null, inicial: inicialManual = null, horizonte = null } = opciones;
+    const { excluir = null, chequeEscenario = null, inicial: inicialManual = null, horizonte = null, excluirPlaneado = null } = opciones;
     const cfg = Mover.config();
     const hoyClave = hoy();
     const fin = Jornadas.sumarDias(hoyClave, (horizonte || cfg.horizonte) - 1);
@@ -125,13 +125,16 @@ const Proyeccion = {
     // Vencimientos sin pagar (con las fechas movidas)
     Vencimientos.entre(hoyClave, fin).forEach(item => {
       if (item.alerta || item.claveMov === excluir) return;
+      if (excluirPlaneado && item.planeadoId === excluirPlaneado) return;
       const pendientes = item.partes.filter(p => !p.pagado);
       const pendiente = pendientes.reduce((s, p) => s + p.monto, 0);
       if (pendiente <= 0) return;
-      const orden = item.id === "renta" ? 1 : item.id === "prestamo" ? 2 : item.inmediato ? 5 : 10;
-      lineas.push({ fecha: item.fecha, orden, tipo: "pago", id: item.id, nombre: item.nombre, letra: item.letra,
+      const orden = item.id === "renta" ? 1 : item.id === "prestamo" ? 2 : item.inmediato ? 5 : item.planeado ? 15 : 10;
+      lineas.push({ fecha: item.fecha, orden, tipo: "pago", id: item.id, letra: item.letra,
+        nombre: item.planeado ? `${item.nombre} (planeado)` : item.nombre,
         detalle: pendientes.length > 1 ? pendientes.map(p => dinero(p.monto)).join(" + ") : "",
-        monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato });
+        monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato,
+        planeado: !!item.planeado });
     });
     lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
 
@@ -160,9 +163,12 @@ const Proyeccion = {
   // Con la misma cuenta y un horizonte largo: en cada cheque, el dinero que nunca hace falta
   // más adelante (el saldo más bajo de ahí en adelante) se reparte con las reglas del Bloque 11
   // y del colchón (Plan.repartirExtra): renta atrasada → internet atrasado → colchón → amigo → plan de luz.
+  // opciones: { chequeEscenario, dias, pr: proyección larga ya calculada, ajustes: [{ fecha, monto }] gastos extra }
   planDeudas(opciones = {}) {
     const dias = opciones.dias || 730;
-    const pr = this.calcular({ chequeEscenario: opciones.chequeEscenario ?? null, horizonte: dias });
+    const pr = opciones.pr || this.calcular({ chequeEscenario: opciones.chequeEscenario ?? null, horizonte: dias,
+                                             excluirPlaneado: opciones.excluirPlaneado || null });
+    const ajustes = opciones.ajustes || [];
     const orden = Plan.deudasEnOrden();
     const saldos = {};
     orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id)); });
@@ -175,13 +181,15 @@ const Proyeccion = {
     const fechas = Object.keys(pr.porDia).sort();
     const minDesde = {};
     let minimo = Infinity;
+    const restar = f => ajustes.reduce((s, a) => s + (a.fecha <= f ? a.monto : 0), 0);
     for (let i = fechas.length - 1; i >= 0; i--) {
-      minimo = Math.min(minimo, pr.porDia[fechas[i]].saldoFin);
+      minimo = Math.min(minimo, pr.porDia[fechas[i]].saldoFin - restar(fechas[i]));
       minDesde[fechas[i]] = minimo;
     }
 
     const r = {
       dias,
+      colchonLleno: colchon >= meta - 0.005 ? "ya" : null,
       rentaCero: saldos.deudaRenta != null && saldos.deudaRenta <= 0.005 ? "ya" : null,
       amigoInicio: null,
       amigoCero: saldos.deudaAmigo != null && saldos.deudaAmigo <= 0.005 ? "ya" : null,
@@ -197,6 +205,7 @@ const Proyeccion = {
         apartado += usado;
         colchon += rep.aColchon;
         if (rep.deudas.deudaAmigo && !r.amigoInicio) r.amigoInicio = fecha;
+        if (!r.colchonLleno && colchon >= meta - 0.005) r.colchonLleno = fecha;
       }
       if (!r.rentaCero && r.hayRenta && saldos.deudaRenta <= 0.005) r.rentaCero = fecha;
       if (!r.amigoCero && r.hayAmigo && saldos.deudaAmigo <= 0.005) r.amigoCero = fecha;

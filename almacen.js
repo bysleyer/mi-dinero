@@ -18,6 +18,8 @@
  *   pagosMovidos   fechas nuevas elegidas en "Mover este pago" (no son pagos)
  *   diasLibres     días que NO voy a trabajar (planeados, futuros): { id, desde, hasta, motivo }
  *   futuro         "Mi futuro": escenario y vista elegidos { escenario, vista }
+ *   planeados      gastos planeados: { id, nombre, monto, fechaLimite, categoria, nota, tipo,
+ *                  enPartes, partes, elegido: [{ fecha, monto }] | null }
  */
 const Almacen = {
   prefijo: "midinero:",
@@ -192,6 +194,31 @@ const Almacen = {
     return this.guardar("lineaTiempo", { dineroHoy, momento: this.ahora() });
   },
 
+  // ---------- Gastos planeados (Bloque 15) ----------
+  // Comprado = hay un gasto registrado con su planeadoId (no se guarda aparte: así no se duplica).
+  leerTodosLosPlaneados() {
+    return this.leer("planeados") || [];
+  },
+
+  leerPlaneados() {
+    return this.leerTodosLosPlaneados().filter(g => !g.borrado);
+  },
+
+  guardarPlaneado(gasto) {
+    const lista = this.leerTodosLosPlaneados();
+    const momento = this.ahora();
+    const i = gasto.id ? lista.findIndex(g => g.id === gasto.id) : -1;
+    if (i >= 0) { lista[i] = { ...lista[i], ...gasto, modificado: momento }; }
+    else { gasto = { ...gasto, id: this.nuevoId(), creado: momento, modificado: momento }; lista.push(gasto); }
+    return this.guardar("planeados", lista) ? (i >= 0 ? lista[i] : gasto) : null;
+  },
+
+  borrarPlaneado(id) {
+    const lista = this.leerTodosLosPlaneados().map(g =>
+      g.id === id ? { ...g, borrado: true, modificado: this.ahora() } : g);
+    return this.guardar("planeados", lista);
+  },
+
   // ---------- Mi futuro (Bloque 14) ----------
   leerFuturo() {
     return this.leer("futuro") || {};
@@ -308,7 +335,8 @@ const Almacen = {
       dineroInicial: this.leerDineroInicial(),
       pagosMovidos: this.leerPagosMovidos(),
       diasLibres: this.leerTodosLosDiasLibres(),
-      futuro: this.leerFuturo()
+      futuro: this.leerFuturo(),
+      planeados: this.leerTodosLosPlaneados()
     };
   },
 
@@ -327,6 +355,7 @@ const Almacen = {
     this.guardar("pagosMovidos", respaldo.pagosMovidos || {});
     this.guardar("diasLibres", respaldo.diasLibres || []);
     this.guardar("futuro", respaldo.futuro || {});
+    this.guardar("planeados", respaldo.planeados || []);
     if (respaldo.revision) this.guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {
