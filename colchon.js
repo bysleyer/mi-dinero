@@ -23,6 +23,18 @@ const ColchonUI = {
   }
 };
 
+// Renta: ¿queda cubierta antes de su fecha límite (el 15 o la del acuerdo)? Si no, cuánto falta.
+const RentaUI = {
+  html(pr) {
+    const r = Proyeccion.estadoRenta(pr);
+    if (!r) return "";
+    const cuando = `antes del ${Futuro.dia(r.fecha)}`;
+    return r.falta > 0.005
+      ? `<p class="renta-linea falta"><span>Renta ${dinero(r.monto)} ${cuando}</span><strong>Faltan ${dinero(r.falta)}</strong></p>`
+      : `<p class="renta-linea cubierta"><span>Renta ${dinero(r.monto)} ${cuando}</span><strong>✓ Queda cubierta</strong></p>`;
+  }
+};
+
 const ArrastreUI = {
   TEXTO_FIJO: "Si no alcanza, pide a la administradora un acuerdo de pago por escrito antes del día 15 y manda tus comprobantes.",
 

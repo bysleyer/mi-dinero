@@ -95,6 +95,7 @@ const DatosFijos = {
                 </div>
               </div>`;
           }).join("")}
+          ${s.id === "renta" ? this.htmlAcuerdo() : ""}
           <div class="df-aplica">
             <label for="df-aplica-${s.id}">¿Desde cuándo aplica?</label>
             <select id="df-aplica-${s.id}" data-df-aplica="${s.id}">
@@ -109,6 +110,48 @@ const DatosFijos = {
         </section>`;
     }).join("");
     this.mostrarHistorial();
+  },
+
+  // ---------- Acuerdo de pago de la renta (opcional) ----------
+  // Montos y fechas acordados con la administradora: la cuenta los usa en lugar del día 15.
+  filaAcuerdo(p = {}) {
+    return `<div class="df-acuerdo-fila">
+        <input type="date" data-ac-fecha value="${p.fecha || ""}" aria-label="Fecha del pago">
+        <input type="number" inputmode="decimal" step="0.01" min="0" data-ac-monto value="${p.monto ?? ""}" placeholder="0.00" aria-label="Monto">
+        <button class="borrar" data-ac-quitar aria-label="Quitar">✕</button>
+      </div>`;
+  },
+
+  htmlAcuerdo() {
+    const lista = Almacen.leer("acuerdoRenta") || [];
+    return `
+      <div class="df-acuerdo">
+        <h3 class="pc-sub">Acuerdo de pago (opcional)</h3>
+        <p class="df-original">Si la administradora te dio fechas y montos, ponlos aquí: se usan en lugar del día 15.</p>
+        <div id="df-acuerdo-filas">${(lista.length ? lista : [{}]).map(p => this.filaAcuerdo(p)).join("")}</div>
+        <button class="enlace" data-ac-agregar>+ Agregar pago</button>
+        <p id="df-error-acuerdo" class="error df-error"></p>
+        <button class="boton-chico df-guardar" data-ac-guardar>Guardar acuerdo</button>
+      </div>`;
+  },
+
+  guardarAcuerdo() {
+    const error = $("df-error-acuerdo");
+    error.textContent = "";
+    const lista = [];
+    for (const fila of document.querySelectorAll(".df-acuerdo-fila")) {
+      const fecha = fila.querySelector("[data-ac-fecha]").value;
+      const txt = fila.querySelector("[data-ac-monto]").value.trim();
+      if (!fecha && txt === "") continue;
+      const monto = Number(txt);
+      if (!fecha) return (error.textContent = "Cada pago del acuerdo necesita su fecha.");
+      if (txt === "" || !(monto > 0)) return (error.textContent = "Cada pago del acuerdo tiene que ser mayor que 0.");
+      lista.push({ fecha, monto: redondear(monto) });
+    }
+    lista.sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const antes = this.foto();
+    Almacen.guardar("acuerdoRenta", lista);
+    this.listo(antes);
   },
 
   mostrarHistorial() {
@@ -227,6 +270,9 @@ const DatosFijos = {
       const g = e.target.closest("[data-df-guardar]"); if (g) this.guardar(g.dataset.dfGuardar);
       const o = e.target.closest("[data-df-original]"); if (o) this.volverOriginal(o.dataset.dfOriginal);
       const d = e.target.closest("[data-df-deshacer]"); if (d) this.deshacer(d.dataset.dfDeshacer);
+      if (e.target.closest("[data-ac-agregar]")) $("df-acuerdo-filas").insertAdjacentHTML("beforeend", this.filaAcuerdo());
+      const q = e.target.closest("[data-ac-quitar]"); if (q) q.closest(".df-acuerdo-fila").remove();
+      if (e.target.closest("[data-ac-guardar]")) this.guardarAcuerdo();
     });
     $("pantalla-datosfijos").addEventListener("change", e => {
       const a = e.target.closest("[data-df-aplica]");

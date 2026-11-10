@@ -60,10 +60,8 @@ const Prestamo = {
   extras(s) {
     const lineas = [{ fecha: s.fecha, monto: s.monto, nombre: "Préstamo: lo recibes" }];
     const ajustes = {};
-    if (s.para === "renta") {
-      lineas.push({ fecha: s.fecha, monto: -s.monto, nombre: "Préstamo: pago a renta atrasada" });
-      ajustes.deudaRenta = -s.monto;
-    }
+    // La renta ya está en la cuenta (Nivel 1): el dinero del préstamo la paga ahí; solo baja su saldo
+    if (s.para === "renta") ajustes.deudaRenta = -s.monto;
     if (s.para === "planeado") {
       const g = Almacen.leerPlaneados().find(x => x.id === s.planeadoId);
       // Si el gasto planeado ya tiene fecha, ya está en la cuenta: el préstamo solo trae el dinero

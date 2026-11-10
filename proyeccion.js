@@ -8,6 +8,8 @@
  *       Horas = jornadas registradas; los días sin registrar: días de trabajo que no son libres × horas por día.
  *       Neto con el cálculo del Bloque 7. Si ya registré el cheque real de esa semana, cuenta el real.
  *   − todos los vencimientos y gastos semanales (comida; transporte solo los días que se trabaja),
+ *   − la renta: el saldo del portal (deudaRenta) con fecha límite el próximo día 15 (o las fechas del
+ *     acuerdo de pago), y cada renta nueva del día 1 con fecha límite el 15 de ese mes,
  * en el orden del Bloque 11 dentro de cada día: cheque, renta, préstamo, transporte, comida, facturas.
  */
 const Proyeccion = {
@@ -152,6 +154,7 @@ const Proyeccion = {
     // Vencimientos sin pagar (con las fechas movidas)
     Vencimientos.entre(hoyClave, fin).forEach(item => {
       if (item.alerta || item.claveMov === excluir) return;
+      if (item.id === "renta") return; // la renta se cuenta aparte (rentaLineas)
       if (excluirPlaneado && item.planeadoId === excluirPlaneado) return;
       const pendientes = item.partes.filter(p => !p.pagado);
       const pendiente = pendientes.reduce((s, p) => s + p.monto, 0);
@@ -163,6 +166,7 @@ const Proyeccion = {
         monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato,
         planeado: !!item.planeado });
     });
+    lineas.push(...this.rentaLineas(hoyClave, fin));
     // Bloque 18: líneas que solo se simulan (ej.: un préstamo); no se guardan en ningún lado
     (opciones.extras || []).forEach(x => {
       if (x.fecha >= hoyClave && x.fecha <= fin) lineas.push({ fecha: x.fecha, orden: x.monto >= 0 ? 0.5 : 16, tipo: "simulado",
@@ -193,6 +197,54 @@ const Proyeccion = {
     };
   },
 
+  // ---------- Renta (Nivel 1) ----------
+  // Día límite (15) del mes de una fecha
+  limiteRenta(fecha) {
+    const d = Jornadas.aFecha(fecha);
+    return Vencimientos.fechaDelMes(d.getFullYear(), d.getMonth(), Calendario.diaDelMes("accionLegal", 15));
+  },
+
+  // Acuerdo de pago registrado en Datos fijos: [{ fecha, monto }]
+  acuerdoRenta() {
+    return (Almacen.leer("acuerdoRenta") || []).filter(p => p.fecha && p.monto > 0)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  },
+
+  rentaLineas(hoyClave, fin) {
+    const lineas = [];
+    const mes = f => Jornadas.aFecha(f).toLocaleDateString("es", { month: "long" });
+    // 1) Lo que debo hoy en el portal: con fecha límite el próximo 15, o en las fechas del acuerdo
+    let resta = Math.max(0, Datos.saldoDeuda(Plan.ID_DEUDA_RENTA));
+    let limite = this.limiteRenta(hoyClave);
+    if (limite < hoyClave) { const d = Jornadas.aFecha(hoyClave); limite = this.limiteRenta(Resumen.aClave(new Date(d.getFullYear(), d.getMonth() + 1, 1))); }
+    const acuerdo = this.acuerdoRenta().filter(p => p.fecha >= hoyClave);
+    acuerdo.forEach(p => {
+      if (resta <= 0.005) return;
+      const monto = redondear(Math.min(p.monto, resta));
+      resta = redondear(resta - monto);
+      lineas.push({ fecha: p.fecha, monto: -monto, nombre: "Renta (acuerdo de pago)", atrasada: true });
+    });
+    if (resta > 0.005) lineas.push({ fecha: limite, monto: -resta, atrasada: true,
+      nombre: acuerdo.length ? "Renta (resto del saldo)" : "Renta (saldo del portal)" });
+    // 2) Cada renta nueva: se suma el día 1 y vence el 15 de ese mes
+    Datos.cargosRenta(fin).filter(c => c.fecha > hoyClave).forEach(c => {
+      const f = [this.limiteRenta(c.fecha), c.fecha].sort().slice(-1)[0];
+      lineas.push({ fecha: f, monto: -c.monto, nombre: `Renta de ${mes(c.fecha)}`, cargo: c.fecha });
+    });
+    return lineas.filter(l => l.fecha <= fin).map(l => ({ ...l, orden: 1, tipo: "pago", id: "renta", letra: "R" }));
+  },
+
+  // ¿La renta queda cubierta antes de su fecha límite? (la primera que viene en la cuenta)
+  estadoRenta(pr) {
+    const rentas = pr.lineas.filter(l => l.id === "renta");
+    if (!rentas.length) return null;
+    const fecha = rentas[0].fecha;
+    const delDia = rentas.filter(l => l.fecha === fecha);
+    const monto = redondear(delDia.reduce((s, l) => s - l.monto, 0));
+    const saldo = delDia[delDia.length - 1].saldo;
+    return { fecha, monto, falta: redondear(Math.min(monto, Math.max(0, -saldo))), nombre: delDia.map(l => l.nombre).join(" + ") };
+  },
+
   // ---------- Largo plazo: ¿cuándo se pagan las deudas? ----------
   // Con la misma cuenta y un horizonte largo: en cada cheque, el dinero que nunca hace falta
   // más adelante (el saldo más bajo de ahí en adelante) se reparte con las reglas del Bloque 11
@@ -210,6 +262,19 @@ const Proyeccion = {
     Object.entries(opciones.deudaAjustes || {}).forEach(([id, cambio]) => {
       if (saldos[id] != null) saldos[id] = Math.max(0, saldos[id] + cambio);
     });
+    // La renta ya está en la cuenta día por día: no se reparte otra vez.
+    // "Renta atrasada en cero" = primer día, desde su fecha límite, en que el saldo queda en 0 o más.
+    const saldoRenta = saldos.deudaRenta;
+    let rentaCero = null;
+    if (saldoRenta != null) {
+      if (saldoRenta <= 0.005) rentaCero = "ya";
+      else {
+        const atr = pr.lineas.filter(l => l.id === "renta" && l.atrasada);
+        const ultima = atr.length ? atr[atr.length - 1].fecha : null;
+        if (ultima) rentaCero = Object.keys(pr.porDia).sort().find(f => f >= ultima && pr.porDia[f].saldoFin >= -0.005) || null;
+      }
+      saldos.deudaRenta = 0;
+    }
     const plan = Almacen.leerPlan();
     let colchon = plan.sobres.colchon;
     const meta = Plan.metaColchon();
@@ -228,7 +293,7 @@ const Proyeccion = {
     const r = {
       dias,
       colchonLleno: colchon >= meta - 0.005 ? "ya" : null,
-      rentaCero: saldos.deudaRenta != null && saldos.deudaRenta <= 0.005 ? "ya" : null,
+      rentaCero,
       amigoInicio: null,
       amigoCero: saldos.deudaAmigo != null && saldos.deudaAmigo <= 0.005 ? "ya" : null,
       hayRenta: saldos.deudaRenta != null,
@@ -245,7 +310,6 @@ const Proyeccion = {
         if (rep.deudas.deudaAmigo && !r.amigoInicio) r.amigoInicio = fecha;
         if (!r.colchonLleno && colchon >= meta - 0.005) r.colchonLleno = fecha;
       }
-      if (!r.rentaCero && r.hayRenta && saldos.deudaRenta <= 0.005) r.rentaCero = fecha;
       if (!r.amigoCero && r.hayAmigo && saldos.deudaAmigo <= 0.005) r.amigoCero = fecha;
     });
     return r;

@@ -591,3 +591,11 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .ps-tabla li span:first-child { text-align: left; font-weight: 400; }
 .ps-tabla li.ps-cabeza span { font-weight: 700; color: var(--suave); font-size: .78rem; }
 #ps-guardar { width: 100%; }
+
+/* ---------- Corrección renta: ¿cubierta antes del 15? ---------- */
+.renta-linea { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 8px 0; padding: 8px 10px; border-radius: 8px; font-size: .92rem; }
+.renta-linea.cubierta { background: #e8f5ec; color: #1d6b3a; }
+.renta-linea.falta { background: #fdecec; color: #b42318; }
+.df-acuerdo { margin: 10px 0; padding-top: 8px; border-top: 1px solid var(--borde, #ddd); }
+.df-acuerdo-fila { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+.df-acuerdo-fila input { min-width: 0; }

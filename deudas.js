@@ -137,6 +137,8 @@ const Deudas = {
         <p class="deuda-sub"><span class="etiqueta">${etiqueta}</span>
           Original ${dinero(d.monto)} · pagado ${Math.round(avance * 100)}%</p>
         <div class="barra"><div class="barra-relleno" style="width:${avance * 100}%"></div></div>
+        ${d.id === Plan.ID_DEUDA_RENTA ? Datos.cargosRenta().map(c =>
+          `<p class="deuda-sub">Cargo de renta ${fechaCorta(c.fecha)}: +${dinero(c.monto)}</p>`).join("") : ""}
         <button class="boton-chico" data-ajustar="${d.id}">Ajustar saldo</button>
       </li>`;
   },

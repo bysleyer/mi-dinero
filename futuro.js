@@ -76,7 +76,7 @@ const Futuro = {
       : `En el próximo mes no te quedas sin dinero. Tu punto más bajo es ${dinero(saldoBajo)} el ${this.dia(bajo)}.`;
     $("fu-cuenta").textContent = Proyeccion.textoCuenta(pr);
     // Bloque 16: colchón usable y arrastre
-    $("fu-colchon").innerHTML = ColchonUI.html();
+    $("fu-colchon").innerHTML = ColchonUI.html() + RentaUI.html(pr);
     $("fu-arrastre").innerHTML = ArrastreUI.html(pr);
     // Bloque 15: gastos planeados que todavía no tienen fecha
     const sinFecha = Planeados.sinFecha();
@@ -237,7 +237,8 @@ const Futuro = {
       const noAlcanza = movible && !Proyeccion.estadoEnFecha(pr, f).alcanza;
       return `<li>
           <div class="mov-info"><div class="mov-tipo">${escapar(l.nombre)}</div>
-            ${noAlcanza ? `<div class="aviso-movido">No alcanza este día</div>` : ""}</div>
+            ${noAlcanza ? `<div class="aviso-movido">No alcanza este día</div>` : ""}
+            ${l.id === "renta" && l.saldo < -0.005 ? `<div class="error">Faltan ${dinero(Math.min(-l.monto, -l.saldo))}</div>` : ""}</div>
           <div class="pago-lado">
             <span class="mov-monto ${l.monto >= 0 ? "positivo" : "negativo"}">${l.monto >= 0 ? "+" : "−"}${dinero(Math.abs(l.monto))}</span>
             ${noAlcanza ? `<button class="boton-chico" data-fu-mover="${escapar(l.claveMov)}">Mover</button>` : ""}

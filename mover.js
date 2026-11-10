@@ -191,7 +191,7 @@ const Mover = {
           <button id="mv-deshacer" class="boton-chico">Volver a la fecha original</button>
         </div>` : ""}`;
 
-    $("mv-colchon").innerHTML = ColchonUI.html();
+    $("mv-colchon").innerHTML = ColchonUI.html() + RentaUI.html(pr);
     const sugerida = this.sugerida
       ? [[this.sugerida.motivo || "Sugerida", { tipo: this.sugerida.partes.length > 1 ? "dividir" : "fecha",
           partes: this.sugerida.partes, fecha: this.sugerida.partes[0].fecha }, "plan"]] : [];

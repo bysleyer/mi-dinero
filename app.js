@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 22, fecha: "10 nov 2026" };
+const VERSION_APP = { numero: 23, fecha: "10 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -80,7 +80,7 @@ const Datos = {
       this.base = window.DATOS_EJEMPLO;
       this.origen = "ejemplo";
     }
-    if (this.base) this.recargar();
+    if (this.base) { this.recargar(); this.iniciarCargosRenta(); }
     return this.actual;
   },
 
@@ -126,7 +126,48 @@ const Datos = {
     return this.actual.deudasAtrasadas;
   },
 
-  // Saldo de una deuda = monto en datos.js - pagos registrados ± ajustes a mano
+  // ---------- Renta: el saldo de deudaRenta es TODO lo que debo en el portal ----------
+  // Cada vencimiento (día 1) se suma la renta del mes a ese saldo, una sola vez por mes,
+  // a partir del primer vencimiento después de instalar esta versión (los meses pasados no se tocan).
+  claveDe(d) {
+    const p = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  },
+
+  diaRenta(año, mes, datos = this.actual) {
+    const g = datos.gastosFijos.find(x => x.id === "renta");
+    const dia = (g && g.venceDia) || 1;
+    return this.claveDe(new Date(año, mes, Math.min(dia, new Date(año, mes + 1, 0).getDate())));
+  },
+
+  iniciarCargosRenta() {
+    if (Almacen.leer("rentaCargosDesde")) return;
+    const h = new Date();
+    let a = h.getFullYear(), m = h.getMonth();
+    if (this.diaRenta(a, m) <= hoy()) m++;          // el de este mes ya pasó (o es hoy): ya está en el portal
+    const d = new Date(a, m, 1);
+    Almacen.guardar("rentaCargosDesde", this.diaRenta(d.getFullYear(), d.getMonth()));
+  },
+
+  // Cargos de renta [{ fecha, monto }] desde el primer vencimiento nuevo hasta "hasta"
+  cargosRenta(hasta = hoy()) {
+    const desde = Almacen.leer("rentaCargosDesde");
+    if (!desde || desde > hasta || !this.base) return [];
+    const lista = [];
+    const [a0, m0] = desde.split("-").map(Number);
+    for (let i = 0; ; i++) {
+      const primero = new Date(a0, m0 - 1 + i, 1);
+      if (this.claveDe(primero) > hasta) break;
+      const datos = this.enFecha(this.claveDe(primero)); // el monto que vale ese mes (Datos fijos)
+      const g = datos.gastosFijos.find(x => x.id === "renta");
+      if (!g) continue;
+      const fecha = this.diaRenta(primero.getFullYear(), primero.getMonth(), datos);
+      if (fecha >= desde && fecha <= hasta) lista.push({ fecha, monto: g.monto });
+    }
+    return lista;
+  },
+
+  // Saldo de una deuda = monto en mis datos - pagos registrados ± ajustes a mano (+ cargos de renta)
   saldoDeuda(deudaId) {
     const deuda = this.deudas().find(d => d.id === deudaId);
     if (!deuda) return 0;
@@ -137,7 +178,8 @@ const Datos = {
         if (m.tipo === "ajuste") return s + m.diferencia;
         return s;
       }, 0);
-    return redondear(deuda.monto + cambio);
+    const cargos = deudaId === "deudaRenta" ? this.cargosRenta().reduce((s, c) => s + c.monto, 0) : 0;
+    return redondear(deuda.monto + cambio + cargos);
   },
 
   deudaTotal() {

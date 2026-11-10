@@ -147,7 +147,7 @@ const Escenarios = {
     const reparto = sobra > 0 ? this.repartirExtra(sobra, porcentajeColchon, filas) : [];
     const disponible = redondear(pr.inicial + pr.chequesInfo.filter(c => c.fecha <= hasta && c.origen !== "real").reduce((s, c) => s + c.monto, 0));
     return { ingreso, disponible, filas, sobra, falta, seMueven, noCubreN1, reparto, desde, hasta,
-             cuenta: Proyeccion.textoCuenta(pr, hasta) };
+             cuenta: Proyeccion.textoCuenta(pr, hasta), pr };
   },
 
   // Semana buena: renta (del mes y atrasada) → internet atrasado → colchón (hasta su meta) → deudas del Bloque 4
@@ -219,6 +219,7 @@ const Escenarios = {
       <section class="tarjeta escenario" data-escenario="${id}">
         <h2>${titulo}: ${dinero(monto)}${id === "esperado" && c.esperadoAuto ? ' <span class="opcional">(estimado)</span>' : ""}</h2>
         <p class="estado esc-cuenta">${escapar(r.cuenta)}</p>
+        ${RentaUI.html(r.pr)}
         <ul class="escenario-lista">
           ${[1, 2].map(n => `
             <li class="nivel-titulo">Nivel ${n}${n === 1 ? " · no se atrasa" : " · se divide o se mueve"}</li>

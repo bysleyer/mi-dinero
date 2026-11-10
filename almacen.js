@@ -356,7 +356,9 @@ const Almacen = {
       futuro: this.leerFuturo(),
       planeados: this.leerTodosLosPlaneados(),
       cambiosDatos: this.leerCambiosDatos(),
-      simulaciones: this.leer("simulaciones") || []
+      simulaciones: this.leer("simulaciones") || [],
+      rentaCargosDesde: this.leer("rentaCargosDesde"),
+      acuerdoRenta: this.leer("acuerdoRenta") || []
     };
   },
 
@@ -378,6 +380,9 @@ const Almacen = {
     this.guardar("planeados", respaldo.planeados || []);
     this.guardar("cambiosDatos", respaldo.cambiosDatos || []);
     this.guardar("simulaciones", respaldo.simulaciones || []);
+    if (respaldo.rentaCargosDesde) this.guardar("rentaCargosDesde", respaldo.rentaCargosDesde);
+    else this.borrar("rentaCargosDesde");
+    this.guardar("acuerdoRenta", respaldo.acuerdoRenta || []);
     if (respaldo.revision) this.guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {
