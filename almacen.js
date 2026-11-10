@@ -238,6 +238,15 @@ const Almacen = {
   },
 
   // ---------- Mi futuro (Bloque 14) ----------
+  // Bloque 19: parámetros del simulador "Si aceptan el acuerdo de renta" (solo simulación)
+  leerAcuerdoSimulado() {
+    return this.leer("acuerdoSimulado");
+  },
+
+  guardarAcuerdoSimulado(p) {
+    return this.guardar("acuerdoSimulado", p);
+  },
+
   leerFuturo() {
     return this.leer("futuro") || {};
   },
@@ -357,6 +366,7 @@ const Almacen = {
       planeados: this.leerTodosLosPlaneados(),
       cambiosDatos: this.leerCambiosDatos(),
       simulaciones: this.leer("simulaciones") || [],
+      acuerdoSimulado: this.leer("acuerdoSimulado"),
       rentaCargosDesde: this.leer("rentaCargosDesde"),
       acuerdoRenta: this.leer("acuerdoRenta") || []
     };
@@ -380,6 +390,8 @@ const Almacen = {
     this.guardar("planeados", respaldo.planeados || []);
     this.guardar("cambiosDatos", respaldo.cambiosDatos || []);
     this.guardar("simulaciones", respaldo.simulaciones || []);
+    if (respaldo.acuerdoSimulado) this.guardar("acuerdoSimulado", respaldo.acuerdoSimulado);
+    else this.borrar("acuerdoSimulado");
     if (respaldo.rentaCargosDesde) this.guardar("rentaCargosDesde", respaldo.rentaCargosDesde);
     else this.borrar("rentaCargosDesde");
     this.guardar("acuerdoRenta", respaldo.acuerdoRenta || []);

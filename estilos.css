@@ -602,3 +602,18 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 /* Gastos planeados: el hueco que ya existe, aparte */
 .pc-hueco { margin: 0 0 10px; padding: 8px 10px; border-radius: 8px; background: #fff4e0; color: #7a4b00; font-size: .92rem; }
 .renta-atrasada { margin: 4px 0 8px; font-size: .88rem; color: var(--suave); }
+
+/* ---------- Bloque 19: Si aceptan el acuerdo de renta ---------- */
+.ac-tramos { list-style: none; padding: 0; margin: 0 0 6px; }
+.ac-tramo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--borde, #ddd); }
+.ac-tramo .borrar { justify-self: end; }
+.ac-tramo label { display: flex; flex-direction: column; font-size: .78rem; color: var(--suave); gap: 2px; min-width: 0; }
+.ac-tramo input { min-width: 0; width: 100%; }
+#ac-error:empty { display: none; }
+.ac-semanas { list-style: none; padding: 0; margin: 0; }
+.ac-semana { border-top: 1px solid var(--borde, #ddd); padding: 8px 0; }
+.ac-semana.rojo { background: #fdecec; border-radius: 8px; padding: 8px; margin: 4px 0; }
+.ac-semana-fecha { font-weight: 700; margin-bottom: 4px; }
+.ac-semana-datos { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: .88rem; }
+.ac-semana-datos span:nth-child(even) { text-align: right; }
+.ac-falta { margin: 6px 0 0; font-weight: 700; }

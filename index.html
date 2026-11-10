@@ -166,6 +166,7 @@
       <button id="abrir-alcanza" class="boton-mediano">¿Me alcanza? (día por día)</button>
       <button id="fu-abrir-escenarios" class="boton-mediano">¿Y si cobro...? (por niveles, montos editables)</button>
       <button id="abrir-prestamo" class="boton-mediano">¿Me conviene un préstamo?</button>
+      <button id="abrir-acuerdo" class="boton-mediano">Si aceptan el acuerdo de renta</button>
     </details>
   </main>
 
@@ -225,6 +226,44 @@
   </main>
 
   <!-- Pantalla: ¿Me conviene un préstamo? (Bloque 18) - solo simula -->
+  <!-- Pantalla: Si aceptan el acuerdo de renta (Bloque 19) - solo simula -->
+  <main id="pantalla-acuerdo" class="contenedor" hidden>
+    <button id="volver-acuerdo" class="volver">← Volver</button>
+    <h1>Si aceptan el acuerdo de renta</h1>
+    <p class="estado">Solo simula: no registra pagos ni cambia saldos ni deudas.</p>
+    <p id="ac-frase" class="fu-frase"></p>
+    <section id="ac-parametros" class="tarjeta">
+      <h2>El acuerdo</h2>
+      <div class="campo"><label for="ac-saldo">Saldo de renta al empezar</label>
+        <input id="ac-saldo" type="number" inputmode="decimal" step="0.01" min="0"></div>
+      <div class="campo"><label for="ac-renta">Renta mensual (vence el día 1)</label>
+        <input id="ac-renta" type="number" inputmode="decimal" step="0.01" min="0"></div>
+      <label class="mv-check"><input id="ac-recargo-activo" type="checkbox"> Siguen cobrando recargo</label>
+      <div class="ps-dos">
+        <div class="campo"><label for="ac-recargo-monto">Recargo</label>
+          <input id="ac-recargo-monto" type="number" inputmode="decimal" step="0.01" min="0"></div>
+        <div class="campo"><label for="ac-recargo-dia">Día en que se cobra</label>
+          <input id="ac-recargo-dia" type="number" inputmode="numeric" step="1" min="1" max="31"></div>
+      </div>
+      <p class="estado">El recargo se cobra si ese día el saldo de renta es mayor que 0.</p>
+      <h3 class="pc-sub">Tramos de pago (cada viernes)</h3>
+      <ul id="ac-tramos" class="ac-tramos"></ul>
+      <button id="ac-agregar" class="enlace">+ Agregar tramo</button>
+      <p id="ac-error" class="error"></p>
+      <button id="ac-correo" class="boton-chico">Volver a los valores del correo</button>
+    </section>
+    <section class="tarjeta">
+      <h2>Resumen</h2>
+      <ul id="ac-resumen" class="resumen"></ul>
+      <p id="ac-cuenta" class="estado"></p>
+    </section>
+    <section class="tarjeta">
+      <h2>Por viernes</h2>
+      <ul id="ac-semanas" class="ac-semanas"></ul>
+      <p class="ayuda">"Libre para lo que quieras" es lo que puedes gastar esa semana sin que ningún día después quede bajo cero.</p>
+    </section>
+  </main>
+
   <main id="pantalla-prestamo" class="contenedor" hidden>
     <button id="volver-prestamo" class="volver">← Volver</button>
     <h1>¿Me conviene un préstamo?</h1>
@@ -608,7 +647,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, respaldo -->
+  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="campos.js"></script>
@@ -628,6 +667,7 @@
   <script src="colchon.js"></script>
   <script src="datosfijos.js"></script>
   <script src="prestamo.js"></script>
+  <script src="acuerdo.js"></script>
   <script src="respaldo.js"></script>
 </body>
 </html>

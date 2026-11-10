@@ -167,7 +167,7 @@ const Proyeccion = {
         monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato,
         planeado: !!item.planeado });
     });
-    lineas.push(...this.rentaLineas(hoyClave, fin, { excluir }));
+    if (!opciones.sinRenta) lineas.push(...this.rentaLineas(hoyClave, fin, { excluir }));
     // Bloque 18: líneas que solo se simulan (ej.: un préstamo); no se guardan en ningún lado
     (opciones.extras || []).forEach(x => {
       if (x.fecha >= hoyClave && x.fecha <= fin) lineas.push({ fecha: x.fecha, orden: x.monto >= 0 ? 0.5 : 16, tipo: "simulado",
