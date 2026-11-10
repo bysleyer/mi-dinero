@@ -123,10 +123,12 @@ const Mover = {
   },
 
   // ---------- Pantalla ----------
-  abrir(clave, origen, escenario = null) {
+  // sugerida (Bloque 16): { partes: [{ fecha, monto }], motivo } desde "¿Cuándo lo compro?"
+  abrir(clave, origen, escenario = null, sugerida = null) {
     if (!this.pagoOriginal(clave)) return;
     this.clave = clave;
     this.origen = origen;
+    this.sugerida = sugerida && sugerida.partes ? sugerida : null;
     this.escenario = escenario; // { monto, titulo } si viene de "¿Y si cobro...?"
     this.seleccion = null;
     const guardado = Almacen.leerPagosMovidos()[clave];
@@ -189,7 +191,11 @@ const Mover = {
           <button id="mv-deshacer" class="boton-chico">Volver a la fecha original</button>
         </div>` : ""}`;
 
-    $("mv-sugerencias").innerHTML = [["Mejor fecha", ev.mejor, "mejor"], ["Segunda opción", ev.segunda, "segunda"]]
+    $("mv-colchon").innerHTML = ColchonUI.html();
+    const sugerida = this.sugerida
+      ? [[this.sugerida.motivo || "Sugerida", { tipo: this.sugerida.partes.length > 1 ? "dividir" : "fecha",
+          partes: this.sugerida.partes, fecha: this.sugerida.partes[0].fecha }, "plan"]] : [];
+    $("mv-sugerencias").innerHTML = [...sugerida, ["Mejor fecha", ev.mejor, "mejor"], ["Segunda opción", ev.segunda, "segunda"]]
       .filter(([, op]) => op)
       .map(([etiqueta, op, id]) => `
         <div class="mv-opcion">
@@ -295,6 +301,7 @@ const Mover = {
       if (e.target.closest("#mv-elegir-dia")) this.elegir([{ fecha: this.seleccion, monto: this._ev.pago.monto }]);
       const op = e.target.closest("[data-elegir-opcion]");
       if (op) {
+        if (op.dataset.elegirOpcion === "plan" && this.sugerida) { this.elegir(this.sugerida.partes); return; }
         const o = this._ev[op.dataset.elegirOpcion === "mejor" ? "mejor" : "segunda"];
         this.elegir(o.tipo === "dividir" ? o.partes : [{ fecha: o.fecha, monto: this._ev.pago.monto }]);
       }

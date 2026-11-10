@@ -39,12 +39,38 @@ const Planeados = {
   },
 
   // ---------- El motor: misma cuenta de proyeccion.js ----------
-  motor(g) {
+  // extra: { proteger, comidaExtrema, excluir } para medir el efecto de una opción sin aplicarla
+  motor(g, extra = {}) {
     const escenario = Futuro.estado().escenario;
     const cheque = Escenarios.config()[escenario];
-    const pr = Proyeccion.calcular({ chequeEscenario: cheque, excluirPlaneado: g.id });
-    const prLargo = Proyeccion.calcular({ chequeEscenario: cheque, excluirPlaneado: g.id, horizonte: 730 });
+    const op = { chequeEscenario: cheque, excluirPlaneado: g.id, ...extra };
+    const pr = Proyeccion.calcular(op);
+    const prLargo = Proyeccion.calcular({ ...op, horizonte: 730 });
     return { escenario, pr, prLargo, fechas: Object.keys(pr.porDia).sort() };
+  },
+
+  // Cuánto cabe ese día: lo más que se puede gastar sin dejar el saldo bajo cero ningún día después
+  // (así tampoco queda sin cubrir ningún pago de Nivel 1)
+  caben(m, dia, otros = []) {
+    return Math.max(0, Math.floor(this.margen(m, dia, otros) * 100) / 100);
+  },
+
+  // Saldo más bajo de ese día en adelante: si es negativo, es lo que ya falta (ej.: la renta corta)
+  margen(m, dia, otros = []) {
+    if (!m.pr.porDia[dia]) return 0;
+    let min = Infinity;
+    m.fechas.filter(f => f >= dia).forEach(f => { min = Math.min(min, this.saldo(m, f, otros)); });
+    return min;
+  },
+
+  textoCabe(m, dia) {
+    const mg = this.margen(m, dia);
+    return mg >= 0.005 ? `cabe ${Math.floor(mg)}` : mg < -0.005 ? `falta ${Math.ceil(-mg)}` : "cabe 0";
+  },
+
+  // Monto que se evalúa en el calendario: una parte si se está comprando en partes
+  montoCalendario(g) {
+    return this.partes && this.partes.length ? Math.max(...this.partes.map(p => p.monto)) : g.monto;
   },
 
   saldo(m, f, ajustes) {
@@ -287,7 +313,10 @@ const Planeados = {
     $("pc-mes").hidden = est.vista !== "mes";
     $("pc-semana").hidden = est.vista !== "semana";
     const etiqueta = f => f === s.mejor ? "Mejor" : f === s.segunda ? "2ª" : "";
-    const color = f => (s.ev[f] || this.evaluar(m, f, g.monto)).color;
+    const montoCal = this.montoCalendario(g);
+    const evCal = {};
+    const evDia = f => evCal[f] || (evCal[f] = montoCal === g.monto && s.ev[f] ? s.ev[f] : this.evaluar(m, f, montoCal));
+    const color = f => evDia(f).color;
     if (est.vista === "mes") {
       const inicio = Plan.claveSemana(Jornadas.aFecha(m.fechas[0]));
       const fin = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(m.fechas[m.fechas.length - 1])), 6);
@@ -302,6 +331,7 @@ const Planeados = {
           <span class="dia-num">${num}</span>
           ${f === g.fechaLimite ? `<span class="mv-vence">límite</span>` : ""}
           ${etiqueta(f) ? `<span class="mv-sugerida">${etiqueta(f)}</span>` : ""}
+          <span class="pc-cabe ${this.margen(m, f) < -0.005 ? "falta" : ""}">${this.textoCabe(m, f)}</span>
         </button>`;
       }).join("");
     } else {
@@ -311,15 +341,20 @@ const Planeados = {
       for (let i = 0; i < 7; i++) dias.push(Jornadas.sumarDias(lunes, i));
       $("pc-sem-lista").innerHTML = dias.map(f => {
         if (!m.pr.porDia[f]) return `<li class="fu-sem-dia fuera"><div class="fu-sem-fecha">${Jornadas.textoDia(f)}</div><div class="vacio">Fuera de los próximos 30 días</div></li>`;
-        const e = s.ev[f] || this.evaluar(m, f, g.monto);
+        const e = evDia(f);
         const texto = { verde: "No afecta nada", amarillo: "Alcanza, pero corre otras fechas", rojo: "Deja algo sin cubrir", gris: "Todavía no hay dinero" }[e.color];
         return `<li class="fu-sem-dia"><button class="fu-sem-boton" data-pc-dia="${f}">
             <div class="fu-sem-fecha">${Jornadas.textoDia(f)} ${f === g.fechaLimite ? '<span class="mv-vence">límite</span>' : ""}</div>
             <div><span class="pc-chip mv-${e.color}">${texto}</span>${etiqueta(f) ? ` <span class="mv-sugerida">${etiqueta(f)}</span>` : ""}</div>
+            <div class="fu-sem-saldo">Caben hasta <strong>${dinero(this.caben(m, f))}</strong> ese día${this.margen(m, f) < -0.005 ? ` (ya faltan ${dinero(-this.margen(m, f))} más adelante)` : ""}</div>
           </button></li>`;
       }).join("");
     }
 
+    $("pc-colchon").innerHTML = ColchonUI.html();
+    $("pc-arrastre").innerHTML = ArrastreUI.html(m.pr);
+    $("pc-monto-cal").textContent = this.partes && this.partes.length
+      ? `El calendario evalúa una parte de ${dinero(montoCal)}.` : "";
     this.mostrarImpacto();
     this.mostrarPartes();
   },
@@ -329,9 +364,13 @@ const Planeados = {
     const g = this._g, m = this._m;
     if (!this.dia || !m.pr.porDia[this.dia]) { caja.hidden = true; return; }
     const e = this.evaluar(m, this.dia, g.monto);
+    const cabe = this.caben(m, this.dia);
     caja.hidden = false;
     if (e.color === "gris") {
-      caja.innerHTML = `<h2>${Jornadas.textoDia(this.dia)}</h2><p class="vacio">Ese día todavía no tienes dinero para gastar.</p>`;
+      caja.innerHTML = `<h2>${Jornadas.textoDia(this.dia)}</h2><p class="vacio">Ese día todavía no tienes dinero para gastar.</p>
+        <p>Caben hasta <strong>${dinero(cabe)}</strong> ese día.</p>
+        <button id="pc-elegir-dia" class="boton-grande deuda">Elegir esta fecha de todos modos</button>`;
+      this.mostrarOpciones(e);
       return;
     }
     const cambian = e.cambian.length
@@ -340,6 +379,7 @@ const Planeados = {
     caja.innerHTML = `
       <h2>Si lo compras el ${this.textoDia(this.dia)}</h2>
       <p class="pc-semaforo"><span class="pc-chip mv-${e.color}">${{ verde: "No afecta nada", amarillo: "Alcanza, pero corre otras fechas", rojo: "Deja algo sin cubrir" }[e.color]}</span></p>
+      <p class="pc-caben">Caben hasta <strong>${dinero(cabe)}</strong> ese día.${this.margen(m, this.dia) < -0.005 ? ` De ese día en adelante ya faltan ${dinero(-this.margen(m, this.dia))}, aun sin este gasto.` : ""}</p>
       <ul class="resumen">
         <li><span>Saldo más bajo del mes, sin el gasto</span><span>${this.plata(e.minSin.saldo)} · ${this.textoDia(e.minSin.fecha)}</span></li>
         <li><span>Con el gasto</span><span class="${e.minCon.saldo < 0 ? "error" : ""}">${this.plata(e.minCon.saldo)} · ${this.textoDia(e.minCon.fecha)}</span></li>
@@ -352,8 +392,107 @@ const Planeados = {
         <li>${this.textoCorre(e.corre.amigo, "Préstamo del amigo en cero")}</li>
       </ul>
       <p class="ayuda">Es una estimación, no una orden.</p>
-      ${this.dia <= g.fechaLimite ? `<button id="pc-elegir-dia" class="boton-grande deuda">Elegir esta fecha</button>`
-        : `<p class="aviso-movido">Este día es después de la fecha límite.</p>`}`;
+      ${this.dia > g.fechaLimite ? `<p class="aviso-movido">Este día es después de la fecha límite.</p>` : ""}
+      <button id="pc-elegir-dia" class="boton-grande deuda">Elegir esta fecha</button>`;
+    this.mostrarOpciones(e);
+  },
+
+  // ---------- Bloque 16: opciones para que sí se pueda ----------
+  // Para un día rojo o amarillo. Cada opción muestra su efecto en ese día y se puede aplicar.
+  mostrarOpciones(e) {
+    const caja = $("pc-opciones");
+    const g = this._g, m = this._m, dia = this.dia;
+    if (!dia || !e || e.color === "verde") { caja.hidden = true; caja.innerHTML = ""; return; }
+    const monto = this.montoCalendario(g);
+    const chip = c => `<span class="pc-chip mv-${c}">${{ verde: "No afecta nada", amarillo: "Corre otras fechas", rojo: "Deja algo sin cubrir", gris: "Sin dinero todavía" }[c]}</span>`;
+    const ops = [];
+
+    // a) Dividir o mover los pagos que se pueden mover (permite_mover: true, ej.: teléfono)
+    // Sirve si el pago vence antes de que pase el problema: se paga una parte en su fecha y el resto
+    // pasa al primer cheque después del día más apretado (o del día elegido).
+    this._movimientos = {};
+    const masBajo = m.fechas.filter(f => f >= dia).reduce((a, f) => this.saldo(m, f, []) < this.saldo(m, a, []) ? f : a, dia);
+    const destino = m.pr.cheques.find(c => c > masBajo && c > dia) || null;
+    ArrastreUI.movibles(m.pr, m.fechas[m.fechas.length - 1]).forEach(l => {
+      if (!Vencimientos.MOVIBLES.includes(l.id) || !destino || l.fecha >= destino) return;
+      const total = -l.monto;
+      // Lo que falta para que quepa el gasto, contando lo que ya faltaba (ej.: la renta corta)
+      let minDesde = Infinity;
+      m.fechas.filter(f => f >= dia).forEach(f => { minDesde = Math.min(minDesde, this.saldo(m, f, [])); });
+      const necesita = redondear(monto - minDesde);
+      const pasar = redondear(Math.min(total, Math.max(0, necesita)));
+      if (pasar <= 0) return;
+      const partes = total - pasar > 0.005
+        ? [{ fecha: l.fecha, monto: redondear(total - pasar) }, { fecha: destino, monto: pasar }]
+        : [{ fecha: destino, monto: total }];
+      const m2 = this.motor(g, { excluir: l.claveMov });
+      const efecto = this.evaluar(m2, dia, monto, partes);
+      this._movimientos[l.claveMov] = partes;
+      ops.push({ titulo: `Dividir o mover ${l.nombre}`,
+                 detalle: `Sugerido: ${partes.map(p => `${dinero(p.monto)} el ${this.textoDia(p.fecha)}`).join(" y ")}. Se abre "Mover este pago" con esta sugerencia. ${Escenarios.costo(l.id)}.`,
+                 color: efecto.color, cabe: this.caben(m2, dia, partes), boton: `data-op-mover="${escapar(l.claveMov)}"` });
+    });
+
+    // b) Comprar en partes
+    const sugeridas = this.sugerirPartes(m, { ...g, partes: g.partes && g.partes > 1 ? g.partes : 2 });
+    if (sugeridas.length > 1) {
+      const peor = sugeridas.map((p, i) => this.evaluar(m, p.fecha, p.monto, sugeridas.filter((_, j) => j !== i)).color)
+        .sort((a, b) => ["verde", "amarillo", "gris", "rojo"].indexOf(b) - ["verde", "amarillo", "gris", "rojo"].indexOf(a))[0];
+      ops.push({ titulo: "Comprar en partes", detalle: sugeridas.map(p => `${dinero(p.monto)} el ${this.textoDia(p.fecha)}`).join(" y "),
+                 color: peor, boton: `data-op-partes` });
+    }
+
+    // c) Comprar menos
+    const cabe = this.caben(m, dia);
+    ops.push({ titulo: "Comprar menos", detalle: `Ese día caben hasta ${dinero(cabe)}.`,
+               color: cabe > 0 ? this.evaluar(m, dia, cabe).color : "rojo",
+               extra: `<label class="pc-menos">Monto <input id="pc-menos-monto" type="number" inputmode="decimal" step="0.01" min="0.01" value="${cabe > 0 ? cabe.toFixed(2) : ""}"></label>`,
+               boton: `data-op-menos` });
+
+    // d) Usar el colchón (solo si tiene saldo)
+    const c = Proyeccion.colchon();
+    if (c > 0) {
+      if (m.pr.protegido) {
+        const m2 = this.motor(g, { proteger: false });
+        ops.push({ titulo: "Usar el colchón", detalle: `Tienes ${dinero(c)} en el colchón.`, color: this.evaluar(m2, dia, monto).color,
+                   cabe: this.caben(m2, dia), boton: `data-usar-colchon` });
+      } else {
+        ops.push({ titulo: "Usar el colchón", detalle: `Tu colchón de ${dinero(c)} ya está contado en tu dinero (puedes usarlo).`, color: e.color });
+      }
+    }
+
+    // e) Comida en modo extremo
+    const min = Proyeccion.comidaMinima();
+    const comida = Vencimientos.gasto("comida");
+    if (min != null && comida) {
+      if (!m.pr.comidaExtrema) {
+        const m2 = this.motor(g, { comidaExtrema: true });
+        ops.push({ titulo: "Comida en modo extremo", detalle: `${dinero(min)} en vez de ${dinero(comida.monto)}: libera ${dinero(comida.monto - min)} por semana. Solo en caso extremo.`,
+                   color: this.evaluar(m2, dia, monto).color, cabe: this.caben(m2, dia), boton: `data-comida-extrema="1"` });
+      } else {
+        ops.push({ titulo: "Comida en modo extremo (aplicada)", detalle: "Solo en caso extremo.", color: e.color, boton: `data-comida-extrema="0"`, textoBoton: "Quitar" });
+      }
+    }
+
+    // f) Otra fecha: la menos mala
+    const s = this._s;
+    const otra = [s.mejor, s.segunda].find(f => f && f !== dia) ||
+      m.fechas.filter(f => f !== dia).map(f => ({ f, e: this.evaluar(m, f, monto) })).filter(x => x.e.color !== "gris")
+        .sort((a, b) => (b.e.minCon ? b.e.minCon.saldo : -1e9) - (a.e.minCon ? a.e.minCon.saldo : -1e9))[0]?.f;
+    if (otra) ops.push({ titulo: "Otra fecha", detalle: `${Jornadas.textoDia(otra)}.`, color: this.evaluar(m, otra, monto).color, boton: `data-pc-dia="${otra}"`, textoBoton: "Ver ese día" });
+
+    caja.hidden = false;
+    caja.innerHTML = `
+      <h2>Opciones para que sí se pueda</h2>
+      <p class="estado">Con lo aplicado ahora, el ${this.textoDia(dia)}: ${chip(e.color)} · caben hasta ${dinero(cabe)}.</p>
+      <ol class="pc-opciones">${ops.map(o => `
+        <li>
+          <div class="pc-op-cabeza"><strong>${escapar(o.titulo)}</strong>${chip(o.color)}</div>
+          <p>${escapar(o.detalle)}${o.cabe != null ? ` Con esto caben hasta ${dinero(o.cabe)} ese día.` : ""}</p>
+          ${o.extra || ""}
+          ${o.boton ? `<button class="boton-chico lleno" ${o.boton}>${o.textoBoton || "Aplicar"}</button>` : ""}
+        </li>`).join("")}</ol>
+      <p class="ayuda">Se pueden combinar. Es una estimación, no una orden.</p>`;
   },
 
   // ---------- Comprar en partes ----------
@@ -458,6 +597,21 @@ const Planeados = {
       if (e.target.closest("#pc-dividir") || e.target.closest("#pc-sugerir")) { this.partes = this.sugerirPartes(this._m, this._g); this.mostrarPartes(); }
       if (e.target.closest("#pc-elegir-partes")) this.elegir(this.partes);
       if (e.target.closest("#pc-deshacer")) this.deshacer();
+      const opMover = e.target.closest("[data-op-mover]");
+      if (opMover) Mover.abrir(opMover.dataset.opMover, "pantalla-cuando", ArrastreUI.escenario(),
+        { partes: (this._movimientos || {})[opMover.dataset.opMover], motivo: `Para "${this._g.nombre}"` });
+      if (e.target.closest("[data-op-partes]")) {
+        const g = this._g;
+        if (!g.enPartes) Almacen.guardarPlaneado({ id: g.id, enPartes: true, partes: g.partes && g.partes > 1 ? g.partes : 2 });
+        this._g = Almacen.leerPlaneados().find(x => x.id === g.id);
+        this.partes = this.sugerirPartes(this._m, this._g);
+        Pantalla.aviso("Aplicado: comprar en partes");
+        this.mostrarCuando();
+      }
+      if (e.target.closest("[data-op-menos]")) {
+        const v = redondear(Number($("pc-menos-monto").value));
+        if (v > 0) { Almacen.guardarPlaneado({ id: this.actual, monto: v, elegido: null }); this.partes = null; Pantalla.aviso(`Aplicado: ${dinero(v)}`); this.mostrarCuando(); }
+      }
       if (e.target.closest("#pc-compre")) this.comprar(this.actual);
     });
     $("pc-partes").addEventListener("change", e => {

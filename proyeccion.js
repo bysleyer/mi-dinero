@@ -14,6 +14,26 @@ const Proyeccion = {
   // ---------- Días libres planeados ----------
   _cache: null, // mientras se calcula, días libres y jornadas se leen una sola vez
 
+  // ---------- Bloque 16: colchón y comida en modo extremo ----------
+  // El colchón es parte de "Dinero que tengo": la cuenta lo incluye, salvo que se pida protegerlo.
+  protegerColchon() {
+    const f = Almacen.leerFuturo();
+    return f.protegerColchon != null ? !!f.protegerColchon : Datos.actual.proteger_colchon === true;
+  },
+
+  colchon() {
+    return Math.max(0, Almacen.leerPlan().sobres.colchon || 0);
+  },
+
+  comidaExtrema() {
+    return Almacen.leerFuturo().comidaExtrema === true;
+  },
+
+  comidaMinima() {
+    const r = (Datos.actual.reglasDePrioridad || {}).nivel1 || {};
+    return r.comidaMinima ?? null;
+  },
+
   libres() {
     return this._cache ? this._cache.libres : Almacen.leerDiasLibres();
   },
@@ -85,6 +105,8 @@ const Proyeccion = {
 
   _calcular(opciones) {
     const { excluir = null, chequeEscenario = null, inicial: inicialManual = null, horizonte = null, excluirPlaneado = null } = opciones;
+    const proteger = opciones.proteger ?? this.protegerColchon();
+    const extrema = (opciones.comidaExtrema ?? this.comidaExtrema()) && this.comidaMinima() != null;
     const cfg = Mover.config();
     const hoyClave = hoy();
     const fin = Jornadas.sumarDias(hoyClave, (horizonte || cfg.horizonte) - 1);
@@ -119,7 +141,8 @@ const Proyeccion = {
       if (transporte && diasTransporte > 0) lineas.push({ fecha: disponible, orden: 3, tipo: "semanal", id: "transporte",
         nombre: `Transporte (${dinero(transporte.porDia)} × ${diasTransporte} ${diasTransporte === 1 ? "día" : "días"})`,
         monto: -redondear(transporte.porDia * diasTransporte) });
-      if (comida) lineas.push({ fecha: disponible, orden: 4, tipo: "semanal", id: "comida", nombre: "Comida", monto: -comida.monto });
+      if (comida) lineas.push({ fecha: disponible, orden: 4, tipo: "semanal", id: "comida",
+        nombre: extrema ? "Comida (modo extremo)" : "Comida", monto: -(extrema ? this.comidaMinima() : comida.monto) });
     }
 
     // Vencimientos sin pagar (con las fechas movidas)
@@ -138,7 +161,9 @@ const Proyeccion = {
     });
     lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
 
-    const inicial = inicialManual != null ? inicialManual : Dinero.actual();
+    // Colchón protegido: esa parte del dinero no se cuenta como disponible
+    const colchon = this.colchon();
+    const inicial = (inicialManual != null ? inicialManual : Dinero.actual()) - (proteger ? colchon : 0);
     let saldo = inicial;
     let chequesHasta = 0;
     const porDia = {};
@@ -153,7 +178,7 @@ const Proyeccion = {
       porDia[f] = { saldoFin: saldo, saldoSinCheques: redondear(saldo - chequesHasta), lineas: delDia };
     }
     return {
-      desde: hoyClave, hasta: fin, porDia, inicial, lineas,
+      desde: hoyClave, hasta: fin, porDia, inicial, lineas, colchon, protegido: proteger, comidaExtrema: extrema,
       cheques: lineas.filter(l => l.tipo === "cheque").map(l => l.fecha),
       chequesInfo: cheques
     };
@@ -235,6 +260,28 @@ const Proyeccion = {
       (c.origen === "real" ? " (real, ya en tu dinero)" : c.origen === "escenario" ? " (este escenario)" : ` (${redondear(c.horas)} h)`));
     const tengo = pr.inicial < 0 ? `−${dinero(-pr.inicial)}` : dinero(pr.inicial);
     return `Cuenta hecha con: dinero hoy ${tengo}, cheques ${cheques.length ? cheques.join(", ") : "ninguno"}, ` +
-      `días libres: ${this.diasLibresEntre(pr.desde, hasta)}.`;
+      `días libres: ${this.diasLibresEntre(pr.desde, hasta)}` +
+      (pr.protegido && pr.colchon > 0 ? `, colchón protegido ${dinero(pr.colchon)} (no se cuenta)` : "") +
+      (pr.comidaExtrema ? ", comida en modo extremo" : "") + ".";
+  },
+
+  // ---------- Bloque 16: arrastre ----------
+  // Primer pago de Nivel 1 que no se cubre completo: cuánto falta y hasta qué cheque se arrastra.
+  arrastre(pr) {
+    const N1 = ["renta", "prestamo", "comida", "transporte"];
+    const l = pr.lineas.find(x => N1.includes(x.id) && x.monto < 0 && x.saldo < -0.005 && pr.porDia[x.fecha]);
+    if (!l) return null;
+    const monto = -l.monto;
+    const queda = redondear(l.saldo + monto);           // lo que había justo antes de ese pago
+    const falta = redondear(Math.min(monto, -l.saldo)); // lo que no alcanza de ese pago
+    const antes = pr.lineas.filter(x => x.fecha < l.fecha || (x.fecha === l.fecha && x.orden < l.orden));
+    const entra = redondear(antes.filter(x => x.tipo === "cheque").reduce((s, x) => s + x.monto, 0));
+    const sale = redondear(-antes.filter(x => x.monto < 0).reduce((s, x) => s + x.monto, 0));
+    // Se arrastra hasta el primer cheque después del cual el saldo vuelve a 0 o más
+    const hasta = pr.cheques.find(c => c > l.fecha && pr.porDia[c].saldoFin >= -0.005) || null;
+    const dias = Math.max(1, Math.round((Jornadas.aFecha(l.fecha) - Jornadas.aFecha(pr.desde)) / 86400000));
+    const semanas = Math.max(1, Math.ceil(dias / 7));
+    return { id: l.id, nombre: l.nombre, fecha: l.fecha, monto, inicial: pr.inicial, entra, sale,
+             queda: Math.max(0, queda), falta, hasta, semanas, porSemana: redondear(falta / semanas) };
   }
 };

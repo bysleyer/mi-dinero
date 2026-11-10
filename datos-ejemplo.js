@@ -30,22 +30,22 @@ window.DATOS_EJEMPLO = {
   },
 
   gastosFijos: [
-    { id: "renta", nombre: "Renta", monto: 1200, frecuencia: "mensual", venceDia: 1, recargoAtraso: 40 },
+    { id: "renta", permite_mover: false, nombre: "Renta", monto: 1200, frecuencia: "mensual", venceDia: 1, recargoAtraso: 40 },
     {
-      id: "telefono", nombre: "Teléfono", monto: 120, frecuencia: "mensual",
+      id: "telefono", permite_mover: true, nombre: "Teléfono", monto: 120, frecuencia: "mensual",
       montoDespues: 100, mesDelMonto: "2026-11", venceDia: 20, nota: "Ejemplo", pagosPendientes: [], confirmar: false
     },
-    { id: "luz", nombre: "Luz", monto: 70, frecuencia: "mensual", partes: { consumo: 60, cuotaPlan: 10 },
+    { id: "luz", permite_mover: false, nombre: "Luz", monto: 70, frecuencia: "mensual", partes: { consumo: 60, cuotaPlan: 10 },
       deudaPlan: "deudaLuz", venceDia: 10, confirmar: false },
-    { id: "internet", nombre: "Internet", monto: 50, frecuencia: "mensual", facturaDia: 5, venceDia: 25,
+    { id: "internet", permite_mover: false, nombre: "Internet", monto: 50, frecuencia: "mensual", facturaDia: 5, venceDia: 25,
       cambio: { desde: "2027-01-05", monto: 60, confirmar: false } },
     { id: "comida", nombre: "Comida", monto: 150, frecuencia: "semanal" },
     {
-      id: "transporte", nombre: "Transporte", monto: 50, frecuencia: "semanal",
+      id: "transporte", permite_mover: false, nombre: "Transporte", monto: 50, frecuencia: "semanal",
       porDia: 10, diasPorSemana: 5, detalleDia: { trenIda: 5, taxi: 0, trenVuelta: 5 },
       montosRapidos: [{ nombre: "Tren", monto: 5 }]
     },
-    { id: "prestamoSemanal", nombre: "Préstamo semanal", monto: 50, frecuencia: "semanal", semanasRestantes: 3, confirmar: false }
+    { id: "prestamoSemanal", permite_mover: false, nombre: "Préstamo semanal", monto: 50, frecuencia: "semanal", semanasRestantes: 3, confirmar: false }
   ],
 
   deudasAtrasadas: [
@@ -62,6 +62,7 @@ window.DATOS_EJEMPLO = {
   ],
 
   colchon: { meta: 200 },
+  proteger_colchon: false,
 
   reglasDePrioridad: {
     nivel1: { descripcion: "No se atrasa", pagos: ["renta", "prestamoSemanal", "transporte", "comida"], comidaMinima: 100 },

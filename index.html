@@ -124,6 +124,7 @@
     <p id="fu-frase" class="fu-frase"></p>
     <button id="fu-cuenta" class="enlace fu-cuenta"></button>
     <button id="fu-sin-fecha" class="aviso-hoy aviso-boton" hidden></button>
+    <div id="fu-colchon"></div>
 
     <div id="fu-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
 
@@ -151,6 +152,7 @@
       </div>
     </section>
 
+    <div id="fu-arrastre"></div>
     <div id="fu-tarjetas" class="fu-tarjetas"></div>
 
     <button id="fu-libre" class="boton-mediano">No voy a trabajar un día</button>
@@ -178,6 +180,7 @@
     <button id="volver-cuando" class="volver">← Volver</button>
     <h1>¿Cuándo lo compro?</h1>
     <section id="pc-cabeza" class="tarjeta"></section>
+    <div id="pc-colchon"></div>
     <div id="pc-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
     <section class="tarjeta">
       <h2>Sugerencia</h2>
@@ -194,6 +197,7 @@
         </div>
         <div id="pc-calendario" class="cal-dias fu-calendario"></div>
       </div>
+      <p id="pc-monto-cal" class="estado"></p>
       <div id="pc-semana" hidden>
         <div class="cal-cabeza">
           <button id="pc-sem-anterior" class="cal-flecha" aria-label="Semana anterior">‹</button>
@@ -211,6 +215,8 @@
       <p class="estado">Toca un día para ver su impacto.</p>
     </section>
     <section id="pc-impacto" class="tarjeta" hidden></section>
+    <section id="pc-opciones" class="tarjeta" hidden></section>
+    <div id="pc-arrastre"></div>
     <section id="pc-partes" class="tarjeta" hidden></section>
   </main>
 
@@ -273,6 +279,7 @@
     <button id="volver-mover" class="volver">← Volver</button>
     <h1>Mover este pago</h1>
     <section id="mv-cabeza" class="tarjeta"></section>
+    <div id="mv-colchon"></div>
     <section class="tarjeta">
       <h2>Sugerencia</h2>
       <div id="mv-sugerencias"></div>
@@ -516,7 +523,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, respaldo -->
+  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, respaldo -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="app.js"></script>
@@ -532,6 +539,7 @@
   <script src="escenarios.js"></script>
   <script src="mover.js"></script>
   <script src="futuro.js"></script>
+  <script src="colchon.js"></script>
   <script src="respaldo.js"></script>
 </body>
 </html>

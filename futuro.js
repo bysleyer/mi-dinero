@@ -75,6 +75,9 @@ const Futuro = {
       ? `Tu día más apretado es el ${this.dia(bajo)}: te faltan ${dinero(-saldoBajo)}.`
       : `En el próximo mes no te quedas sin dinero. Tu punto más bajo es ${dinero(saldoBajo)} el ${this.dia(bajo)}.`;
     $("fu-cuenta").textContent = Proyeccion.textoCuenta(pr);
+    // Bloque 16: colchón usable y arrastre
+    $("fu-colchon").innerHTML = ColchonUI.html();
+    $("fu-arrastre").innerHTML = ArrastreUI.html(pr);
     // Bloque 15: gastos planeados que todavía no tienen fecha
     const sinFecha = Planeados.sinFecha();
     $("fu-sin-fecha").hidden = sinFecha === 0;
