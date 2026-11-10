@@ -642,3 +642,9 @@ main.contenedor > .volver {
 .p-promedio summary { font-weight: 700; cursor: pointer; }
 .d-planes { list-style: none; padding: 0; margin: 6px 0; font-size: .9rem; }
 .d-planes li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
+
+/* Sincronizar y vista "¿Se puede comprar?" */
+.ver-resultado p { margin: 0 0 8px; font-size: 1.05rem; }
+.ver-si, .ver-no { font-size: 1.35rem !important; }
+.ver-no strong { color: #b42318; }
+.ver-si strong { color: #1d6b3a; }

@@ -270,12 +270,12 @@ const Prestamo = {
 
   async borrar(id) {
     if (!(await preguntar("¿Borrar esta simulación?", "Sí, borrar"))) return;
-    Almacen.guardar("simulaciones", (Almacen.leer("simulaciones") || []).filter(x => x.id !== id));
+    Almacen.guardar("simulaciones", (Almacen.leer("simulaciones") || []).map(x => x.id === id ? { ...x, borrado: true, modificado: Almacen.ahora() } : x));
     this.mostrarGuardadas();
   },
 
   mostrarGuardadas() {
-    const lista = (Almacen.leer("simulaciones") || []).slice().reverse();
+    const lista = (Almacen.leer("simulaciones") || []).filter(x => !x.borrado).slice().reverse();
     const f = v => v === "ya" ? "ya" : v ? Futuro.diaCorto(v) : "+2 años";
     $("ps-guardadas").innerHTML = lista.length === 0 ? `<p class="vacio">No has guardado simulaciones.</p>` : lista.map(x => `
       <li>

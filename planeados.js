@@ -43,7 +43,8 @@ const Planeados = {
   motor(g, extra = {}) {
     const escenario = Futuro.estado().escenario;
     const cheque = Escenarios.config()[escenario];
-    const op = { chequeEscenario: cheque, excluirPlaneado: g.id, ...extra };
+    // ¿Y si gasto…? (y la vista "¿Se puede comprar?"): mira 3 meses, igual que lo libre del Plan
+    const op = { chequeEscenario: cheque, excluirPlaneado: g.id, ...(g.temporal ? { horizonte: 92 } : {}), ...extra };
     const pr = Proyeccion.calcular(op);
     const prLargo = Proyeccion.calcular({ ...op, horizonte: 730 });
     return { escenario, op, pr, prLargo, fechas: Object.keys(pr.porDia).sort(), _con: {} };
@@ -291,11 +292,11 @@ const Planeados = {
     window.dispatchEvent(new Event("movimientos-cambiaron"));
   },
 
-  // Cuánto le agrega un gasto a lo que falta (rápido: solo los próximos 30 días)
+  // Cuánto le agrega un gasto a lo que falta (los próximos 3 meses)
   efectoRapido(monto, fecha) {
     const g = { id: "temporal", monto, fechaLimite: fecha };
     const escenario = Futuro.estado().escenario;
-    const op = { chequeEscenario: Escenarios.config()[escenario] };
+    const op = { chequeEscenario: Escenarios.config()[escenario], horizonte: 92 }; // 3 meses, igual que "¿Y si gasto…?"
     const m = { op, pr: Proyeccion.calcular(op), _con: {} };
     m.fechas = Object.keys(m.pr.porDia).sort();
     const dia = fecha < hoy() ? hoy() : fecha;
@@ -435,7 +436,7 @@ const Planeados = {
     const color = f => evDia(f).color;
     if (est.vista === "mes") {
       const inicio = Plan.claveSemana(Jornadas.aFecha(m.fechas[0]));
-      const fin = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(m.fechas[m.fechas.length - 1])), 6);
+      const fin = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(m.fechas[Math.min(m.fechas.length, 30) - 1])), 6);
       const celdas = [];
       for (let f = inicio; f <= fin; f = Jornadas.sumarDias(f, 1)) celdas.push(f);
       $("pc-calendario").innerHTML = celdas.map(f => {

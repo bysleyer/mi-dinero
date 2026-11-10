@@ -42,11 +42,35 @@ const Almacen = {
   guardar(clave, valor) {
     try {
       localStorage.setItem(this.prefijo + clave, JSON.stringify(valor));
-      return true;
     } catch (e) {
       return false;
     }
+    this.cambioParaSync(clave);
+    return true;
   },
+
+  // ---------- Sincronización (sincronizar.js) ----------
+  // Se anota cuándo cambió cada dato (para que gane lo más reciente) y se avisa para subirlo.
+  CLAVES_SIN_SYNC: ["sync", "metaSync", "config", "formato"],
+  aplicandoSync: false,
+
+  cambioParaSync(clave) {
+    if (this.aplicandoSync || this.CLAVES_SIN_SYNC.includes(clave)) return;
+    try {
+      const meta = JSON.parse(localStorage.getItem(this.prefijo + "metaSync") || "{}");
+      meta[clave] = this.ahora();
+      localStorage.setItem(this.prefijo + "metaSync", JSON.stringify(meta));
+    } catch (e) { /* sin almacenamiento */ }
+    if (typeof Sync !== "undefined") Sync.programar();
+  },
+
+  leerMetaSync() { return this.leer("metaSync") || {}; },
+  guardarMetaSync(meta) { return this.guardar("metaSync", meta); },
+
+  // La llave vive SOLO en este aparato (no va en respaldos ni en el archivo de GitHub)
+  leerSync() { return this.leer("sync"); },
+  guardarSync(cambios) { return this.guardar("sync", { ...(this.leer("sync") || {}), ...cambios }); },
+  borrarSync() { return this.borrar("sync"); },
 
   borrar(clave) {
     try {
@@ -338,19 +362,22 @@ const Almacen = {
 
   // ---------- Pagos movidos (Bloque 12): solo fechas, no dinero ----------
   leerPagosMovidos() {
-    return this.leer("pagosMovidos") || {};
+    const todos = this.leer("pagosMovidos") || {};
+    return Object.fromEntries(Object.entries(todos).filter(([, v]) => !v.borrado));
   },
 
   guardarPagoMovido(clave, datos) {
-    const todos = this.leerPagosMovidos();
+    const todos = this.leer("pagosMovidos") || {};
     const momento = this.ahora();
-    todos[clave] = { ...(todos[clave] || { creado: momento }), ...datos, clave, modificado: momento };
+    const antes = todos[clave] && !todos[clave].borrado ? todos[clave] : { creado: momento };
+    todos[clave] = { ...antes, ...datos, clave, borrado: false, modificado: momento };
     return this.guardar("pagosMovidos", todos);
   },
 
   quitarPagoMovido(clave) {
-    const todos = this.leerPagosMovidos();
-    delete todos[clave];
+    const todos = this.leer("pagosMovidos") || {};
+    if (!todos[clave]) return true;
+    todos[clave] = { clave, borrado: true, modificado: this.ahora() };
     return this.guardar("pagosMovidos", todos);
   },
 
