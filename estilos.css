@@ -428,3 +428,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .esc-lado .boton-chico, .pago-lado .boton-chico + .boton-chico { margin-top: 0; min-height: 36px; padding: 0 10px; font-size: .85rem; }
 #mv-detalle .resumen li span:last-child, #mv-cabeza .resumen li span:last-child { white-space: normal; min-width: 0; overflow-wrap: anywhere; }
 #mv-detalle .resumen li span:first-child, #mv-cabeza .resumen li span:first-child { flex: none; max-width: 45%; }
+
+/* ---------- Misma cuenta en ¿Y si cobro? y Mover ---------- */
+.esc-cuenta { font-size: .8rem; margin-top: 4px; }
+.mover-igual { font-size: .8rem; padding: 2px 0; }

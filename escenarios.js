@@ -62,111 +62,81 @@ const Escenarios = {
     return "";
   },
 
-  // ---------- Lo que hay que pagar ----------
-  pendientes() {
-    const hoyClave = hoy();
-    const hasta = Jornadas.sumarDias(hoyClave, this.DIAS - 1);
-    const items = Vencimientos.entre(hoyClave, hasta);
-    const r = this.reglas();
-
-    // Nivel 1
-    const n1 = [];
-    const rentaSemana = Plan.calcular().semanalRenta;
-    const prestamo = items.find(i => i.id === "prestamo" && !i.partes[0].pagado);
-    const transporte = Vencimientos.gasto("transporte");
-    const comida = Vencimientos.gasto("comida");
-    const porId = {
-      renta: rentaSemana > 0 && { id: "renta", nombre: "Renta (lo de esta semana)", monto: rentaSemana },
-      prestamoSemanal: prestamo && { id: "prestamoSemanal", nombre: "Préstamo semanal", monto: prestamo.partes[0].monto, fecha: prestamo.fecha },
-      transporte: transporte && {
-        id: "transporte", monto: transporte.porDia * Jornadas.config().diasDeTrabajoPorSemana,
-        nombre: `Transporte (${dinero(transporte.porDia)} × ${Jornadas.config().diasDeTrabajoPorSemana} días)`
-      },
-      comida: comida && { id: "comida", nombre: "Comida", monto: comida.monto, minimo: r.nivel1.comidaMinima }
-    };
-    r.nivel1.pagos.forEach(id => { if (porId[id]) n1.push(porId[id]); });
-
-    // Nivel 2: facturas y atrasos de internet en la ventana, por fecha
-    const n2 = items
-      .filter(i => ["luz", "internet", "telefono"].includes(i.id) || i.inmediato)
-      .map(i => {
-        const monto = i.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0);
-        const reglas = r.nivel2[i.id] || {};
-        return { id: i.id, nombre: i.nombre, monto, fecha: i.fecha, reglas, riesgo: reglas.riesgo,
-                 claveMov: i.claveMov, movido: i.movido };
-      })
-      .filter(i => i.monto > 0)
-      .sort((a, b) => a.fecha.localeCompare(b.fecha));
-
-    return { n1, n2, desde: hoyClave, hasta };
-  },
-
   // ---------- Repartir un escenario ----------
-  repartir(ingreso, dineroHoy, porcentajeColchon) {
-    const { n1, n2, desde, hasta } = this.pendientes();
-    const siguienteCobro = Jornadas.sumarDias(Jornadas.periodoProximoCheque().cobro, 7);
-    const disponible = redondear(dineroHoy + ingreso);
-    let M = disponible;
+  // Usa la MISMA cuenta día por día que "Mover este pago" (proyeccion.js):
+  // dinero de arriba + cheques en su fecha (el próximo con el monto del escenario) − vencimientos y gastos semanales.
+  N1: ["renta", "prestamo", "transporte", "comida"],
+  N2: ["luz", "telefono", "internet"],
+
+  repartir(ingreso, _dineroHoy, porcentajeColchon) {
+    const r = this.reglas();
+    const pr = Proyeccion.calcular({ chequeEscenario: ingreso });
+    const desde = pr.desde;
+    const hasta = Jornadas.sumarDias(desde, this.DIAS - 1);
     const filas = [];
     const noCubreN1 = [];
+    const textoCheque = f => `Se paga con el cheque del ${Jornadas.textoDia(f).toLowerCase()}`;
 
-    // Nivel 1 en orden (la renta va antes que el préstamo: si falta para la renta, el préstamo se salta)
+    let saldo = pr.inicial;
+    let chequesHasta = 0;
     let faltoParaRenta = false;
-    n1.forEach(p => {
-      let paga = 0, estado, costo = "";
-      if (p.id === "comida") {
-        if (M >= p.monto) { paga = p.monto; estado = "Se paga"; }
-        else if (M >= p.minimo) { paga = p.minimo; estado = `Se paga, bajada a ${dinero(p.minimo)}`; }
-        else { paga = M; estado = paga > 0 ? `Parcial (${dinero(paga)})` : "Se atrasa"; }
-      } else {
-        paga = Math.min(M, p.monto);
-        estado = paga >= p.monto - 0.005 ? "Se paga" : paga > 0 ? `Parcial (${dinero(paga)})` : "Se atrasa";
-        if (p.id === "renta" && paga < p.monto - 0.005) { faltoParaRenta = true; costo = this.costo("renta"); }
-        if (p.id === "prestamoSemanal" && paga < p.monto - 0.005 && faltoParaRenta) {
-          costo = "Se salta para completar la renta (única excepción). Avisa antes a quien te prestó.";
+    for (let f = desde; f <= hasta; f = Jornadas.sumarDias(f, 1)) {
+      pr.porDia[f].lineas.forEach(l => {
+        if (l.tipo === "cheque") { saldo = redondear(saldo + l.monto); chequesHasta += l.monto; return; }
+        const monto = -l.monto;
+        const nivel = this.N1.includes(l.id) ? 1 : (this.N2.includes(l.id) || l.inmediato) ? 2 : 0;
+        if (!nivel) { saldo = redondear(saldo + l.monto); return; }
+        let paga = 0, estado, costo = "", clase, conCheque = null;
+
+        if (nivel === 1) {
+          // Nivel 1, en orden dentro del día (la renta antes que el préstamo)
+          const antes = saldo;
+          const minimo = l.id === "comida" ? r.nivel1.comidaMinima : monto;
+          if (antes >= monto - 0.005) { paga = monto; estado = "Se paga"; clase = "paga"; }
+          else if (l.id === "comida" && antes >= minimo) { paga = minimo; estado = `Se paga, bajada a ${dinero(minimo)}`; clase = "baja"; }
+          else { paga = Math.max(0, antes); estado = paga > 0 ? `Parcial (${dinero(paga)})` : "Se atrasa"; clase = "falta"; }
+          if (paga > 0 && antes - chequesHasta < paga - 0.005 && chequesHasta > 0) conCheque = Proyeccion.ultimoCheque(pr, f);
+          if (l.id === "renta" && clase === "falta") { faltoParaRenta = true; costo = this.costo("renta"); }
+          if (l.id === "prestamo" && clase === "falta" && faltoParaRenta) {
+            costo = "Se salta para completar la renta (única excepción). Avisa antes a quien te prestó.";
+          }
+          if (clase === "falta") noCubreN1.push(l.nombre);
+        } else {
+          // Nivel 2: igual que "Mover este pago": ¿el saldo al final de su día queda en 0 o más?
+          const e = Proyeccion.estadoEnFecha(pr, f);
+          const reglas = r.nivel2[l.id] || {};
+          const disponible = Math.max(0, redondear(pr.porDia[f].saldoFin + monto));
+          const partes = reglas.sePuedeDividir ? (reglas.pagos || 2) : 1;
+          if (e.alcanza) {
+            paga = monto; clase = "paga"; conCheque = e.conCheque; estado = "Se paga";
+          } else if (partes > 1 && disponible >= monto / partes) {
+            paga = redondear(monto / partes); estado = "Se mueve o se divide"; clase = "mueve";
+            costo = `Paga ${dinero(paga)} ahora y ${dinero(monto - paga)} después. Pide la fecha nueva por escrito.`;
+          } else if (disponible > 0 && !reglas.sePuedeMover) {
+            paga = disponible; estado = `Parcial (${dinero(paga)})`; costo = this.costo(l.id); clase = "falta";
+          } else {
+            estado = reglas.riesgo ? "Se atrasa" : "Se mueve o se divide";
+            costo = this.costo(l.id); clase = reglas.riesgo ? "falta" : "mueve";
+          }
+          l.riesgo = reglas.riesgo;
         }
-      }
-      M = redondear(M - paga);
-      const completo = estado.startsWith("Se paga");
-      if (!completo) noCubreN1.push(p.nombre);
-      filas.push({ nivel: 1, ...p, paga, estado, costo, clase: completo ? (estado === "Se paga" ? "paga" : "baja") : "falta" });
-    });
+        if (conCheque && clase === "paga") estado = textoCheque(conCheque);
+        saldo = redondear(saldo + l.monto);
+        filas.push({ nivel, id: l.id, nombre: l.nombre, monto, fecha: f, paga, estado, costo, clase,
+                     conCheque, claveMov: l.claveMov, movido: l.movido, riesgo: l.riesgo });
+      });
+    }
 
-    // Nivel 2 por fecha más cercana
-    n2.forEach(p => {
-      let paga = 0, estado, costo = "", clase;
-      const puedeEsperar = p.fecha >= siguienteCobro;
-      const partes = p.reglas.sePuedeDividir ? (p.reglas.pagos || 2) : 1;
-      if (M >= p.monto - 0.005) {
-        paga = p.monto; estado = "Se paga"; clase = "paga";
-      } else if (partes > 1 && M >= p.monto / partes) {
-        paga = redondear(p.monto / partes);
-        estado = "Se mueve o se divide";
-        costo = `Paga ${dinero(paga)} ahora y ${dinero(p.monto - paga)} después. Pide la fecha nueva por escrito.`;
-        clase = "mueve";
-      } else if (puedeEsperar) {
-        estado = "Se mueve o se divide";
-        costo = `Vence después de tu siguiente cheque (${Jornadas.textoDia(siguienteCobro).toLowerCase()}): se puede pagar con ese, sin recargo.`;
-        clase = "mueve";
-        p.conSiguienteCheque = true;
-      } else if (M > 0 && !p.reglas.sePuedeMover) {
-        paga = M; estado = `Parcial (${dinero(paga)})`; costo = this.costo(p.id); clase = "falta";
-      } else {
-        estado = p.riesgo ? "Se atrasa" : "Se mueve o se divide";
-        costo = this.costo(p.id);
-        clase = p.riesgo ? "falta" : "mueve";
-      }
-      M = redondear(M - paga);
-      filas.push({ nivel: 2, ...p, paga, estado, costo, clase });
-    });
-
-    // Lo que vence después del siguiente cheque no cuenta como faltante: se paga con ese cheque
-    const necesario = redondear([...n1, ...n2].filter(p => !p.conSiguienteCheque).reduce((s, p) => s + p.monto, 0));
-    const falta = redondear(Math.max(0, necesario - disponible));
+    // Resumen: el saldo más bajo de estos días dice si falta o cuánto sobra sin poner nada en riesgo
+    let minimo = Infinity;
+    for (let f = desde; f <= hasta; f = Jornadas.sumarDias(f, 1)) minimo = Math.min(minimo, pr.porDia[f].saldoFin);
+    const falta = redondear(Math.max(0, -minimo));
+    const sobra = falta > 0 ? 0 : redondear(minimo);
     const seMueven = filas.filter(f => f.paga < f.monto - 0.005);
-    // El extra (semana buena) solo se reparte cuando no falta nada
-    const reparto = M > 0 && falta === 0 ? this.repartirExtra(M, porcentajeColchon, filas) : [];
-    return { ingreso, disponible, filas, sobra: M, falta, seMueven, noCubreN1, reparto, desde, hasta };
+    const reparto = sobra > 0 ? this.repartirExtra(sobra, porcentajeColchon, filas) : [];
+    const disponible = redondear(pr.inicial + pr.chequesInfo.filter(c => c.fecha <= hasta && c.origen !== "real").reduce((s, c) => s + c.monto, 0));
+    return { ingreso, disponible, filas, sobra, falta, seMueven, noCubreN1, reparto, desde, hasta,
+             cuenta: Proyeccion.textoCuenta(pr, hasta) };
   },
 
   // Semana buena: renta (del mes y atrasada) → internet atrasado → colchón (hasta su meta) → deudas del Bloque 4
@@ -222,9 +192,9 @@ const Escenarios = {
   mostrar() {
     if ($("pantalla-escenarios").hidden) return;
     const c = this.config();
-    const hoyDinero = this.dineroHoy();
-    $("e-dinero-hoy").innerHTML = `Dinero que tengo hoy: <strong>${dinero(hoyDinero)}</strong>` +
-      (Dinero.manualVigente() != null ? " (escrito a mano en ¿Me alcanza?)" : " (calculado de tus movimientos)");
+    // La cuenta usa el número de arriba (igual que "Mover este pago")
+    const hoyDinero = Dinero.actual();
+    $("e-dinero-hoy").innerHTML = `Dinero que tengo hoy: <strong>${hoyDinero < 0 ? "−" + dinero(-hoyDinero) : dinero(hoyDinero)}</strong> (el número de arriba)`;
 
     const resultados = this.ESCENARIOS.map(e => ({ ...e, monto: c[e.id], r: this.repartir(c[e.id], hoyDinero || 0, c.porcentajeColchon) }));
     const menos = resultados[0].r;
@@ -235,7 +205,7 @@ const Escenarios = {
     $("e-resultados").innerHTML = resultados.map(({ id, titulo, monto, r }) => `
       <section class="tarjeta escenario" data-escenario="${id}">
         <h2>${titulo}: ${dinero(monto)}${id === "esperado" && c.esperadoAuto ? ' <span class="opcional">(estimado)</span>' : ""}</h2>
-        <p class="estado">Dinero disponible: ${dinero(r.disponible)}</p>
+        <p class="estado esc-cuenta">${escapar(r.cuenta)}</p>
         <ul class="escenario-lista">
           ${[1, 2].map(n => `
             <li class="nivel-titulo">Nivel ${n}${n === 1 ? " · no se atrasa" : " · se divide o se mueve"}</li>
@@ -248,18 +218,20 @@ const Escenarios = {
                 </div>
                 <div class="esc-lado">
                   <span class="esc-estado">${escapar(f.estado)}</span>
-                  ${f.nivel === 2 && f.clase !== "paga" && Vencimientos.MOVIBLES.includes(f.id)
-                    ? `<button class="boton-chico" data-mover="${escapar(f.claveMov)}">Mover</button>` : ""}
+                  ${f.nivel === 2 && Vencimientos.MOVIBLES.includes(f.id)
+                    ? f.clase !== "paga"
+                      ? `<button class="boton-chico" data-mover="${escapar(f.claveMov)}" data-escenario="${id}">Mover</button>`
+                      : f.conCheque ? `<button class="enlace mover-igual" data-mover="${escapar(f.claveMov)}" data-escenario="${id}">Mover igual</button>` : ""
+                    : ""}
                 </div>
               </li>`).join("") || '<li class="vacio">Nada en estas fechas.</li>'}`).join("")}
         </ul>
         <div class="esc-resumen">
           ${r.falta > 0
-            ? `<p class="mensaje-sobrante negativo">Falta ${dinero(r.falta)} para cubrir todo a tiempo</p>
-               ${r.sobra > 0 ? `<p class="esc-mueven">Te quedan ${dinero(r.sobra)}: úsalos para lo que se movió.</p>` : ""}`
-            : `<p class="mensaje-sobrante positivo">Sobran ${dinero(r.sobra)}</p>`}
+            ? `<p class="mensaje-sobrante negativo">Falta ${dinero(r.falta)} para cubrir todo a tiempo</p>`
+            : `<p class="mensaje-sobrante positivo">Sobran ${dinero(r.sobra)} (lo que queda libre en estos días)</p>`}
           ${r.seMueven.length ? `<p class="esc-mueven"><strong>Se mueve o se atrasa:</strong>
-            ${r.seMueven.map(f => `${escapar(f.nombre)} (${dinero(f.monto - f.paga)}${f.conSiguienteCheque ? ", con el siguiente cheque" : ""})`).join(", ")}</p>` : ""}
+            ${r.seMueven.map(f => `${escapar(f.nombre)} (${dinero(f.monto - f.paga)})`).join(", ")}</p>` : ""}
           ${r.reparto.length ? `<p class="esc-extra-titulo"><strong>El extra va a:</strong></p>
             <ul class="resumen">${r.reparto.map(x => `<li><span>${escapar(x.nombre)}</span><span>${dinero(x.monto)}</span></li>`).join("")}</ul>` : ""}
         </div>
@@ -298,7 +270,11 @@ const Escenarios = {
       const b = e.target.closest("[data-ver-plan]");
       if (b) this.verEnPlan(b.dataset.verPlan);
       const m = e.target.closest("[data-mover]");
-      if (m) Mover.abrir(m.dataset.mover, "pantalla-escenarios");
+      if (m) {
+        // Mover abre con el cheque de este escenario, para que las dos pantallas hagan la misma cuenta
+        const esc = (this._resultados || []).find(x => x.id === m.dataset.escenario);
+        Mover.abrir(m.dataset.mover, "pantalla-escenarios", esc ? { monto: esc.monto, titulo: esc.titulo } : null);
+      }
     });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
   }

@@ -40,53 +40,11 @@ const Mover = {
   },
 
   // ---------- Proyección día por día ----------
-  // Dinero de arriba + cheques esperados (si el real de esa semana ya está registrado, ya cuenta en tu dinero)
-  // − vencimientos y gastos semanales, en el orden de prioridad del Bloque 11. Deja fuera el pago "excluir".
+  // La misma cuenta que "¿Y si cobro...?" (proyeccion.js). Si se abrió desde un escenario, usa su cheque.
+  escenario: null,
+
   proyeccion(excluir) {
-    const cfg = this.config();
-    const hoyClave = hoy();
-    const fin = Jornadas.sumarDias(hoyClave, cfg.horizonte - 1);
-    const lineas = [];
-
-    // Cheques y gastos semanales (comida y transporte) del día en que hay dinero
-    const diaCheque = Math.max(0, Jornadas.DIAS.indexOf(cfg.chequeDia));
-    const inicioBusqueda = Jornadas.sumarDias(hoyClave, -cfg.chequeRetraso);
-    let cobro = Jornadas.sumarDias(inicioBusqueda, (diaCheque - Jornadas.aFecha(inicioBusqueda).getDay() + 7) % 7);
-    const comida = Vencimientos.gasto("comida");
-    const transporte = Vencimientos.gasto("transporte");
-    const ingresos = Almacen.leerMovimientos().filter(m => m.tipo === "ingreso");
-    for (; Jornadas.sumarDias(cobro, cfg.chequeRetraso) <= fin; cobro = Jornadas.sumarDias(cobro, 7)) {
-      const disponible = Jornadas.sumarDias(cobro, cfg.chequeRetraso);
-      const lunes = Plan.claveSemana(Jornadas.aFecha(cobro));
-      const domingo = Jornadas.sumarDias(lunes, 6);
-      const yaCobrado = ingresos.some(m => m.fecha >= lunes && m.fecha <= domingo);
-      if (!yaCobrado) {
-        lineas.push({ fecha: disponible, orden: 0, tipo: "cheque", nombre: "Cheque esperado",
-                      monto: Alcanza.chequeEsperado(cobro).monto });
-      }
-      if (transporte) lineas.push({ fecha: disponible, orden: 3, tipo: "semanal", nombre: "Transporte de la semana", monto: -transporte.monto });
-      if (comida) lineas.push({ fecha: disponible, orden: 4, tipo: "semanal", nombre: "Comida de la semana", monto: -comida.monto });
-    }
-
-    // Vencimientos sin pagar (con las fechas movidas), menos el que se está moviendo
-    Vencimientos.entre(hoyClave, fin).forEach(item => {
-      if (item.alerta || item.claveMov === excluir) return;
-      const pendiente = item.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0);
-      if (pendiente <= 0) return;
-      const orden = item.id === "renta" ? 1 : item.id === "prestamo" ? 2 : item.inmediato ? 5 : 10;
-      lineas.push({ fecha: item.fecha, orden, tipo: "pago", nombre: item.nombre, letra: item.letra, monto: -pendiente, movido: !!item.movido });
-    });
-    lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
-
-    let saldo = Dinero.actual();
-    const porDia = {};
-    this.dias(hoyClave, fin).forEach(f => {
-      const delDia = lineas.filter(l => l.fecha === f);
-      delDia.forEach(l => { saldo = redondear(saldo + l.monto); });
-      porDia[f] = { saldoFin: saldo, lineas: delDia };
-    });
-    const cheques = lineas.filter(l => l.tipo === "cheque").map(l => l.fecha);
-    return { desde: hoyClave, hasta: fin, porDia, cheques, inicial: Dinero.actual() };
+    return Proyeccion.calcular({ excluir, chequeEscenario: this.escenario ? this.escenario.monto : null });
   },
 
   // El pago original (sin mover), con lo que falta pagar
@@ -98,11 +56,11 @@ const Mover = {
     return { id, fecha, nombre: item.nombre, monto, item };
   },
 
-  // ¿No alcanza para pagarlo en su fecha? (para mostrar "Mover" en Próximos pagos)
+  // ¿No alcanza para pagarlo en su fecha? (para mostrar "Mover" en Próximos pagos; sin escenario)
   noAlcanza(item) {
     const pago = this.pagoOriginal(item.claveMov);
     if (!pago || pago.monto <= 0) return false;
-    const pr = this.proyeccion(item.claveMov);
+    const pr = Proyeccion.calcular({ excluir: item.claveMov });
     const dia = pr.porDia[pago.fecha < pr.desde ? pr.desde : pago.fecha];
     return !dia || dia.saldoFin - pago.monto < -0.005;
   },
@@ -164,10 +122,11 @@ const Mover = {
   },
 
   // ---------- Pantalla ----------
-  abrir(clave, origen) {
+  abrir(clave, origen, escenario = null) {
     if (!this.pagoOriginal(clave)) return;
     this.clave = clave;
     this.origen = origen;
+    this.escenario = escenario; // { monto, titulo } si viene de "¿Y si cobro...?"
     this.seleccion = null;
     const guardado = Almacen.leerPagosMovidos()[clave];
     $("mv-acordado").checked = !!(guardado && guardado.acordado);
@@ -200,6 +159,18 @@ const Mover = {
     const { pago, pr, evaluacion } = ev;
     const guardado = Almacen.leerPagosMovidos()[this.clave];
     const faltaHoy = redondear(Math.max(0, pago.monto - Math.max(0, pr.inicial)));
+    // En su fecha: con todo lo de ese día pagado, incluido este pago (misma regla que ¿Y si cobro...?)
+    const enSuFecha = evaluacion[pago.fecha];
+    let estadoFecha = "";
+    if (enSuFecha) {
+      const sinCheques = pr.porDia[pago.fecha].saldoSinCheques - pago.monto;
+      if (enSuFecha.despues >= -0.005) {
+        const ch = sinCheques < -0.005 ? Proyeccion.ultimoCheque(pr, pago.fecha) : null;
+        estadoFecha = ch ? `Se paga con el cheque del ${Jornadas.textoDia(ch).toLowerCase()}` : "Se paga en su fecha";
+      } else {
+        estadoFecha = `No alcanza en su fecha: falta ${dinero(-enSuFecha.despues)}`;
+      }
+    }
 
     $("mv-cabeza").innerHTML = `
       <h2 class="mv-nombre">${escapar(pago.nombre)}</h2>
@@ -207,7 +178,10 @@ const Mover = {
         <li><span>Monto</span><span>${dinero(pago.monto)}</span></li>
         <li><span>Vencimiento original</span><span>${Jornadas.textoDia(pago.fecha)}</span></li>
         <li><span>Para cubrirlo hoy te falta</span><span class="${faltaHoy > 0 ? "error" : "ok"}">${dinero(faltaHoy)}</span></li>
+        ${estadoFecha ? `<li><span>En su fecha</span><span class="${estadoFecha.startsWith("No") ? "error" : "ok"}">${estadoFecha}</span></li>` : ""}
       </ul>
+      ${this.escenario ? `<p class="estado">Escenario: ${escapar(this.escenario.titulo)} (${dinero(this.escenario.monto)})</p>` : ""}
+      <p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(pr))}</p>
       ${guardado ? `<div class="mv-guardado">
           <strong>Movido:</strong> ${guardado.partes.map(p => `${dinero(p.monto)} el ${Jornadas.textoDia(p.fecha).toLowerCase()}`).join(" y ")}
           ${guardado.acordado ? " · ✓ acordado con la empresa" : '<div class="aviso-movido">⚠ Falta acordarlo con la empresa</div>'}
