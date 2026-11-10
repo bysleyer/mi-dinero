@@ -83,9 +83,12 @@ const Proyeccion = {
 
   // Cheque esperado de un día de cobro: paga la semana (lunes a domingo) anterior
   chequeEsperado(cobro) {
+    // Bloque 17: pago por hora, días de trabajo, etc. como valen en la semana trabajada
     const lunesTrabajo = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(cobro)), -7);
-    const s = this.horasSemana(lunesTrabajo);
-    return { monto: redondear(Jornadas.netoDeHoras(s.horas)), horas: s.horas, libres: s.diasLibres, semana: lunesTrabajo };
+    return Datos.conFecha(lunesTrabajo, () => {
+      const s = this.horasSemana(lunesTrabajo);
+      return { monto: redondear(Jornadas.netoDeHoras(s.horas)), horas: s.horas, libres: s.diasLibres, semana: lunesTrabajo };
+    });
   },
 
   // ---------- Saldo día por día ----------
@@ -116,8 +119,6 @@ const Proyeccion = {
     const diaCheque = Math.max(0, Jornadas.DIAS.indexOf(cfg.chequeDia));
     const inicioBusqueda = Jornadas.sumarDias(hoyClave, -cfg.chequeRetraso);
     let cobro = Jornadas.sumarDias(inicioBusqueda, (diaCheque - Jornadas.aFecha(inicioBusqueda).getDay() + 7) % 7);
-    const comida = Vencimientos.gasto("comida");
-    const transporte = Vencimientos.gasto("transporte");
     const ingresos = Almacen.leerMovimientos().filter(esCheque); // "Otro ingreso" no reemplaza al cheque
     let escenarioUsado = false;
     for (; Jornadas.sumarDias(cobro, cfg.chequeRetraso) <= fin; cobro = Jornadas.sumarDias(cobro, 7)) {
@@ -137,12 +138,15 @@ const Proyeccion = {
             : `Cheque (${redondear(esperado.horas)} h${esperado.libres ? `, ${esperado.libres} ${esperado.libres === 1 ? "día libre" : "días libres"}` : ""})` });
       }
       // Transporte: solo los días que se trabaja en la semana del cobro; comida igual
-      const diasTransporte = this.horasSemana(lunes).diasConTrabajo;
+      // (Bloque 17: con las cifras que valen ese día)
+      const { comida, transporte, diasTransporte, minima } = Datos.conFecha(disponible, () => ({
+        comida: Vencimientos.gasto("comida"), transporte: Vencimientos.gasto("transporte"),
+        diasTransporte: this.horasSemana(lunes).diasConTrabajo, minima: this.comidaMinima() }));
       if (transporte && diasTransporte > 0) lineas.push({ fecha: disponible, orden: 3, tipo: "semanal", id: "transporte",
         nombre: `Transporte (${dinero(transporte.porDia)} × ${diasTransporte} ${diasTransporte === 1 ? "día" : "días"})`,
         monto: -redondear(transporte.porDia * diasTransporte) });
       if (comida) lineas.push({ fecha: disponible, orden: 4, tipo: "semanal", id: "comida",
-        nombre: extrema ? "Comida (modo extremo)" : "Comida", monto: -(extrema ? this.comidaMinima() : comida.monto) });
+        nombre: extrema && minima != null ? "Comida (modo extremo)" : "Comida", monto: -(extrema && minima != null ? minima : comida.monto) });
     }
 
     // Vencimientos sin pagar (con las fechas movidas)
@@ -158,6 +162,11 @@ const Proyeccion = {
         detalle: pendientes.length > 1 ? pendientes.map(p => dinero(p.monto)).join(" + ") : "",
         monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato,
         planeado: !!item.planeado });
+    });
+    // Bloque 18: líneas que solo se simulan (ej.: un préstamo); no se guardan en ningún lado
+    (opciones.extras || []).forEach(x => {
+      if (x.fecha >= hoyClave && x.fecha <= fin) lineas.push({ fecha: x.fecha, orden: x.monto >= 0 ? 0.5 : 16, tipo: "simulado",
+        id: "simulado", nombre: x.nombre, monto: x.monto });
     });
     lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
 
@@ -197,6 +206,10 @@ const Proyeccion = {
     const orden = Plan.deudasEnOrden();
     const saldos = {};
     orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id)); });
+    // Bloque 18: simular que una deuda baja (ej.: pagar renta atrasada con un préstamo)
+    Object.entries(opciones.deudaAjustes || {}).forEach(([id, cambio]) => {
+      if (saldos[id] != null) saldos[id] = Math.max(0, saldos[id] + cambio);
+    });
     const plan = Almacen.leerPlan();
     let colchon = plan.sobres.colchon;
     const meta = Plan.metaColchon();

@@ -11,7 +11,7 @@ const ColchonUI = {
     const protegido = Proyeccion.protegerColchon();
     return `
       <div class="colchon-linea">
-        <span>Colchón: <strong>${dinero(c)}</strong> ${protegido ? "(protegido: no se cuenta)" : "(puedes usarlo)"}</span>
+        <span>Colchón: <strong>${dinero(c)}</strong> de ${dinero(Plan.metaColchon())} ${protegido ? "(protegido: no se cuenta)" : "(puedes usarlo)"}</span>
         <label class="colchon-interruptor"><input type="checkbox" data-proteger-colchon ${protegido ? "checked" : ""}> Proteger el colchón</label>
       </div>`;
   },

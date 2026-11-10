@@ -130,10 +130,15 @@ const Vencimientos = {
       const primero = new Date(a, m, 1);
       const clavePrimero = Resumen.aClave(primero);
       if (clavePrimero > hasta) break;
-      this.mensuales().forEach(def => {
+      // Bloque 17: el día y el monto salen de las cifras que valen ese mes / ese día
+      Datos.conFecha(clavePrimero, () => this.mensuales()).forEach(def => {
         const fecha = this.fechaDelMes(primero.getFullYear(), primero.getMonth(), def.dia);
         if (fecha >= desde && fecha <= hasta) {
-          agregar({ id: def.id, letra: def.letra, nombre: def.nombre, orden: def.orden, partes: def.partes(fecha) }, fecha);
+          const delDia = Datos.conFecha(fecha, () => {
+            const d2 = this.mensuales().find(x => x.id === def.id) || def;
+            return { nombre: d2.nombre, partes: d2.partes(fecha) };
+          });
+          agregar({ id: def.id, letra: def.letra, nombre: delDia.nombre, orden: def.orden, partes: delDia.partes }, fecha);
         }
       });
 

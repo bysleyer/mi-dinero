@@ -70,7 +70,10 @@
       <ul id="movimientos" class="movimientos"></ul>
     </section>
 
-    <button id="abrir-respaldo" class="boton-chico boton-final">Respaldo</button>
+    <div class="botones-final">
+      <button id="abrir-datosfijos" class="boton-chico">Datos fijos</button>
+      <button id="abrir-respaldo" class="boton-chico">Respaldo</button>
+    </div>
     <p id="version-app" class="version-app"></p>
   </main>
 
@@ -162,6 +165,7 @@
       <p class="estado">Las mismas cuentas, en lista.</p>
       <button id="abrir-alcanza" class="boton-mediano">¿Me alcanza? (día por día)</button>
       <button id="fu-abrir-escenarios" class="boton-mediano">¿Y si cobro...? (por niveles, montos editables)</button>
+      <button id="abrir-prestamo" class="boton-mediano">¿Me conviene un préstamo?</button>
     </details>
   </main>
 
@@ -218,6 +222,61 @@
     <section id="pc-opciones" class="tarjeta" hidden></section>
     <div id="pc-arrastre"></div>
     <section id="pc-partes" class="tarjeta" hidden></section>
+  </main>
+
+  <!-- Pantalla: ¿Me conviene un préstamo? (Bloque 18) - solo simula -->
+  <main id="pantalla-prestamo" class="contenedor" hidden>
+    <button id="volver-prestamo" class="volver">← Volver</button>
+    <h1>¿Me conviene un préstamo?</h1>
+    <p class="estado">Solo simula: no registra dinero ni agrega deudas.</p>
+    <section class="tarjeta">
+      <div class="campo"><label for="ps-monto">Monto que recibiría</label>
+        <input id="ps-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="campo"><label for="ps-pago">Pago por semana</label>
+        <input id="ps-pago" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="ps-dos">
+        <div class="campo"><label for="ps-semanas">Número de semanas</label>
+          <input id="ps-semanas" type="number" inputmode="numeric" step="1" min="1"></div>
+        <div class="campo"><label for="ps-total">o total a devolver</label>
+          <input id="ps-total" type="number" inputmode="decimal" step="0.01" min="0"></div>
+      </div>
+      <div class="campo"><label for="ps-dia">Día de la semana del pago</label>
+        <select id="ps-dia">
+          <option value="lunes">Lunes</option><option value="martes">Martes</option><option value="miércoles">Miércoles</option>
+          <option value="jueves">Jueves</option><option value="viernes" selected>Viernes</option><option value="sábado">Sábado</option><option value="domingo">Domingo</option>
+        </select></div>
+      <div class="campo"><label for="ps-fecha">Fecha en que lo recibiría</label>
+        <input id="ps-fecha" type="date"></div>
+      <div class="campo"><label for="ps-para">Para qué lo usaría</label>
+        <select id="ps-para">
+          <option value="renta">Renta atrasada</option>
+          <option value="planeado">Un gasto planeado</option>
+          <option value="otro">Otro</option>
+        </select></div>
+      <div class="campo" id="ps-campo-planeado" hidden><label for="ps-planeado">¿Cuál gasto planeado?</label>
+        <select id="ps-planeado"></select></div>
+      <p id="ps-error" class="error"></p>
+      <button id="ps-simular" class="boton-grande deuda">Simular</button>
+    </section>
+    <section id="ps-resultado" class="tarjeta" hidden></section>
+    <section class="tarjeta">
+      <h2>Simulaciones guardadas</h2>
+      <ul id="ps-guardadas" class="movimientos"></ul>
+    </section>
+  </main>
+
+  <!-- Pantalla: Datos fijos (Bloque 17) -->
+  <main id="pantalla-datosfijos" class="contenedor" hidden>
+    <button id="volver-datosfijos" class="volver">← Volver</button>
+    <h1>Datos fijos</h1>
+    <p class="estado">Tus cifras. Los cambios se guardan en este teléfono, no cambian tu archivo mis-datos.json,
+      y lo que ya pasó no se recalcula.</p>
+    <section id="df-efecto" class="tarjeta df-efecto" hidden></section>
+    <div id="df-secciones"></div>
+    <section class="tarjeta">
+      <h2>Historial de cambios</h2>
+      <ul id="df-historial" class="movimientos"></ul>
+    </section>
   </main>
 
   <!-- Ventana de un día (Mi futuro) -->
@@ -523,9 +582,10 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, respaldo -->
+  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, respaldo -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
+  <script src="campos.js"></script>
   <script src="app.js"></script>
   <script src="plan.js"></script>
   <script src="proyeccion.js"></script>
@@ -540,6 +600,8 @@
   <script src="mover.js"></script>
   <script src="futuro.js"></script>
   <script src="colchon.js"></script>
+  <script src="datosfijos.js"></script>
+  <script src="prestamo.js"></script>
   <script src="respaldo.js"></script>
 </body>
 </html>

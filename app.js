@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 20, fecha: "10 nov 2026" };
+const VERSION_APP = { numero: 22, fecha: "10 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -67,24 +67,55 @@ const Datos = {
   origen: null, // "propios" (mis-datos.json) o "ejemplo"
 
   // Devuelve las cifras a usar, o null si es la primera vez en este dispositivo
+  base: null,   // mis datos tal como se cargaron (mis-datos.json o los de ejemplo)
+  _cache: {},
+
   cargar() {
     const propios = Almacen.leerDatos();
     if (propios) {
-      this.actual = propios;
+      this.base = propios;
       this.origen = "propios";
     } else if (Almacen.leerConfig().usarEjemplo) {
       if (!window.DATOS_EJEMPLO) throw new Error("No se encontró datos-ejemplo.js.");
-      this.actual = window.DATOS_EJEMPLO;
+      this.base = window.DATOS_EJEMPLO;
       this.origen = "ejemplo";
     }
-    if (this.actual) this.calcularTransporte();
+    if (this.base) this.recargar();
     return this.actual;
+  },
+
+  // Bloque 17: aplica los cambios de "Datos fijos" que valen en una fecha (desde ≤ fecha)
+  enFecha(fecha) {
+    const cambios = Almacen.leerCambiosDatos()
+      .filter(c => !c.deshecho && c.desde <= fecha && CAMPOS_DATOS.some(x => x.id === c.campo && !x.destino))
+      .sort((a, b) => a.creado.localeCompare(b.creado));
+    const clave = cambios.map(c => c.id).join(",");
+    if (!this._cache[clave]) {
+      const d = JSON.parse(JSON.stringify(this.base));
+      cambios.forEach(c => CAMPOS_DATOS.find(x => x.id === c.campo).escribir(d, c.valor));
+      this.calcularTransporte(d);
+      this._cache[clave] = d;
+    }
+    return this._cache[clave];
+  },
+
+  // Vuelve a armar las cifras de hoy (después de un cambio en "Datos fijos")
+  recargar() {
+    this._cache = {};
+    this.actual = this.enFecha(hoy());
+  },
+
+  // Corre fn con las cifras que valen en esa fecha (ej.: la renta de diciembre)
+  conFecha(fecha, fn) {
+    const antes = this.actual;
+    this.actual = this.enFecha(fecha);
+    try { return fn(); } finally { this.actual = antes; }
   },
 
   // Transporte: por día = tren de ida + tren de vuelta + meta del taxi;
   // por semana = por día × días de trabajo. Se calcula de "detalleDia" en mis datos.
-  calcularTransporte() {
-    const t = this.actual.gastosFijos.find(g => g.id === "transporte");
+  calcularTransporte(datos = this.actual) {
+    const t = datos.gastosFijos.find(g => g.id === "transporte");
     if (!t || !t.detalleDia) return;
     const d = t.detalleDia;
     t.porDia = redondear((d.trenIda || 0) + (d.trenVuelta || 0) + (d.taxi || 0));

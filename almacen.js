@@ -18,6 +18,7 @@
  *   pagosMovidos   fechas nuevas elegidas en "Mover este pago" (no son pagos)
  *   diasLibres     días que NO voy a trabajar (planeados, futuros): { id, desde, hasta, motivo }
  *   futuro         "Mi futuro": escenario y vista elegidos { escenario, vista }
+ *   cambiosDatos   "Datos fijos": { id, campo, valor, anterior, desde, creado, deshecho }
  *   planeados      gastos planeados: { id, nombre, monto, fechaLimite, categoria, nota, tipo,
  *                  enPartes, partes, elegido: [{ fecha, monto }] | null }
  */
@@ -194,6 +195,23 @@ const Almacen = {
     return this.guardar("lineaTiempo", { dineroHoy, momento: this.ahora() });
   },
 
+  // ---------- Datos fijos (Bloque 17): cambios a mis cifras con fecha ----------
+  leerCambiosDatos() {
+    return this.leer("cambiosDatos") || [];
+  },
+
+  agregarCambioDatos(cambio) {
+    const lista = this.leerCambiosDatos();
+    const nuevo = { ...cambio, id: this.nuevoId(), creado: this.ahora() };
+    lista.push(nuevo);
+    return this.guardar("cambiosDatos", lista) ? nuevo : null;
+  },
+
+  marcarCambioDeshecho(id) {
+    const lista = this.leerCambiosDatos().map(c => c.id === id ? { ...c, deshecho: true, modificado: this.ahora() } : c);
+    return this.guardar("cambiosDatos", lista);
+  },
+
   // ---------- Gastos planeados (Bloque 15) ----------
   // Comprado = hay un gasto registrado con su planeadoId (no se guarda aparte: así no se duplica).
   leerTodosLosPlaneados() {
@@ -336,7 +354,9 @@ const Almacen = {
       pagosMovidos: this.leerPagosMovidos(),
       diasLibres: this.leerTodosLosDiasLibres(),
       futuro: this.leerFuturo(),
-      planeados: this.leerTodosLosPlaneados()
+      planeados: this.leerTodosLosPlaneados(),
+      cambiosDatos: this.leerCambiosDatos(),
+      simulaciones: this.leer("simulaciones") || []
     };
   },
 
@@ -356,6 +376,8 @@ const Almacen = {
     this.guardar("diasLibres", respaldo.diasLibres || []);
     this.guardar("futuro", respaldo.futuro || {});
     this.guardar("planeados", respaldo.planeados || []);
+    this.guardar("cambiosDatos", respaldo.cambiosDatos || []);
+    this.guardar("simulaciones", respaldo.simulaciones || []);
     if (respaldo.revision) this.guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {
