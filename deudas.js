@@ -62,7 +62,7 @@ const Deudas = {
 
     const orden = this.prioritarias();
     const saldos = {};
-    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id)); });
+    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id)); });
     let prestamo = Math.max(0, Datos.saldoDeuda(Plan.ID_DEUDA_PRESTAMO));
     let colchon = Almacen.leerPlan().sobres.colchon;
     const pct = porcentajeColchon / 100;
@@ -138,7 +138,10 @@ const Deudas = {
           Original ${dinero(d.monto)} · pagado ${Math.round(avance * 100)}%</p>
         <div class="barra"><div class="barra-relleno" style="width:${avance * 100}%"></div></div>
         ${d.id === Plan.ID_DEUDA_RENTA ? Datos.cargosRenta().map(c =>
-          `<p class="deuda-sub">Cargo de renta ${fechaCorta(c.fecha)}: +${dinero(c.monto)}</p>`).join("") : ""}
+          `<p class="deuda-sub">Cargo de renta ${fechaCorta(c.fecha)}: +${dinero(c.monto)}</p>`).join("") +
+          `<p class="deuda-sub">Atrasada: <strong>${dinero(Proyeccion.rentaAtrasada())}</strong>` +
+          Proyeccion.rentaMeses().filter(c => c.cargada && c.pendiente > 0.005).map(c =>
+            ` · de este mes: <strong>${dinero(c.pendiente)}</strong> (vence el ${fechaCorta(c.limite)})`).join("") + `</p>` : ""}
         <button class="boton-chico" data-ajustar="${d.id}">Ajustar saldo</button>
       </li>`;
   },
@@ -166,7 +169,7 @@ const Deudas = {
     const c = Plan.calcular();
     const orden = this.prioritarias();
     const saldos = {};
-    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id)); });
+    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id)); });
     const hayExtra = c.sobrante > 0;
     const reparto = hayExtra ? this.repartir(c.aDeudas, saldos, orden) : {};
     const boton = (id, monto) =>

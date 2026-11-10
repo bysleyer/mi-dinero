@@ -67,7 +67,12 @@ const Vencimientos = {
     return lista;
   },
 
-  MOVIBLES: ["luz", "telefono", "internet"], // Bloque 12: lo que se puede mover
+  MOVIBLES: ["luz", "telefono", "internet", "prestamo", "renta"], // lo que se puede mover (la renta del mes, en la cuenta)
+
+  // Clave con la que "Mover este pago" conoce este pago (la renta del mes vence el 15)
+  claveMover(item) {
+    return item.id === "renta" ? `renta@${Proyeccion.limiteRenta(item.fecha)}` : item.claveMov;
+  },
 
   // Todos los vencimientos entre dos fechas, con los pagos movidos (Bloque 12) ya en su fecha nueva.
   // Cada uno trae "claveMov" (id@fecha original) y, si se movió, "movido".
@@ -226,7 +231,7 @@ const Vencimientos = {
           const simbolo = p.pagado ? "✓" : dias <= 3 ? "⚠" : dias <= 7 ? "!" : "";
           // Bloque 12: "Mover" en luz, teléfono e internet que no alcanzan (o ya movidos)
           const puedeMover = !p.pagado && this.MOVIBLES.includes(item.id) && typeof Mover !== "undefined"
-            && (item.movido || Mover.noAlcanza(item));
+            && !!Mover.pagoOriginal(this.claveMover(item));
           if (item.planeado) {
             return `
             <li class="pago-fila ${dias <= 3 ? "amarillo" : ""}">
@@ -243,7 +248,7 @@ const Vencimientos = {
           const boton = p.pagado
             ? `<span class="pago-hecho">✓ Pagado</span>`
             : `<button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo pagué</button>` +
-              (puedeMover ? `<button class="boton-chico" data-mover="${escapar(item.claveMov)}">Mover</button>` : "");
+              (puedeMover ? `<button class="boton-chico" data-mover="${escapar(this.claveMover(item))}">Mover</button>` : "");
           const movido = item.movido
             ? `<div class="mov-detalle"><span class="marca-movido">movido</span> del ${Jornadas.textoDia(item.movido.fechaOriginal).toLowerCase()}</div>` +
               (sinAcuerdo ? `<div class="aviso-movido">⚠ Falta acordarlo con la empresa</div>` : "")

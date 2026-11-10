@@ -23,15 +23,31 @@ const ColchonUI = {
   }
 };
 
-// Renta: ¿queda cubierta antes de su fecha límite (el 15 o la del acuerdo)? Si no, cuánto falta.
+// Renta: la del mes, ¿queda cubierta antes de su fecha límite (el 15 o a donde la moviste)? Si no, cuánto falta.
+// La renta atrasada se muestra aparte (no es lo que toca pagar este mes).
 const RentaUI = {
   html(pr) {
-    const r = Proyeccion.estadoRenta(pr);
-    if (!r) return "";
-    const cuando = `antes del ${Futuro.dia(r.fecha)}`;
-    return r.falta > 0.005
-      ? `<p class="renta-linea falta"><span>Renta ${dinero(r.monto)} ${cuando}</span><strong>Faltan ${dinero(r.falta)}</strong></p>`
-      : `<p class="renta-linea cubierta"><span>Renta ${dinero(r.monto)} ${cuando}</span><strong>✓ Queda cubierta</strong></p>`;
+    let r = Proyeccion.estadoRenta(pr);
+    if (!r && pr.opciones) {
+      // La próxima renta vence después de estos días: se mira con la misma cuenta un poco más lejos
+      const sig = Proyeccion.rentaMeses(pr.desde, Jornadas.sumarDias(pr.desde, 62)).find(c => c.pendiente > 0.005);
+      if (sig) {
+        const dias = Math.round((Jornadas.aFecha(sig.limite) - Jornadas.aFecha(pr.desde)) / 86400000) + 1;
+        r = Proyeccion.estadoRenta(Proyeccion.calcular({ ...pr.opciones, horizonte: Math.max(dias, 31) }));
+      }
+    }
+    const atrasada = Proyeccion.rentaAtrasada();
+    const linea = !r ? "" : r.falta > 0.005
+      ? `<p class="renta-linea falta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} antes del ${Futuro.dia(r.fecha)}</span><strong>Faltan ${dinero(r.falta)}</strong>${this.boton(r)}</p>`
+      : `<p class="renta-linea cubierta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} antes del ${Futuro.dia(r.fecha)}</span><strong>✓ Queda cubierta</strong>${this.boton(r)}</p>`;
+    const atr = atrasada > 0.005
+      ? `<p class="renta-atrasada">Renta atrasada (aparte, no es la de este mes): <strong>${dinero(atrasada)}</strong>. Se paga con lo que sobra.</p>` : "";
+    return linea + atr;
+  },
+
+  boton(r) {
+    return r.claveMov && $("pantalla-mover").hidden
+      ? `<button class="boton-chico" data-renta-mover="${escapar(r.claveMov)}">Mover</button>` : "";
   }
 };
 
@@ -98,6 +114,8 @@ document.addEventListener("change", e => {
   if (t) ColchonUI.cambiar(t.checked);
 });
 document.addEventListener("click", e => {
+  const rm = e.target.closest("[data-renta-mover]");
+  if (rm) Mover.abrir(rm.dataset.rentaMover, ArrastreUI.pantallaActual(), ArrastreUI.escenario());
   const mov = e.target.closest("[data-ar-mover]");
   if (mov) Mover.abrir(mov.dataset.arMover, ArrastreUI.pantallaActual(), ArrastreUI.escenario());
   if (e.target.closest("[data-usar-colchon]")) ColchonUI.cambiar(false);

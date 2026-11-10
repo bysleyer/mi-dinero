@@ -1,6 +1,6 @@
 /*
- * MOVER ESTE PAGO (Bloque 12)
- * Para luz, teléfono e internet: pinta los próximos días según si alcanza,
+ * MOVER ESTE PAGO (Bloque 12; ampliado: renta del mes y préstamo semanal también)
+ * Para renta, préstamo, luz, teléfono e internet: pinta los próximos días según si alcanza,
  * sugiere la mejor fecha (o dividir en 2 pagos) y guarda la fecha elegida.
  * Solo SUGIERE y GUARDA fechas: no registra pagos ni cambia saldos.
  */
@@ -18,7 +18,10 @@ const Mover = {
     const defecto = {
       internet: { gracia_dias: 0, recargo: rec.internetPorFactura ?? null, riesgoAlto: false, riesgo: "" },
       luz: { gracia_dias: 0, recargo: null, riesgo: "" },
-      telefono: { gracia_dias: 0, recargo: null, riesgo: "" }
+      telefono: { gracia_dias: 0, recargo: null, riesgo: "" },
+      renta: { gracia_dias: 0, recargo: rec.renta && typeof rec.renta === "object" ? rec.renta.monto ?? null : rec.renta ?? null, riesgoAlto: true,
+               riesgo: "Después de la fecha límite puede haber recargo y acción legal. Pide el acuerdo por escrito." },
+      prestamo: { gracia_dias: 0, recargo: null, riesgo: "Avisa antes a quien te prestó y acuerden la fecha nueva." }
     };
     const pagos = {};
     Object.keys(defecto).forEach(id => { pagos[id] = { ...defecto[id], ...((m.pagos || {})[id] || {}) }; });
@@ -44,13 +47,22 @@ const Mover = {
   // La misma cuenta que "¿Y si cobro...?" (proyeccion.js). Si se abrió desde un escenario, usa su cheque.
   escenario: null,
 
+  // Días a mirar: los de mis datos (30), o más si el pago vence después (ej.: la renta del 15)
+  horizonte: null,
+
   proyeccion(excluir) {
-    return Proyeccion.calcular({ excluir, chequeEscenario: this.escenario ? this.escenario.monto : null });
+    return Proyeccion.calcular({ excluir, chequeEscenario: this.escenario ? this.escenario.monto : null, horizonte: this.horizonte });
   },
 
   // El pago original (sin mover), con lo que falta pagar
   pagoOriginal(clave) {
     const [id, fecha] = clave.split("@");
+    if (id === "renta") {
+      // La renta del mes sale de la cuenta (vence el 15), con su fecha original
+      const l = Proyeccion.rentaLineas(hoy(), fecha, { sinMover: true }).find(x => x.claveMov === clave);
+      if (!l) return null;
+      return { id, fecha, nombre: l.nombre, monto: redondear(-l.monto), item: { id, nombre: l.nombre } };
+    }
     const item = Vencimientos.entreBase(fecha, fecha).find(i => i.id === id);
     if (!item) return null;
     const monto = redondear(item.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0));
@@ -64,6 +76,84 @@ const Mover = {
     const pr = Proyeccion.calcular({ excluir: item.claveMov });
     const dia = pr.porDia[pago.fecha < pr.desde ? pr.desde : pago.fecha];
     return !dia || dia.saldoFin - pago.monto < -0.005;
+  },
+
+  // ---------- ¿Qué pasa en tu mes? (misma cuenta de proyeccion.js) ----------
+  metricas(pr, largo) {
+    const fechas = Object.keys(pr.porDia).sort();
+    let bajo = null, rojos = 0;
+    fechas.forEach(f => {
+      const s = pr.porDia[f].saldoFin;
+      if (!bajo || s < bajo.saldo) bajo = { fecha: f, saldo: s };
+      if (s < -0.005) rojos++;
+    });
+    const d = Proyeccion.planDeudas({ pr: largo });
+    return { bajo, rojos, renta: Proyeccion.estadoRenta(pr), rentaCero: d.rentaCero, colchon: d.colchonLleno, amigo: d.amigoCero };
+  },
+
+  // Ahora (como está guardado) contra pagarlo en estas fechas
+  efecto(partes) {
+    const op = { chequeEscenario: this.escenario ? this.escenario.monto : null, horizonte: this.horizonte };
+    if (!this._antes) this._antes = this.metricas(Proyeccion.calcular(op), Proyeccion.calcular({ ...op, horizonte: 730 }));
+    const pago = this._ev.pago;
+    const extras = partes.map(p => ({ fecha: p.fecha, monto: -p.monto, nombre: pago.nombre }));
+    const con = { ...op, excluir: this.clave, extras };
+    return { antes: this._antes, despues: this.metricas(Proyeccion.calcular(con), Proyeccion.calcular({ ...con, horizonte: 730 })) };
+  },
+
+  htmlEfecto(e, titulo) {
+    const f = v => v === "ya" ? "ya está" : v ? Futuro.diaCorto(v) : "más de 2 años";
+    const bajo = b => `${Futuro.plata(b.saldo)} · ${Futuro.diaCorto(b.fecha)}`;
+    const fila = (t, a, b, peor) => `<li><span>${t}</span><span>${a}</span><span class="${peor ? "error" : ""}"><strong>${b}</strong></span></li>`;
+    const tarde = (a, b) => a && a !== "ya" && (!b || (b !== "ya" && b > a));
+    const { antes: A, despues: D } = e;
+    return `
+      <h3 class="pc-sub">${titulo}</h3>
+      <ul class="resumen ps-tabla mv-efecto">
+        <li class="ps-cabeza"><span></span><span>Ahora</span><span>Con este cambio</span></li>
+        ${fila("Saldo más bajo (30 días)", bajo(A.bajo), bajo(D.bajo), D.bajo.saldo < A.bajo.saldo - 0.005)}
+        ${fila("Días bajo cero (30 días)", A.rojos, D.rojos, D.rojos > A.rojos)}
+        ${fila("Renta atrasada en cero", f(A.rentaCero), f(D.rentaCero), tarde(A.rentaCero, D.rentaCero))}
+        ${fila(`Colchón en ${dinero(Plan.metaColchon())}`, f(A.colchon), f(D.colchon), tarde(A.colchon, D.colchon))}
+        ${fila("Préstamo del amigo en cero", f(A.amigo), f(D.amigo), tarde(A.amigo, D.amigo))}
+      </ul>`;
+  },
+
+  // ---------- Ajustar a mi manera: fechas y montos propios ----------
+  mostrarAjuste() {
+    const pago = this._ev.pago;
+    $("mv-partes").innerHTML = this.ajuste.map((p, i) => `
+      <div class="df-acuerdo-fila">
+        <input type="date" data-mv-parte-fecha="${i}" value="${p.fecha}" min="${hoy()}" aria-label="Fecha ${i + 1}">
+        <input type="number" inputmode="decimal" step="0.01" min="0" data-mv-parte-monto="${i}" value="${p.monto}" aria-label="Monto ${i + 1}">
+        ${this.ajuste.length > 1 ? `<button class="borrar" data-mv-quitar-parte="${i}" aria-label="Quitar">✕</button>` : "<span></span>"}
+      </div>`).join("");
+    this.mostrarEfectoAjuste(pago);
+  },
+
+  validarAjuste(pago) {
+    if (this.ajuste.some(p => !p.fecha)) return "Cada parte necesita su fecha.";
+    if (this.ajuste.some(p => p.fecha < hoy())) return "Las fechas tienen que ser hoy o después.";
+    if (this.ajuste.some(p => !(p.monto > 0))) return "Cada monto tiene que ser mayor que 0.";
+    const suma = redondear(this.ajuste.reduce((s, p) => s + p.monto, 0));
+    if (Math.abs(suma - pago.monto) > 0.005) return `Las partes suman ${dinero(suma)}; tienen que sumar ${dinero(pago.monto)}.`;
+    return null;
+  },
+
+  mostrarEfectoAjuste(pago = this._ev.pago) {
+    const suma = redondear(this.ajuste.reduce((s, p) => s + (p.monto || 0), 0));
+    $("mv-suma").innerHTML = `Suma: <strong>${dinero(suma)}</strong> de ${dinero(pago.monto)}`;
+    $("mv-suma").className = Math.abs(suma - pago.monto) > 0.005 ? "estado error" : "estado";
+    const error = this.validarAjuste(pago);
+    $("mv-error-ajuste").textContent = error && this._intentoGuardar ? error : "";
+    $("mv-efecto-ajuste").innerHTML = error ? "" : this.htmlEfecto(this.efecto(this.ajuste), "¿Qué pasa en tu mes con estas fechas?");
+  },
+
+  guardarAjuste() {
+    this._intentoGuardar = true;
+    const error = this.validarAjuste(this._ev.pago);
+    if (error) { $("mv-error-ajuste").textContent = error; return; }
+    this.elegir(this.ajuste.map(p => ({ fecha: p.fecha, monto: redondear(p.monto) })).sort((a, b) => a.fecha.localeCompare(b.fecha)));
   },
 
   // ---------- Evaluar cada día ----------
@@ -131,7 +221,11 @@ const Mover = {
     this.sugerida = sugerida && sugerida.partes ? sugerida : null;
     this.escenario = escenario; // { monto, titulo } si viene de "¿Y si cobro...?"
     this.seleccion = null;
+    this._intentoGuardar = false;
     const guardado = Almacen.leerPagosMovidos()[clave];
+    const original = this.pagoOriginal(clave);
+    this.horizonte = Math.max(this.config().horizonte, this.diferencia(original.fecha, hoy()) + 15);
+    this.ajuste = guardado ? guardado.partes.map(p => ({ ...p })) : [{ fecha: original.fecha < hoy() ? hoy() : original.fecha, monto: original.monto }];
     $("mv-acordado").checked = !!(guardado && guardado.acordado);
     $("mv-nota").value = guardado ? guardado.nota || "" : "";
     document.querySelectorAll("main.contenedor").forEach(m => { m.hidden = true; });
@@ -159,6 +253,7 @@ const Mover = {
   mostrar() {
     const ev = this.evaluar(this.clave);
     this._ev = ev;
+    this._antes = null; // "Ahora" se vuelve a calcular (pudo cambiar al guardar)
     const { pago, pr, evaluacion } = ev;
     const guardado = Almacen.leerPagosMovidos()[this.clave];
     const faltaHoy = redondear(Math.max(0, pago.monto - Math.max(0, pr.inicial)));
@@ -191,7 +286,7 @@ const Mover = {
           <button id="mv-deshacer" class="boton-chico">Volver a la fecha original</button>
         </div>` : ""}`;
 
-    $("mv-colchon").innerHTML = ColchonUI.html() + RentaUI.html(pr);
+    $("mv-colchon").innerHTML = ColchonUI.html() + (pago.id === "renta" ? "" : RentaUI.html(pr));
     const sugerida = this.sugerida
       ? [[this.sugerida.motivo || "Sugerida", { tipo: this.sugerida.partes.length > 1 ? "dividir" : "fecha",
           partes: this.sugerida.partes, fecha: this.sugerida.partes[0].fecha }, "plan"]] : [];
@@ -231,6 +326,7 @@ const Mover = {
     }).join("")}</div>`).join("");
 
     this.mostrarDetalle();
+    this.mostrarAjuste();
   },
 
   mostrarDetalle() {
@@ -260,6 +356,7 @@ const Mover = {
         <li><span>Ese día también</span><span>${choques.length ? escapar(choques.join(", ")) : "Nada más"}</span></li>
         <li><span>Cheque</span><span>${cheque}</span></li>
       </ul>
+      ${this.htmlEfecto(this.efecto([{ fecha: this.seleccion, monto: pago.monto }]), "¿Qué pasa en tu mes si lo pagas este día?")}
       ${reglas.riesgo ? `<p class="mv-riesgo">⚠ ${escapar(reglas.riesgo)}</p>` : ""}
       <p class="ayuda">${this.TEXTO_FIJO}</p>
       <button id="mv-elegir-dia" class="boton-grande deuda">Elegir esta fecha</button>`;
@@ -271,13 +368,17 @@ const Mover = {
       id: pago.id, nombre: pago.nombre, fechaOriginal: pago.fecha, monto: pago.monto, partes,
       acordado: $("mv-acordado").checked, nota: $("mv-nota").value.trim()
     });
-    Pantalla.aviso(partes.length > 1 ? "Guardado: pago dividido en 2 fechas" : `Guardado: ${Jornadas.textoDia(partes[0].fecha).toLowerCase()}`);
+    Pantalla.aviso(partes.length > 1 ? `Guardado: pago dividido en ${partes.length} fechas` : `Guardado: ${Jornadas.textoDia(partes[0].fecha).toLowerCase()}`);
+    this.ajuste = partes.map(p => ({ ...p }));
+    this._intentoGuardar = false;
     this.mostrar();
   },
 
   async deshacer() {
     if (!(await preguntar("¿Volver este pago a su fecha original?", "Sí, volver"))) return;
     Almacen.quitarPagoMovido(this.clave);
+    const original = this.pagoOriginal(this.clave);
+    this.ajuste = [{ fecha: original.fecha < hoy() ? hoy() : original.fecha, monto: original.monto }];
     $("mv-acordado").checked = false;
     $("mv-nota").value = "";
     Pantalla.aviso("Vuelve a su fecha original");
@@ -306,6 +407,23 @@ const Mover = {
         this.elegir(o.tipo === "dividir" ? o.partes : [{ fecha: o.fecha, monto: this._ev.pago.monto }]);
       }
       if (e.target.closest("#mv-deshacer")) this.deshacer();
+    });
+    // Ajustar a mi manera
+    $("mv-ajuste").addEventListener("input", e => {
+      const f = e.target.closest("[data-mv-parte-fecha]"), m = e.target.closest("[data-mv-parte-monto]");
+      if (f) this.ajuste[+f.dataset.mvParteFecha].fecha = f.value;
+      if (m) this.ajuste[+m.dataset.mvParteMonto].monto = Number(m.value);
+      if (f || m) this.mostrarEfectoAjuste();
+    });
+    $("mv-ajuste").addEventListener("click", e => {
+      if (e.target.closest("#mv-agregar-parte")) {
+        const ultima = this.ajuste[this.ajuste.length - 1];
+        this.ajuste.push({ fecha: Jornadas.sumarDias(ultima.fecha || hoy(), 7), monto: 0 });
+        this.mostrarAjuste();
+      }
+      const q = e.target.closest("[data-mv-quitar-parte]");
+      if (q) { this.ajuste.splice(+q.dataset.mvQuitarParte, 1); this.mostrarAjuste(); }
+      if (e.target.closest("#mv-guardar-ajuste")) this.guardarAjuste();
     });
     $("mv-acordado").addEventListener("change", () => this.guardarAcuerdo());
     $("mv-nota").addEventListener("change", () => this.guardarAcuerdo());

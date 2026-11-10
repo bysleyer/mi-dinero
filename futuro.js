@@ -241,7 +241,7 @@ const Futuro = {
             ${l.id === "renta" && l.saldo < -0.005 ? `<div class="error">Faltan ${dinero(Math.min(-l.monto, -l.saldo))}</div>` : ""}</div>
           <div class="pago-lado">
             <span class="mov-monto ${l.monto >= 0 ? "positivo" : "negativo"}">${l.monto >= 0 ? "+" : "−"}${dinero(Math.abs(l.monto))}</span>
-            ${noAlcanza ? `<button class="boton-chico" data-fu-mover="${escapar(l.claveMov)}">Mover</button>` : ""}
+            ${movible ? `<button class="boton-chico" data-fu-mover="${escapar(l.claveMov)}">Mover</button>` : ""}
           </div>
         </li>`;
     }).join("");

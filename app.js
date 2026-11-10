@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 24, fecha: "10 nov 2026" };
+const VERSION_APP = { numero: 25, fecha: "10 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -180,6 +180,11 @@ const Datos = {
       }, 0);
     const cargos = deudaId === "deudaRenta" ? this.cargosRenta().reduce((s, c) => s + c.monto, 0) : 0;
     return redondear(deuda.monto + cambio + cargos);
+  },
+
+  // Saldo que se reparte con lo que sobra: en la renta, solo lo ATRASADO (la renta del mes va en la cuenta)
+  saldoReparto(deudaId) {
+    return deudaId === "deudaRenta" ? Proyeccion.rentaAtrasada() : this.saldoDeuda(deudaId);
   },
 
   deudaTotal() {

@@ -112,7 +112,7 @@ const Plan = {
 
   // "Ya puedes pagarle a tu amigo": renta e internet atrasados en 0 y colchón lleno
   puedePagarAmigo(colchon) {
-    return this.DEUDAS_PRIMERO.every(id => Datos.saldoDeuda(id) <= 0.005)
+    return this.DEUDAS_PRIMERO.every(id => Datos.saldoReparto(id) <= 0.005)
       && colchon >= this.metaColchon() - 0.005
       && Datos.saldoDeuda("deudaAmigo") > 0.005;
   },
@@ -143,7 +143,7 @@ const Plan = {
     const meta = this.metaColchon();
     const pct = plan.porcentajeColchon / 100;
     const saldos = {};
-    this.deudasEnOrden().forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id)); });
+    this.deudasEnOrden().forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id)); });
     const reparto = this.repartirExtra(sobrante, { pct, colchon: plan.sobres.colchon, meta, saldos, orden: this.deudasEnOrden() });
     const aColchon = sobrante > 0 ? reparto.aColchon : 0;
     const aDeudas = sobrante > 0 ? sobrante - aColchon : 0;

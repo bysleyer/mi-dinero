@@ -162,7 +162,7 @@ const Escenarios = {
     // Mismo reparto que el Plan y Mis deudas (Plan.repartirExtra)
     const orden = Plan.deudasEnOrden();
     const saldos = {};
-    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoDeuda(d.id) - pagadoYa(d.id)); });
+    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id) - (d.id === "deudaRenta" ? 0 : pagadoYa(d.id))); });
     const meta = Plan.metaColchon();
     const r = Plan.repartirExtra(extra, { pct: porcentajeColchon / 100, colchon: Almacen.leerPlan().sobres.colchon, meta, saldos, orden });
     const nombre = id => orden.find(d => d.id === id).nombre;
@@ -232,10 +232,10 @@ const Escenarios = {
                 </div>
                 <div class="esc-lado">
                   <span class="esc-estado">${escapar(f.estado)}</span>
-                  ${f.nivel === 2 && Vencimientos.MOVIBLES.includes(f.id)
+                  ${Vencimientos.MOVIBLES.includes(f.id) && f.claveMov
                     ? f.clase !== "paga"
                       ? `<button class="boton-chico" data-mover="${escapar(f.claveMov)}" data-escenario="${id}">Mover</button>`
-                      : f.conCheque ? `<button class="enlace mover-igual" data-mover="${escapar(f.claveMov)}" data-escenario="${id}">Mover igual</button>` : ""
+                      : `<button class="enlace mover-igual" data-mover="${escapar(f.claveMov)}" data-escenario="${id}">Mover igual</button>`
                     : ""}
                 </div>
               </li>`).join("") || '<li class="vacio">Nada en estas fechas.</li>'}`).join("")}
