@@ -21,7 +21,9 @@ const Mover = {
       telefono: { gracia_dias: 0, recargo: null, riesgo: "" },
       renta: { gracia_dias: 0, recargo: rec.renta && typeof rec.renta === "object" ? rec.renta.monto ?? null : rec.renta ?? null, riesgoAlto: true,
                riesgo: "Después de la fecha límite puede haber recargo y acción legal. Pide el acuerdo por escrito." },
-      prestamo: { gracia_dias: 0, recargo: null, riesgo: "Avisa antes a quien te prestó y acuerden la fecha nueva." }
+      prestamo: { gracia_dias: 0, recargo: null, riesgo: "Avisa antes a quien te prestó y acuerden la fecha nueva." },
+      deudaInternet: { gracia_dias: 0, recargo: rec.internetPorFactura ?? null, riesgoAlto: false,
+                       riesgo: (((Datos.actual.reglasDePrioridad || {}).nivel2 || {}).deudaInternet || {}).nota || "Pago atrasado: acuerda la fecha con la empresa." }
     };
     const pagos = {};
     Object.keys(defecto).forEach(id => { pagos[id] = { ...defecto[id], ...((m.pagos || {})[id] || {}) }; });
@@ -57,6 +59,12 @@ const Mover = {
   // El pago original (sin mover), con lo que falta pagar
   pagoOriginal(clave) {
     const [id, fecha] = clave.split("@");
+    if (fecha === "inmediato") {
+      // Deuda de pago inmediato (internet atrasado): vence hoy con lo que se debe hoy
+      const item = Vencimientos.entreBase(hoy(), hoy()).find(i => i.id === id);
+      if (!item) return null;
+      return { id, fecha: hoy(), nombre: item.nombre, monto: redondear(item.partes[0].monto), item };
+    }
     if (id === "renta") {
       // La renta del mes sale de la cuenta (vence el 15), con su fecha original
       const l = Proyeccion.rentaLineas(hoy(), fecha, { sinMover: true }).find(x => x.claveMov === clave);

@@ -67,7 +67,7 @@ const Vencimientos = {
     return lista;
   },
 
-  MOVIBLES: ["luz", "telefono", "internet", "prestamo", "renta"], // lo que se puede mover (la renta del mes, en la cuenta)
+  MOVIBLES: ["luz", "telefono", "internet", "prestamo", "renta", "deudaInternet"], // lo que se puede mover (la renta del mes, en la cuenta)
 
   // Clave con la que "Mover este pago" conoce este pago (la renta del mes vence el 15)
   claveMover(item) {
@@ -84,9 +84,11 @@ const Vencimientos = {
     const pagados = this.pagados();
     const items = [];
     this.entreBase(desdeAmplio, hastaAmplio).forEach(item => {
-      item.claveMov = `${item.id}@${item.fecha}`;
-      const m = this.MOVIBLES.includes(item.id) && movidos[item.claveMov];
+      // Las deudas de pago inmediato (internet atrasado) salen "hoy" cada día: su clave no lleva fecha
+      item.claveMov = item.inmediato ? `${item.id}@inmediato` : `${item.id}@${item.fecha}`;
+      let m = this.MOVIBLES.includes(item.id) && movidos[item.claveMov];
       if (!m) { items.push(item); return; }
+      if (item.inmediato) m = this.repartirInmediato(item, m);
       const info = { fechaOriginal: m.fechaOriginal, acordado: !!m.acordado, nota: m.nota || "", dividido: m.partes.length > 1 };
       if (m.partes.length === 1) {
         items.push({ ...item, fecha: m.partes[0].fecha, movido: info });
@@ -95,7 +97,8 @@ const Vencimientos = {
         m.partes.forEach((pt, i) => {
           const clave = `${item.claveMov}#${i + 1}`;
           items.push({ ...item, fecha: pt.fecha, movido: { ...info, parte: i + 1 },
-            partes: [{ nombre: `${item.nombre} (parte ${i + 1} de ${m.partes.length})`, monto: pt.monto, accion, clave, pagado: pagados.has(clave) }] });
+            partes: [{ nombre: `${item.nombre} (parte ${i + 1} de ${m.partes.length})`, monto: pt.monto, accion, clave,
+                       sinClave: !!item.inmediato, pagado: !item.inmediato && pagados.has(clave) }] });
         });
       }
     });
@@ -113,6 +116,20 @@ const Vencimientos = {
     });
     return items.filter(i => i.fecha >= desde && i.fecha <= hasta)
       .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
+  },
+
+  // Deuda inmediata movida: las partes se ajustan a lo que se debe HOY (lo pagado baja primero las
+  // primeras partes) y una parte cuya fecha ya pasó sin pagarse vuelve a hoy
+  repartirInmediato(item, m) {
+    const hoyClave = hoy();
+    let queda = item.partes[0].monto;
+    const partes = m.partes.map(pt => ({ ...pt })).reverse().map(pt => {
+      const monto = redondear(Math.min(pt.monto, queda));
+      queda = redondear(queda - monto);
+      return { fecha: pt.fecha < hoyClave ? hoyClave : pt.fecha, monto };
+    }).reverse();
+    if (queda > 0.005) partes[0].monto = redondear(partes[0].monto + queda);
+    return { ...m, partes: partes.filter(pt => pt.monto > 0.005) };
   },
 
   // Vencimientos según las fechas normales (sin mover)
