@@ -1,11 +1,12 @@
 /*
  * SERVICE WORKER - hace que la app funcione sin internet.
  * Guarda una copia de los archivos de la app en el teléfono.
- * Al abrir: muestra la copia guardada y, si hay internet, la actualiza
- * en segundo plano (los cambios se ven la siguiente vez que abras la app).
+ * Con internet: siempre trae la versión más nueva (y actualiza la copia).
+ * Sin internet (o si la red tarda mucho): usa la copia guardada.
  * Solo guarda archivos de la app; nunca tus datos (esos están en el almacén del navegador).
  */
-const CACHE = "mi-dinero-v16"; // mismo número que VERSION_APP en app.js
+const CACHE = "mi-dinero-v17"; // mismo número que VERSION_APP en app.js
+const ESPERA_RED_MS = 4000;     // si la red tarda más, se usa la copia guardada
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -31,7 +32,12 @@ const ARCHIVOS = [
 ];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
+  // "reload": baja los archivos del servidor, no de la memoria del navegador
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(ARCHIVOS.map(u => new Request(u, { cache: "reload" }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", e => {
@@ -46,17 +52,23 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   // Solo archivos de la propia app; nada de otros sitios.
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
-  e.respondWith(
-    caches.open(CACHE).then(cache =>
-      cache.match(req, { ignoreSearch: true }).then(guardado => {
-        const deRed = fetch(req)
-          .then(resp => {
-            if (resp && resp.ok) cache.put(req, resp.clone());
-            return resp;
-          })
-          .catch(() => guardado);
-        return guardado || deRed;
-      })
-    )
-  );
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const guardado = () => cache.match(req, { ignoreSearch: true });
+    try {
+      // Primero la red ("no-cache": pregunta al servidor si hay versión nueva)
+      const red = fetch(req, { cache: "no-cache" }).then(resp => {
+        if (resp && resp.ok) cache.put(req, resp.clone());
+        return resp;
+      });
+      const tarde = new Promise(resolver => setTimeout(resolver, ESPERA_RED_MS, null));
+      const resp = await Promise.race([red, tarde]);
+      if (resp) return resp;
+      return (await guardado()) || (await red); // la red tarda: copia guardada si existe
+    } catch (err) {
+      const copia = await guardado();
+      if (copia) return copia;
+      throw err;
+    }
+  })());
 });

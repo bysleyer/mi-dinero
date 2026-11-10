@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 16, fecha: "10 nov 2026" };
+const VERSION_APP = { numero: 17, fecha: "10 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -568,7 +568,10 @@ function prepararInstalacion() {
   enlace.href = "manifest.json";
   document.head.appendChild(enlace);
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    // updateViaCache "none": siempre revisa si hay sw.js nuevo; update(): lo revisa en cada apertura
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" })
+      .then(reg => reg.update())
+      .catch(() => {});
   }
 }
 prepararInstalacion();
