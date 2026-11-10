@@ -95,7 +95,7 @@ const DatosFijos = {
                 </div>
               </div>`;
           }).join("")}
-          ${s.id === "renta" ? this.htmlAcuerdo() : ""}
+          ${s.id === "renta" ? `<p class="df-original">El acuerdo de pago de la renta atrasada ahora está en Mis deudas → Renta → "Planear pagos".</p>` : ""}
           <div class="df-aplica">
             <label for="df-aplica-${s.id}">¿Desde cuándo aplica?</label>
             <select id="df-aplica-${s.id}" data-df-aplica="${s.id}">

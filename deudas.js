@@ -142,7 +142,12 @@ const Deudas = {
           `<p class="deuda-sub">Atrasada: <strong>${dinero(Proyeccion.rentaAtrasada())}</strong>` +
           Proyeccion.rentaMeses().filter(c => c.cargada && c.pendiente > 0.005).map(c =>
             ` · de este mes: <strong>${dinero(c.pendiente)}</strong> (vence el ${fechaCorta(c.limite)})`).join("") + `</p>` : ""}
-        <button class="boton-chico" data-ajustar="${d.id}">Ajustar saldo</button>
+        ${this.htmlPlanes(d)}
+        <div class="pl-botones">
+          ${d.automatico ? "" : `<button class="boton-chico" data-planear="${d.id}">Planear pagos</button>`}
+          <button class="boton-chico" data-ajustar="${d.id}">Ajustar saldo</button>
+          ${d.propia ? `<button class="boton-chico" data-borrar-propia="${d.id}">Borrar deuda</button>` : ""}
+        </div>
       </li>`;
   },
 
@@ -165,7 +170,59 @@ const Deudas = {
     caja.hidden = false;
   },
 
+  // Pagos que planeaste para esta deuda
+  htmlPlanes(d) {
+    const planes = Almacen.leerPlanesDeuda().filter(p => p.deudaId === d.id);
+    if (!planes.length) return "";
+    return `<ul class="d-planes">${planes.map(p => `
+      <li><span>${p.frecuencia === "una"
+        ? `${dinero(p.monto)} el ${fechaCorta(p.desde)}`
+        : `${dinero(p.monto)} cada semana, del ${fechaCorta(p.desde)} al ${fechaCorta(p.hasta)}`}</span>
+        <button class="borrar" data-quitar-plan="${p.id}" aria-label="Quitar este plan">✕</button></li>`).join("")}</ul>`;
+  },
+
+  async quitarPlan(id) {
+    if (!(await preguntar("¿Quitar este plan de pagos?\nLos pagos que ya registraste se quedan.", "Sí, quitar"))) return;
+    Almacen.borrarPlanDeuda(id);
+    Pantalla.aviso("Plan quitado");
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
+  },
+
+  async borrarPropia(id) {
+    const d = Datos.deudas().find(x => x.id === id);
+    if (!d || !(await preguntar(`¿Borrar la deuda "${d.nombre}"?\nTambién se quitan sus pagos planeados.`, "Sí, borrar"))) return;
+    Almacen.leerPlanesDeuda().filter(p => p.deudaId === id).forEach(p => Almacen.borrarPlanDeuda(p.id));
+    Almacen.borrarDeudaPropia(id);
+    Datos.recargar();
+    Pantalla.aviso("Deuda borrada");
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
+  },
+
+  // Pagos de esta semana: lo que ya acordaste (préstamo de los viernes y pagos planeados) y,
+  // aparte, una SUGERENCIA para lo libre (no se asume: tú decides)
   mostrarPagos() {
+    const sem = Plan.semanaReal();
+    const acordados = sem.gastos.filter(l => l.id === "prestamo" || l.id === "plandeuda");
+    const boton = (id, monto) =>
+      `<button class="boton-chico lleno" data-pagar="${id}" data-monto="${redondear(monto)}">Ya lo pagué</button>`;
+    const sug = Plan.sugerenciaLibre(sem.libre);
+    const orden = this.prioritarias();
+    let html = `<h3 class="pc-sub">Lo que ya acordaste pagar esta semana</h3>` + (acordados.length
+      ? `<ul class="resumen">${acordados.map(l => `<li><span>${escapar(l.nombre)}<span class="detalle">${Futuro.diaCorto(l.fecha)}</span></span><span>${dinero(-l.monto)}</span></li>`).join("")}</ul>`
+      : `<p class="vacio">Nada esta semana.</p>`);
+    html += `<h3 class="pc-sub">Sugerencia para lo libre (tú decides)</h3>` + (sem.libre > 0.005 && sug.length
+      ? `<p class="nota-sobre">Esta semana tienes ${dinero(sem.libre)} libres. Si quieres, podrías mandar:</p>` +
+        sug.map(x => {
+          const d = orden.find(y => y.nombre === x.nombre);
+          return `<div class="pago-bloque"><div class="deuda-cabeza"><span class="deuda-nombre">${escapar(x.nombre)}</span>
+            <span class="deuda-nombre">${dinero(x.monto)}</span></div>${d ? boton(d.id, x.monto) : ""}</div>`;
+        }).join("") +
+        `<p class="estado">Si decides pagarle a una deuda varias semanas, usa "Planear pagos" en esa deuda.</p>`
+      : `<p class="mensaje-sobrante negativo">Esta semana no hay dinero libre para deudas.</p>`);
+    $("d-pagar").innerHTML = html;
+  },
+
+  mostrarPagosViejo() {
     const c = Plan.calcular();
     const orden = this.prioritarias();
     const saldos = {};
@@ -276,8 +333,18 @@ const Deudas = {
     $("pantalla-deudas").addEventListener("click", e => {
       const ajustar = e.target.closest("[data-ajustar]");
       if (ajustar) abrirFormulario("ajuste", { deudaId: ajustar.dataset.ajustar });
+      const planear = e.target.closest("[data-planear]");
+      if (planear) abrirFormulario("planDeuda", { deudaId: planear.dataset.planear });
+      const qp = e.target.closest("[data-quitar-plan]");
+      if (qp) this.quitarPlan(qp.dataset.quitarPlan);
+      const bp = e.target.closest("[data-borrar-propia]");
+      if (bp) this.borrarPropia(bp.dataset.borrarPropia);
       const pagar = e.target.closest("[data-pagar]");
-      if (pagar) abrirFormulario("pagoDeuda", { deudaId: pagar.dataset.pagar, monto: Number(pagar.dataset.monto) });
+      if (pagar) {
+        abrirFormulario("pagoDeuda", { deudaId: pagar.dataset.pagar, monto: Number(pagar.dataset.monto) });
+        // La sugerencia de la renta es para lo atrasado
+        if (pagar.dataset.pagar === Plan.ID_DEUDA_RENTA && $("f-renta-para")) $("f-renta-para").value = "atrasada";
+      }
     });
     $("d-extra").addEventListener("input", e => {
       const v = Number(e.target.value);

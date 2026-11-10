@@ -21,9 +21,13 @@ const Futuro = {
   },
 
   // La misma llamada que "¿Y si cobro...?": el próximo cheque con el monto del escenario
-  proyeccion(id) {
-    return Proyeccion.calcular({ chequeEscenario: Escenarios.config()[id] });
+  proyeccion(id, horizonte = null) {
+    return Proyeccion.calcular({ chequeEscenario: Escenarios.config()[id], horizonte });
   },
+
+  // El calendario y la semana se pueden ver hasta 3 meses adelante (la frase y las tarjetas: 30 días)
+  DIAS_LARGO: 92,
+  mesVista: 0,
 
   // ---------- Textos ----------
   dia(f) { return Jornadas.textoDia(f).toLowerCase(); },
@@ -36,6 +40,7 @@ const Futuro = {
   // ---------- Pantalla ----------
   abrir() {
     this.semana = 0;
+    this.mesVista = 0;
     $("pantalla-inicio").hidden = true;
     $("pantalla-futuro").hidden = false;
     $("fu-detalle").open = false;
@@ -91,8 +96,11 @@ const Futuro = {
     });
     $("fu-mes").hidden = est.vista !== "mes";
     $("fu-semana").hidden = est.vista !== "semana";
-    if (est.vista === "mes") { this.dibujarGrafica(prs, est.escenario); this.dibujarCalendario(pr); }
-    else this.dibujarSemana(pr);
+    // Calendario, semana y ventana del día: hasta 3 meses (los primeros 30 días son los mismos de arriba)
+    const prLargo = this.proyeccion(est.escenario, this.DIAS_LARGO);
+    this._prLargo = prLargo;
+    if (est.vista === "mes") { this.dibujarGrafica(prs, est.escenario); this.dibujarCalendario(prLargo); }
+    else this.dibujarSemana(prLargo);
 
     this.dibujarTarjetas(pr, est.escenario);
   },
@@ -168,14 +176,23 @@ const Futuro = {
   // ---------- Calendario del mes (cada día pintado según su saldo) ----------
   dibujarCalendario(pr) {
     const fechas = this.fechas(pr);
-    const inicio = Plan.claveSemana(Jornadas.aFecha(fechas[0]));
-    const fin = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(fechas[fechas.length - 1])), 6);
+    // Mes que se ve: el de hoy + mesVista (hasta el mes del último día calculado)
+    const h = Jornadas.aFecha(fechas[0]), u = Jornadas.aFecha(fechas[fechas.length - 1]);
+    const maxMes = (u.getFullYear() - h.getFullYear()) * 12 + u.getMonth() - h.getMonth();
+    this.mesVista = Math.max(0, Math.min(this.mesVista, maxMes));
+    const primero = new Date(h.getFullYear(), h.getMonth() + this.mesVista, 1);
+    const ultimo = new Date(h.getFullYear(), h.getMonth() + this.mesVista + 1, 0);
+    $("fu-mes-titulo").textContent = primero.toLocaleDateString("es", { month: "long", year: "numeric" });
+    $("fu-mes-anterior").disabled = this.mesVista === 0;
+    $("fu-mes-siguiente").disabled = this.mesVista >= maxMes;
+    const inicio = Plan.claveSemana(primero);
+    const fin = Jornadas.sumarDias(Plan.claveSemana(ultimo), 6);
     const celdas = [];
     for (let f = inicio; f <= fin; f = Jornadas.sumarDias(f, 1)) celdas.push(f);
     $("fu-calendario").innerHTML = celdas.map(f => {
       const d = pr.porDia[f];
       const num = Jornadas.aFecha(f).getDate();
-      if (!d) return `<span class="dia mv-fuera" aria-hidden="true"><span class="dia-num">${num}</span></span>`;
+      if (!d || Jornadas.aFecha(f).getMonth() !== primero.getMonth()) return `<span class="dia mv-fuera" aria-hidden="true"><span class="dia-num">${num}</span></span>`;
       const s = d.saldoFin;
       const color = s < -0.005 ? "fu-rojo" : s < this.CERCA_DE_CERO ? "fu-amarillo" : "fu-verde";
       const libre = Proyeccion.esLibre(f);
@@ -204,7 +221,7 @@ const Futuro = {
     for (let i = 0; i < 7; i++) dias.push(Jornadas.sumarDias(lunes, i));
     $("fu-sem-lista").innerHTML = dias.map(f => {
       const d = pr.porDia[f];
-      if (!d) return `<li class="fu-sem-dia fuera"><div class="fu-sem-fecha">${Jornadas.textoDia(f)}</div><div class="vacio">Fuera de los próximos 30 días</div></li>`;
+      if (!d) return `<li class="fu-sem-dia fuera"><div class="fu-sem-fecha">${Jornadas.textoDia(f)}</div><div class="vacio">Fuera de los próximos 3 meses</div></li>`;
       const libre = Proyeccion.esLibre(f);
       const filas = d.lineas.map(l => `<li class="${l.monto >= 0 ? "entra" : "sale"}"><span>${escapar(l.nombre)}</span><span>${l.monto >= 0 ? "+" : "−"}${dinero(Math.abs(l.monto))}</span></li>`).join("");
       return `
@@ -224,7 +241,7 @@ const Futuro = {
 
   // ---------- Ventana de un día ----------
   abrirDia(f) {
-    const pr = this._pr;
+    const pr = this._prLargo || this._pr;
     const d = pr.porDia[f];
     if (!d) return;
     const fechas = this.fechas(pr);
@@ -316,10 +333,13 @@ const Futuro = {
     });
     $("fu-sem-anterior").addEventListener("click", () => { this.semana--; this.mostrar(); });
     $("fu-sem-siguiente").addEventListener("click", () => { this.semana++; this.mostrar(); });
+    $("fu-mes-anterior").addEventListener("click", () => { this.mesVista--; this.mostrar(); });
+    $("fu-mes-siguiente").addEventListener("click", () => { this.mesVista++; this.mostrar(); });
     $("fu-cuenta").addEventListener("click", () => { $("fu-detalle").open = true; $("fu-detalle").scrollIntoView({ block: "start" }); });
     $("fu-libre").addEventListener("click", () => Calendario.abrirLibre());
     $("fu-sin-fecha").addEventListener("click", () => Planeados.abrirLista());
     $("fu-abrir-escenarios").addEventListener("click", () => Escenarios.abrir("pantalla-futuro"));
+    $("fu-gasto").addEventListener("click", () => Planeados.abrirTemporal(null, hoy(), "pantalla-futuro"));
     $("fu-dia-cerrar").addEventListener("click", () => { $("fu-dia").hidden = true; });
     $("fu-dia").addEventListener("click", e => {
       if (e.target.id === "fu-dia") $("fu-dia").hidden = true;

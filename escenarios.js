@@ -252,7 +252,7 @@ const Escenarios = {
             : `<p class="mensaje-sobrante positivo">Sobran ${dinero(r.sobra)} (lo que queda libre en estos días)</p>`}
           ${r.seMueven.length ? `<p class="esc-mueven"><strong>Se mueve o se atrasa:</strong>
             ${r.seMueven.map(f => `${escapar(f.nombre)} (${dinero(f.monto - f.paga)})`).join(", ")}</p>` : ""}
-          ${r.reparto.length ? `<p class="esc-extra-titulo"><strong>El extra va a:</strong></p>
+          ${r.reparto.length ? `<p class="esc-extra-titulo"><strong>Si quieres, lo que sobra podría ir a (sugerencia, tú decides):</strong></p>
             <ul class="resumen">${r.reparto.map(x => `<li><span>${escapar(x.nombre)}</span><span>${dinero(x.monto)}</span></li>`).join("")}</ul>` : ""}
         </div>
         <button class="boton-chico ver-plan" data-ver-plan="${id}">Ver cómo quedaría en el Plan de la semana</button>

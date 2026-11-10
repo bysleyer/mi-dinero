@@ -43,8 +43,27 @@ const Prestamo = {
     }
   },
 
+  tipo() { return $("ps-tipo").value; },
+
+  cambiarTipo() {
+    const libre = this.tipo() === "libre";
+    document.querySelectorAll(".ps-solo-fijo").forEach(x => { x.hidden = libre; });
+    document.querySelectorAll(".ps-solo-libre").forEach(x => { x.hidden = !libre; });
+    $("ps-resultado").hidden = true;
+    $("ps-error").textContent = "";
+  },
+
   leer() {
     const n = x => Number($(x).value);
+    if (this.tipo() === "libre") {
+      const s = { libre: true, monto: n("ps-monto"), fecha: $("ps-fecha").value, para: $("ps-para").value, planeadoId: $("ps-planeado").value,
+                  quien: $("ps-quien").value.trim(), dia: "viernes", pago: 0, semanas: 0, total: n("ps-monto") };
+      if (!(s.monto > 0)) return { error: "Escribe cuánto recibirías." };
+      if (!s.fecha) return { error: "Elige la fecha en que lo recibirías." };
+      if (s.fecha < hoy()) return { error: "La fecha en que lo recibirías tiene que ser hoy o después." };
+      if (s.para === "planeado" && !s.planeadoId) return { error: "No tienes gastos planeados para elegir." };
+      return s;
+    }
     const datos = { monto: n("ps-monto"), pago: n("ps-pago"), semanas: Math.round(n("ps-semanas")), total: redondear(n("ps-total")),
                     dia: $("ps-dia").value, fecha: $("ps-fecha").value, para: $("ps-para").value, planeadoId: $("ps-planeado").value };
     if (!(datos.monto > 0)) return { error: "Escribe cuánto recibirías." };
@@ -70,6 +89,9 @@ const Prestamo = {
       // Si el gasto planeado ya tiene fecha, ya está en la cuenta: el préstamo solo trae el dinero
       if (g && !(g.elegido && g.elegido.length)) lineas.push({ fecha: s.fecha, monto: -Planeados.pendiente(g), nombre: `Préstamo: ${g.nombre}` });
     }
+    // Sin intereses y "para otro": se cuenta que lo gastas ese día (si no, no haría falta pedirlo)
+    if (s.libre && s.para === "otro") lineas.push({ fecha: s.fecha, monto: -s.monto, nombre: "Préstamo: lo gastas en lo que necesitas" });
+    if (s.libre) return { lineas, ajustes, ultimo: s.fecha };
     // Pagos: el día de la semana elegido, empezando después de recibirlo; el último ajusta al total
     const diaN = Jornadas.DIAS.indexOf(s.dia);
     let f = Jornadas.sumarDias(s.fecha, 1);
@@ -113,10 +135,88 @@ const Prestamo = {
     return Math.round((Jornadas.aFecha(a) - Jornadas.aFecha(b)) / 86400000);
   },
 
+  // ---------- Sin intereses: ¿cuándo lo podría pagar? ----------
+  // Con la misma cuenta: un pago cabe si, desde ese día, ningún día queda peor que sin el préstamo
+  // (sin dejar días nuevos bajo cero ni agregar a lo que ya faltaba).
+  calcularLibre(s) {
+    const cheque = Escenarios.config()[Futuro.estado().escenario];
+    const H = 365;
+    const sin = Proyeccion.calcular({ chequeEscenario: cheque, horizonte: H });
+    const ex = this.extras(s);
+    const con = Proyeccion.calcular({ chequeEscenario: cheque, horizonte: H, extras: ex.lineas });
+    const fechas = Object.keys(con.porDia).sort();
+    // Margen de cada día: cuánto se puede pagar hasta ese día sin quedar peor que sin el préstamo
+    const margen = fechas.map(f => con.porDia[f].saldoFin - Math.min(0, sin.porDia[f].saldoFin));
+    const sufMin = [];
+    for (let i = fechas.length - 1, m = Infinity; i >= 0; i--) { m = Math.min(m, margen[i]); sufMin[i] = m; }
+    const cheques = con.cheques.filter(c => c > s.fecha);
+    const completo = cheques.find(c => sufMin[fechas.indexOf(c)] >= s.monto - 0.005) || null;
+    // En partes: el pago por semana más alto (de $5 en $5) que cabe desde el primer cheque después de recibirlo
+    const cabe = X => {
+      const pagos = {};
+      let resta = s.monto;
+      for (const c of cheques) { if (resta <= 0.005) break; const m = Math.min(X, resta); pagos[c] = m; resta = redondear(resta - m); }
+      if (resta > 0.005) return null;
+      let acumulado = 0;
+      for (let i = 0; i < fechas.length; i++) {
+        acumulado += pagos[fechas[i]] || 0;
+        if (fechas[i] >= cheques[0] && margen[i] - acumulado < -0.005) return null;
+      }
+      const lista = Object.keys(pagos);
+      return { X, desde: lista[0], hasta: lista[lista.length - 1], pagos: lista.length };
+    };
+    let partes = null;
+    for (let X = Math.floor((s.monto - 0.01) / 5) * 5; X >= 5 && !partes; X -= 5) partes = cabe(X);
+    const deudas = { sin: Proyeccion.planDeudas({ pr: Proyeccion.calcular({ chequeEscenario: cheque, horizonte: 730 }) }),
+                     con: Proyeccion.planDeudas({ pr: Proyeccion.calcular({ chequeEscenario: cheque, horizonte: 730, extras: ex.lineas }), deudaAjustes: ex.ajustes }) };
+    return { completo, partes, deudas };
+  },
+
+  simularLibre(s) {
+    const r = this.calcularLibre(s);
+    this._libre = { s, r };
+    const f = v => v === "ya" ? "ya está" : v ? Futuro.diaCorto(v) : "más de 2 años";
+    $("ps-resultado").hidden = false;
+    $("ps-resultado").innerHTML = `
+      <p class="fu-frase positivo">Sin intereses: no te cuesta nada extra.</p>
+      <ul class="resumen">
+        <li><span>Lo podrías pagar completo</span><span><strong>${r.completo ? Jornadas.textoDia(r.completo) : "no en un año"}</strong></span></li>
+        <li><span>O en partes</span><span><strong>${r.partes ? `${dinero(r.partes.X)} por semana, del ${Futuro.diaCorto(r.partes.desde)} al ${Futuro.diaCorto(r.partes.hasta)}` : "no alcanza en un año"}</strong></span></li>
+        ${s.para === "renta" ? `<li><span>Renta atrasada en cero</span><span>${f(r.deudas.sin.rentaCero)} → <strong>${f(r.deudas.con.rentaCero)}</strong></span></li>` : ""}
+      </ul>
+      <p class="estado">Las fechas son las primeras en que puedes pagar sin quedarte más corto que si no lo pidieras (sin días nuevos bajo cero).
+        Solo es una simulación: no se registró nada.</p>
+      ${r.completo || r.partes ? `
+        <div class="campo"><label for="ps-acepto-como">Si lo aceptas, ¿cómo lo pagarías?</label>
+          <select id="ps-acepto-como">
+            ${r.completo ? `<option value="completo">Completo el ${Futuro.diaCorto(r.completo)}</option>` : ""}
+            ${r.partes ? `<option value="partes">${dinero(r.partes.X)} por semana (${r.partes.pagos} pagos)</option>` : ""}
+          </select></div>
+        <button id="ps-acepte" class="boton-chico lleno">Lo acepté: agregarlo a mis deudas</button>` : ""}
+      <p class="ayuda">Es una estimación. Acuerda bien con quien te presta cuándo y cómo se lo devuelves.</p>`;
+  },
+
+  aceptarLibre() {
+    const { s, r } = this._libre || {};
+    if (!s) return;
+    const como = $("ps-acepto-como").value;
+    const d = Almacen.guardarDeudaPropia({ nombre: s.quien ? `Préstamo de ${s.quien}` : "Préstamo sin intereses", monto: s.monto,
+                                           prioridad: 50, nota: "Sin intereses, lo pago cuando pueda" });
+    Almacen.guardarPlanDeuda(como === "completo"
+      ? { deudaId: d.id, monto: s.monto, frecuencia: "una", desde: r.completo, hasta: r.completo }
+      : { deudaId: d.id, monto: r.partes.X, frecuencia: "semanal", desde: r.partes.desde, hasta: r.partes.hasta });
+    Datos.recargar();
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
+    $("ps-resultado").innerHTML += `<p class="mensaje-sobrante positivo">Agregado a Mis deudas con su plan de pagos.
+      Cuando recibas el dinero, regístralo en "Me pagaron" → "Otro ingreso".</p>`;
+    $("ps-acepte").disabled = true;
+  },
+
   simular() {
     const s = this.leer();
     if (s.error) { $("ps-error").textContent = s.error; $("ps-resultado").hidden = true; return; }
     $("ps-error").textContent = "";
+    if (s.libre) return this.simularLibre(s);
     const est = Futuro.estado();
     const elegido = this.comparar(s, est.escenario);
     const menos = est.escenario === "menos" ? elegido : this.comparar(s, "menos");
@@ -196,7 +296,9 @@ const Prestamo = {
     $("ps-pago").addEventListener("input", () => this.completar());
     $("ps-para").addEventListener("change", () => this.llenarPlaneados());
     $("ps-simular").addEventListener("click", () => this.simular());
+    $("ps-tipo").addEventListener("change", () => this.cambiarTipo());
     $("pantalla-prestamo").addEventListener("click", e => {
+      if (e.target.closest("#ps-acepte")) this.aceptarLibre();
       if (e.target.closest("#ps-guardar")) this.guardar();
       const b = e.target.closest("[data-ps-borrar]"); if (b) this.borrar(b.dataset.psBorrar);
     });

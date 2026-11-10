@@ -167,6 +167,8 @@ const Plan = {
   // ---------- Sobre de Renta y pagos de deuda ----------
   cuantoDescontarDeRenta(mov) {
     if (mov.tipo !== "pagoDeuda" || mov.deudaId !== this.ID_DEUDA_RENTA) return 0;
+    // Lo atrasado (o un pago planeado a lo atrasado) no sale del sobre de la renta del mes que viene
+    if (mov.rentaMes === "atrasada" || (mov.vencimiento || "").startsWith("plandeuda-")) return 0;
     return redondear(Math.min(mov.monto, Almacen.leerPlan().sobres.renta));
   },
 
@@ -192,22 +194,104 @@ const Plan = {
     Almacen.guardarPlan(plan);
   },
 
+  // ---------- Esta semana, con la cuenta día por día (proyeccion.js, 3 meses) ----------
+  // Libre = lo que se puede gastar sin que ningún día (desde el cheque de esta semana) quede bajo cero.
+  // Guárdalo = lo que queda al final de la semana y hace falta más adelante.
+  DIAS_ADELANTE: 92,
+
+  semanaReal() {
+    const hoyClave = hoy();
+    const lunes = this.claveSemana();
+    const domingo = Jornadas.sumarDias(lunes, 6);
+    const pr = Proyeccion.calcular({ horizonte: this.DIAS_ADELANTE });
+    const fechas = Object.keys(pr.porDia).sort();
+    const delaSemana = fechas.filter(f => f <= domingo).flatMap(f => pr.porDia[f].lineas.map(l => ({ ...l, fecha: f })));
+    const entra = delaSemana.filter(l => l.monto > 0);
+    const gastos = delaSemana.filter(l => l.monto < 0);
+    const desde = (entra.find(l => l.tipo === "cheque") || {}).fecha || hoyClave;
+    const minDe = arr => arr.reduce((m, f) => !m || pr.porDia[f].saldoFin < m.saldo ? { fecha: f, saldo: pr.porDia[f].saldoFin } : m, null);
+    const antes = minDe(fechas.filter(f => f < desde));
+    const despues = minDe(fechas.filter(f => f >= desde));
+    const finSemana = pr.porDia[domingo] ? pr.porDia[domingo].saldoFin : pr.porDia[fechas[fechas.length - 1]].saldoFin;
+    const libre = redondear(Math.max(0, despues ? despues.saldo : 0));
+    const guardar = redondear(Math.max(0, finSemana - libre));
+    // ¿Para qué se guarda? Lo grande que viene después de esta semana, hasta el día más apretado
+    const finPara = despues && despues.fecha > domingo ? despues.fecha : domingo;
+    const para = fechas.filter(f => f > domingo && f <= finPara).flatMap(f => pr.porDia[f].lineas.map(l => ({ ...l, fecha: f })))
+      .filter(l => l.monto < 0 && (l.id === "renta" || l.tipo === "pago") && l.id !== "prestamo").slice(0, 4);
+    let hueco = null;
+    if (despues && despues.saldo < -0.005) {
+      // Se nombra lo más grande de ese día (ej.: la renta), no solo el último pago que ya no alcanza
+      const grande = pr.porDia[despues.fecha].lineas.filter(l => l.monto < 0).sort((a, b) => a.monto - b.monto)[0];
+      hueco = { fecha: despues.fecha, falta: redondear(-despues.saldo), pago: grande ? grande.nombre : "tus pagos" };
+    }
+    return { pr, lunes, domingo, desde, inicial: pr.inicial, entra, gastos,
+             totalGastos: redondear(-gastos.reduce((s, l) => s + l.monto, 0)), finSemana, libre, guardar, para, hueco,
+             huecoAntes: antes && antes.saldo < -0.005 ? { fecha: antes.fecha, falta: redondear(-antes.saldo) } : null };
+  },
+
+  // Sugerencia (no se asume) de a dónde podría ir lo libre: renta atrasada → internet → colchón → amigo → luz
+  sugerenciaLibre(libre) {
+    if (!(libre > 0.005)) return [];
+    const plan = Almacen.leerPlan();
+    const orden = this.deudasEnOrden();
+    const saldos = {};
+    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id)); });
+    const r = this.repartirExtra(libre, { pct: plan.porcentajeColchon / 100, colchon: plan.sobres.colchon, meta: this.metaColchon(), saldos, orden });
+    const lista = [];
+    this.DEUDAS_PRIMERO.forEach(id => { if (r.deudas[id]) lista.push({ nombre: orden.find(d => d.id === id).nombre, monto: r.deudas[id] }); });
+    if (r.aColchon > 0) lista.push({ nombre: "Colchón", monto: r.aColchon });
+    orden.filter(d => !this.DEUDAS_PRIMERO.includes(d.id) && r.deudas[d.id]).forEach(d => lista.push({ nombre: d.nombre, monto: r.deudas[d.id] }));
+    return lista.map(x => ({ ...x, monto: redondear(x.monto) }));
+  },
+
+  // Sobres: lo guardado y la meta de cada uno
+  sobresMetas() {
+    const sob = Almacen.leerPlan().sobres;
+    const hoyClave = hoy();
+    const sig = Proyeccion.rentaMeses(hoyClave, Jornadas.sumarDias(hoyClave, 62)).find(c => c.pendiente > 0.005);
+    const mes = f => Jornadas.aFecha(f).toLocaleDateString("es", { month: "long" });
+    const facturas = Vencimientos.entre(hoyClave, Jornadas.sumarDias(hoyClave, 29))
+      .filter(i => ["luz", "telefono", "internet"].includes(i.id))
+      .map(i => ({ nombre: i.nombre, fecha: i.fecha, monto: redondear(i.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0)) }))
+      .filter(f => f.monto > 0.005);
+    return {
+      renta: { guardado: sob.renta, meta: sig ? sig.pendiente : 0, cuando: sig ? (sig.meta < hoyClave ? hoyClave : sig.meta) : null,
+               vence: sig ? sig.fecha : null, nombre: sig ? `Renta de ${mes(sig.fecha)}` : "" },
+      servicios: { guardado: sob.servicios, meta: redondear(facturas.reduce((s, f) => s + f.monto, 0)), facturas },
+      colchon: { guardado: sob.colchon, meta: this.metaColchon() }
+    };
+  },
+
+  // Cuánto apartar: de lo que hay que guardar, lo que va para la renta y las facturas (en orden de fecha),
+  // menos lo que ya está en cada sobre
+  cuantoApartar(sem = this.semanaReal(), so = this.sobresMetas()) {
+    let queda = sem.guardar;
+    const obligaciones = [];
+    if (so.renta.cuando && so.renta.meta > 0) obligaciones.push({ sobre: "renta", fecha: so.renta.cuando, monto: so.renta.meta });
+    so.servicios.facturas.filter(f => f.fecha > sem.domingo).forEach(f => obligaciones.push({ sobre: "servicios", fecha: f.fecha, monto: f.monto }));
+    const objetivo = { renta: 0, servicios: 0 };
+    obligaciones.sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(o => {
+      const m = Math.min(o.monto, queda);
+      objetivo[o.sobre] = redondear(objetivo[o.sobre] + m);
+      queda = redondear(queda - m);
+    });
+    return { renta: redondear(Math.max(0, objetivo.renta - so.renta.guardado)),
+             servicios: redondear(Math.max(0, objetivo.servicios - so.servicios.guardado)) };
+  },
+
   // ---------- Acciones ----------
   async apartar() {
-    const c = this.calcular();
-    if (c.plan.ultimaSemanaApartada === this.claveSemana()) return;
-    const renta = redondear(c.semanalRenta);
-    const servicios = redondear(c.semanalServicios);
-    const colchon = redondear(c.aColchon);
+    const ap = this.cuantoApartar();
+    if (ap.renta + ap.servicios <= 0.005) return;
     const ok = await preguntar(
-      "¿Apartar esta semana?\n" +
-      `Renta: +${dinero(renta)}\nServicios: +${dinero(servicios)}\nColchón: +${dinero(colchon)}`, "Sí, apartar"
+      "¿Apartar lo de esta semana?\n" +
+      `Renta: +${dinero(ap.renta)}\nServicios: +${dinero(ap.servicios)}\n(Es dinero que ya tienes: solo se marca como apartado.)`, "Sí, apartar"
     );
     if (!ok) return;
-    const plan = c.plan;
-    plan.sobres.renta = redondear(plan.sobres.renta + renta);
-    plan.sobres.servicios = redondear(plan.sobres.servicios + servicios);
-    plan.sobres.colchon = redondear(plan.sobres.colchon + colchon);
+    const plan = Almacen.leerPlan();
+    plan.sobres.renta = redondear(plan.sobres.renta + ap.renta);
+    plan.sobres.servicios = redondear(plan.sobres.servicios + ap.servicios);
     plan.ultimaSemanaApartada = this.claveSemana();
     Almacen.guardarPlan(plan);
     this.mostrar();
@@ -264,25 +348,40 @@ const Plan = {
     $("p-cuenta").textContent = Proyeccion.textoCuenta(Proyeccion.calcular(), Jornadas.periodoProximoCheque().cobro);
     $("p-neto").textContent = dinero(c.neto);
 
-    // 2. Gastos fijos
+    // Promedio semanal (solo referencia)
     $("p-gastos").innerHTML = c.lineas.map(l => `
       <li><span>${escapar(l.nombre)}${l.detalle ? `<span class="detalle">${l.detalle}</span>` : ""}</span>
           <span>${dinero(l.monto)}</span></li>`).join("") +
-      `<li class="total"><span>Total</span><span>${dinero(c.total)}</span></li>` +
-      c.planeados.map(p => `<li class="planeado-linea"><span>+ ${escapar(p.nombre)} <span class="marca-planeado">planeado</span>
-          <span class="detalle">${Jornadas.textoDia(p.fecha)}</span></span><span>${dinero(p.monto)}</span></li>`).join("");
+      `<li class="total"><span>Total</span><span>${dinero(c.total)}</span></li>`;
+    $("p-sobrante").textContent = `Con el promedio: ingreso ${dinero(c.neto)} − gastos ${dinero(c.total)} = ${c.sobrante < 0 ? "−" : ""}${dinero(Math.abs(c.sobrante))}.`;
 
-    // 3. Sobrante
-    const s = $("p-sobrante");
-    if (c.sobrante >= 0) {
-      s.className = "mensaje-sobrante positivo";
-      s.textContent = `Te sobran ${dinero(c.sobrante)} esta semana`;
-    } else {
-      s.className = "mensaje-sobrante negativo";
-      s.textContent = `Esta semana no alcanza. Te faltan ${dinero(-c.sobrante)}`;
-    }
+    // 2. Esta semana: con la misma cuenta de Mi futuro (día por día, 3 meses adelante)
+    const sem = this.semanaReal();
+    this._sem = sem;
+    $("p-semana-rango").textContent = `Del ${Jornadas.textoDia(sem.lunes).toLowerCase()} al ${Jornadas.textoDia(sem.domingo).toLowerCase()}. Misma cuenta que Mi futuro.`;
+    const fila = l => `<li><span>${escapar(l.nombre)}<span class="detalle">${Futuro.diaCorto(l.fecha)}</span></span><span>${dinero(Math.abs(l.monto))}</span></li>`;
+    $("p-semana").innerHTML = `
+      <ul class="resumen">
+        <li><span>Dinero que tengo hoy</span><span>${Futuro.plata(sem.inicial)}</span></li>
+        ${sem.entra.map(l => `<li><span>${escapar(l.nombre)}<span class="detalle">${Futuro.diaCorto(l.fecha)}</span></span><span class="ok">+${dinero(l.monto)}</span></li>`).join("")}
+      </ul>
+      <h3 class="pc-sub">Para tus gastos de esta semana</h3>
+      <ul class="resumen">${sem.gastos.map(fila).join("") || '<li class="vacio">Nada más esta semana.</li>'}
+        <li class="total"><span>Total</span><span>${dinero(sem.totalGastos)}</span></li></ul>
+      ${sem.huecoAntes ? `<p class="pc-hueco">Antes del cheque del ${Futuro.dia(sem.desde)} te faltan ${dinero(sem.huecoAntes.falta)} (el ${Futuro.dia(sem.huecoAntes.fecha)}).</p>` : ""}
+      <div class="p-reparto">
+        <div class="p-guardar">
+          <span>Guárdalo para más adelante</span><strong>${dinero(sem.guardar)}</strong>
+          ${sem.guardar > 0.005 && sem.para.length ? `<p class="estado">Para: ${sem.para.map(x => `${escapar(x.nombre)} (${Futuro.diaCorto(x.fecha)})`).join(", ")}.</p>` : ""}
+        </div>
+        <div class="p-libre ${sem.libre > 0.005 ? "" : "cero"}">
+          <span>Libre para lo que quieras</span><strong>${dinero(sem.libre)}</strong>
+          <p class="estado">Lo puedes gastar sin que ningún día de los próximos 3 meses quede bajo cero.</p>
+        </div>
+      </div>
+      ${sem.hueco ? `<p class="pc-hueco">Aunque guardes todo, el ${Futuro.dia(sem.hueco.fecha)} te faltan ${dinero(sem.hueco.falta)} (ese día va ${escapar(sem.hueco.pago)}).</p>` : ""}`;
 
-    // 4. Colchón
+    // 3. Colchón
     const ahorrado = c.plan.sobres.colchon;
     if (document.activeElement !== $("p-colchon")) $("p-colchon").value = ahorrado;
     $("p-meta").textContent = dinero(c.meta);
@@ -290,24 +389,37 @@ const Plan = {
     $("p-barra").style.width = (avance * 100) + "%";
     $("p-barra-texto").textContent =
       `${Math.round(avance * 100)}% — llevas ${dinero(ahorrado)} de ${dinero(c.meta)}`;
-    $("p-a-colchon").textContent = dinero(c.aColchon);
-    $("p-a-deudas").textContent = dinero(c.aDeudas);
+
+    // 4. Sugerencia para lo libre (no se asume: tú decides)
+    const sug = this.sugerenciaLibre(sem.libre);
+    $("p-sugerencia").innerHTML = sem.libre > 0.005
+      ? (sug.length ? `<p class="nota-sobre">Si quieres, de tus ${dinero(sem.libre)} libres podrías mandar:</p>
+          <ul class="resumen">${sug.map(x => `<li><span>${escapar(x.nombre)}</span><span>${dinero(x.monto)}</span></li>`).join("")}</ul>
+          <p class="estado">Solo es una sugerencia: no se aparta ni se paga nada. Si decides pagar una deuda varias semanas, usa "Planear pagos" en Mis deudas.</p>`
+        : `<p class="nota-sobre">No tienes deudas pendientes para sugerir.</p>`)
+      : `<p class="nota-sobre">Esta semana no hay dinero libre para deudas o colchón.</p>`;
     $("p-amigo").hidden = !c.puedePagarAmigo;
 
-    // 5. Sobres
-    const sob = c.plan.sobres;
-    $("s-renta").textContent = dinero(sob.renta);
-    $("s-servicios").textContent = dinero(sob.servicios);
-    $("s-colchon").textContent = dinero(sob.colchon);
-    const rentaMes = Datos.actual.gastosFijos.find(g => g.id === "renta").monto;
-    $("s-renta-texto").textContent =
-      `Para el día 1 necesitas ${dinero(rentaMes)}, llevas apartado ${dinero(sob.renta)}`;
-
-    const yaApartado = c.plan.ultimaSemanaApartada === this.claveSemana();
-    $("apartar").disabled = yaApartado || !!c.vista;
-    $("apartar-texto").textContent = yaApartado
-      ? "Ya apartaste esta semana. Podrás volver a hacerlo el próximo lunes."
-      : c.vista ? "Quita la vista previa para apartar." : "";
+    // Sobres: lo guardado y la meta de cada uno
+    const so = this.sobresMetas();
+    const tarjeta = (titulo, guardado, meta, detalle) => {
+      const av = meta > 0 ? Math.min(1, guardado / meta) : 1;
+      return `<div class="p-sobre">
+        <div class="deuda-cabeza"><span class="deuda-nombre">${titulo}</span><span>${guardado >= meta - 0.005 && meta > 0 ? "✓ " : ""}${dinero(guardado)} de ${dinero(meta)}</span></div>
+        <div class="barra"><div class="barra-relleno" style="width:${av * 100}%"></div></div>
+        ${detalle ? `<p class="estado">${detalle}</p>` : ""}
+      </div>`;
+    };
+    $("p-sobres").innerHTML =
+      tarjeta("Renta", so.renta.guardado, so.renta.meta, so.renta.cuando ? `${escapar(so.renta.nombre)}: meta el ${Futuro.dia(so.renta.cuando)} (vence el ${Futuro.diaCorto(so.renta.vence)}).` : "No hay renta pendiente.") +
+      tarjeta("Servicios", so.servicios.guardado, so.servicios.meta, so.servicios.facturas.length
+        ? "Próximos 30 días: " + so.servicios.facturas.map(f => `${escapar(f.nombre)} ${dinero(f.monto)} (${Futuro.diaCorto(f.fecha)})`).join(", ") + "." : "No hay facturas en los próximos 30 días.") +
+      tarjeta("Colchón", so.colchon.guardado, so.colchon.meta, "");
+    const ap = this.cuantoApartar(sem, so);
+    $("apartar").disabled = !!c.vista || ap.renta + ap.servicios <= 0.005;
+    $("apartar-texto").textContent = c.vista ? "Quita la vista previa para apartar."
+      : ap.renta + ap.servicios > 0.005 ? `Esta semana apartarías: renta ${dinero(ap.renta)} y servicios ${dinero(ap.servicios)} (lo que la cuenta dice que hay que guardar).`
+      : "Tus sobres ya tienen lo que hay que guardar esta semana.";
   },
 
   // Guarda un campo numérico del plan al escribir

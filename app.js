@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 28, fecha: "10 nov 2026" };
+const VERSION_APP = { numero: 29, fecha: "10 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -89,11 +89,13 @@ const Datos = {
     const cambios = Almacen.leerCambiosDatos()
       .filter(c => !c.deshecho && c.desde <= fecha && CAMPOS_DATOS.some(x => x.id === c.campo && !x.destino))
       .sort((a, b) => a.creado.localeCompare(b.creado));
-    const clave = cambios.map(c => c.id).join(",");
+    const clave = cambios.map(c => c.id).join(",") + "|" + Almacen.leerDeudasPropias().map(d => d.id).join(",");
     if (!this._cache[clave]) {
       const d = JSON.parse(JSON.stringify(this.base));
       cambios.forEach(c => CAMPOS_DATOS.find(x => x.id === c.campo).escribir(d, c.valor));
       this.calcularTransporte(d);
+      // Deudas que agregué yo (ej.: un préstamo sin intereses)
+      d.deudasAtrasadas = [...(d.deudasAtrasadas || []), ...Almacen.leerDeudasPropias()];
       this._cache[clave] = d;
     }
     return this._cache[clave];
@@ -263,7 +265,26 @@ const Formularios = {
       <div class="campo">
         <label for="f-nota">Nota <span class="opcional">(opcional)</span></label>
         <input id="f-nota" type="text" maxlength="80">
-      </div>` + campoFecha(),
+      </div>` + campoFecha() + `<div id="f-efecto" class="f-efecto" hidden></div>`,
+    // Antes de guardar: cuánto le agrega este gasto a lo que falta (solo un gasto nuevo; no "Ya lo pagué" / "Ya lo compré")
+    alCambiar() {
+      clearTimeout(this._t);
+      this._t = setTimeout(() => {
+        const caja = $("f-efecto");
+        if (!caja) return;
+        const monto = Number($("f-monto").value), fecha = $("f-fecha").value;
+        const factura = Plan.CATEGORIAS_SERVICIOS.includes($("f-categoria").value);
+        if (formularioExtra || !(monto > 0) || !fecha || factura) { caja.hidden = true; return; }
+        const e = Planeados.efectoRapido(monto, fecha);
+        caja.hidden = false;
+        caja.className = "f-efecto " + (e.agrega > 0 ? "negativo" : "positivo");
+        caja.innerHTML = e.agrega > 0
+          ? `⚠ Este gasto agrega <strong>${dinero(e.agrega)}</strong> a lo que falta el ${Futuro.dia(e.diaAgrega)}.
+             <button type="button" class="enlace" data-ver-gasto>Ver opciones</button>`
+          : `✓ Con lo que ya tienes previsto, este gasto no deja ningún día bajo cero.
+             <button type="button" class="enlace" data-ver-gasto>Ver detalle</button>`;
+      }, 300);
+    },
     leer(base) {
       const categoria = $("f-categoria").value;
       if (!categoria) return { error: "Elige una categoría." };
@@ -287,10 +308,29 @@ const Formularios = {
             `<option value="${d.id}">${escapar(d.nombre)} (debes ${dinero(Datos.saldoDeuda(d.id))})</option>`
           ).join("")}
         </select>
+      </div>
+      <div class="campo" id="campo-renta-para" hidden>
+        <label for="f-renta-para">¿Para qué es?</label>
+        <select id="f-renta-para">
+          <option value="">Elige…</option>
+          ${Proyeccion.rentaMeses(hoy(), Jornadas.sumarDias(hoy(), 62)).filter(c => c.pendiente > 0.005).slice(0, 2).map(c => {
+            const mes = Jornadas.aFecha(c.fecha).toLocaleDateString("es", { month: "long" });
+            return `<option value="${c.fecha}">Renta de ${mes} (vence el ${fechaCorta(c.fecha)})</option>`;
+          }).join("")}
+          <option value="atrasada">Renta atrasada (lo que ya debías)</option>
+        </select>
       </div>` + campoMonto() + campoFecha(),
+    // La renta: hay que saber si es la del mes que viene o lo atrasado (con "Ya lo pagué" ya se sabe)
+    alCambiar() {
+      $("campo-renta-para").hidden = $("f-deuda").value !== Plan.ID_DEUDA_RENTA || !!(formularioExtra && formularioExtra.vencimiento);
+    },
     leer(base) {
       const deudaId = $("f-deuda").value;
       if (!deudaId) return { error: "Elige a cuál deuda le pagaste." };
+      if (deudaId === Plan.ID_DEUDA_RENTA && !$("campo-renta-para").hidden) {
+        if (!$("f-renta-para").value) return { error: "Elige para qué es: la renta del mes que viene o la renta atrasada." };
+        base.rentaMes = $("f-renta-para").value;
+      }
       const saldo = Datos.saldoDeuda(deudaId);
       if (base.monto > saldo) {
         return { error: `El monto es mayor que lo que debes en esa deuda (${dinero(saldo)}).` };
@@ -298,6 +338,38 @@ const Formularios = {
       base.deudaId = deudaId;
       base.nota = Datos.deudas().find(d => d.id === deudaId).nombre;
       return base;
+    }
+  },
+
+  // "Planear pagos" de una deuda: lo que decidas pagar (cada semana o una vez) entra en tus cuentas
+  planDeuda: {
+    titulo: "Planear pagos",
+    campos: () => `
+      <p class="ayuda">Solo planea: no registra ningún pago. Cuando pagues, usa "Ya lo pagué".</p>
+      <div class="campo">
+        <label for="f-deuda">Deuda</label>
+        <select id="f-deuda">${Datos.deudas().map(d => `<option value="${d.id}">${escapar(d.nombre)} (debes ${dinero(Datos.saldoReparto(d.id))})</option>`).join("")}</select>
+      </div>
+      <div class="campo">
+        <label for="f-frecuencia">¿Cómo?</label>
+        <select id="f-frecuencia"><option value="semanal">Cada semana</option><option value="una">Una sola vez</option></select>
+      </div>` + campoMonto() + `
+      <div class="ps-dos">
+        <div class="campo"><label for="f-desde">Desde</label><input id="f-desde" type="date" value="${Proyeccion.metaRenta(Jornadas.sumarDias(hoy(), 7))}"></div>
+        <div class="campo" id="campo-hasta"><label for="f-hasta">Hasta</label><input id="f-hasta" type="date"></div>
+      </div>`,
+    alCambiar() { $("campo-hasta").hidden = $("f-frecuencia").value === "una"; },
+    guardar(error) {
+      const monto = redondear(Number($("f-monto").value));
+      const frecuencia = $("f-frecuencia").value, desde = $("f-desde").value, hasta = frecuencia === "una" ? desde : $("f-hasta").value;
+      if (!(monto > 0)) return error("El monto tiene que ser mayor que 0.");
+      if (!desde) return error("Elige desde qué fecha.");
+      if (frecuencia === "semanal" && !hasta) return error("Elige hasta qué fecha.");
+      if (hasta < desde) return error("La fecha final tiene que ser después de la inicial.");
+      Almacen.guardarPlanDeuda({ deudaId: $("f-deuda").value, monto, frecuencia, desde, hasta });
+      cerrarFormulario();
+      Pantalla.aviso("Plan de pagos guardado");
+      window.dispatchEvent(new Event("movimientos-cambiaron"));
     }
   },
 
@@ -381,6 +453,7 @@ function abrirFormulario(tipo, valores = {}) {
   if (valores.monto != null) $("f-monto").value = redondear(valores.monto).toFixed(2);
   if (valores.fecha && $("f-fecha")) $("f-fecha").value = valores.fecha;
   if (valores.horas != null && $("f-horas")) $("f-horas").value = valores.horas;
+  if (f.alCambiar) f.alCambiar();
   $("form-error").textContent = "";
   $("ventana").hidden = false;
   document.body.style.overflow = "hidden";
@@ -676,7 +749,13 @@ try {
     if (c) cambiarTipoIngreso(c.dataset.cambiarTipo);
   });
   // "Me pagaron": con "Otro ingreso" se ocultan las horas y se muestra la nota
+  $("form-campos").addEventListener("input", e => {
+    const f = Formularios[formularioAbierto];
+    if (f && f.alCambiar && e.target.id === "f-monto") f.alCambiar(e);
+  });
   $("form-campos").addEventListener("change", e => {
+    const f = Formularios[formularioAbierto];
+    if (f && f.alCambiar) f.alCambiar(e);
     if (e.target.id !== "f-tipo-ingreso") return;
     const otro = e.target.value === "otro";
     $("campo-horas").hidden = otro;
@@ -689,6 +768,13 @@ try {
     const b = e.target.closest("[data-llenar-monto]");
     if (b) { $("f-monto").value = Number(b.dataset.llenarMonto).toFixed(2); $("f-monto").focus(); }
     if (e.target.closest("#deshacer-transporte")) Transporte.deshacerUltimo();
+    if (e.target.closest("[data-ver-gasto]")) {
+      const monto = Number($("f-monto").value), fecha = $("f-fecha").value;
+      const pantalla = [...document.querySelectorAll("main.contenedor")].find(x => !x.hidden);
+      cerrarFormulario();
+      document.querySelectorAll("main.contenedor").forEach(x => { x.hidden = true; });
+      Planeados.abrirTemporal(monto, fecha < hoy() ? hoy() : fecha, pantalla ? pantalla.id : "pantalla-inicio");
+    }
   });
   $("rapido-transporte").textContent = "Transporte";
   Pantalla.actualizar();

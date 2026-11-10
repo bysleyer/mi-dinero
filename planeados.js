@@ -71,8 +71,8 @@ const Planeados = {
     let peor = null;
     m.fechas.forEach(f => { if (pr.porDia[f].saldoFin < -0.005 && (!peor || pr.porDia[f].saldoFin < pr.porDia[peor].saldoFin)) peor = f; });
     if (!peor) return null;
-    const sinCubrir = pr.porDia[peor].lineas.filter(l => l.monto < 0 && l.saldo < -0.005);
-    const pago = sinCubrir.find(l => this.NIVEL1.includes(l.id)) || sinCubrir[0];
+    // Lo más grande de ese día (ej.: la renta), no solo el último pago que ya no alcanza
+    const pago = pr.porDia[peor].lineas.filter(l => l.monto < 0 && l.tipo !== "simulado").sort((a, b) => a.monto - b.monto)[0];
     return { fecha: peor, falta: redondear(-pr.porDia[peor].saldoFin), pago: pago ? pago.nombre : "tus pagos" };
   },
 
@@ -174,10 +174,16 @@ const Planeados = {
     const dias = m.fechas.filter(f => f <= g.fechaLimite);
     const ev = {};
     dias.forEach(f => { ev[f] = this.evaluar(m, f, g.monto); });
-    const orden = dias.slice().sort((a, b) => ev[a].agrega - ev[b].agrega || b.localeCompare(a));
+    const rango = { verde: 0, amarillo: 1, rojo: 2, gris: 3 };
+    const orden = g.temporal
+      ? dias.filter(f => f >= g.fecha).sort((a, b) => ev[a].agrega - ev[b].agrega || rango[ev[a].color] - rango[ev[b].color] || a.localeCompare(b))
+      : dias.slice().sort((a, b) => ev[a].agrega - ev[b].agrega || b.localeCompare(a));
     const mejor = orden[0] || null, segunda = orden[1] || null;
     let problema = null;
-    if (mejor && ev[mejor].color === "rojo") {
+    if (mejor && ev[mejor].color === "rojo" && g.temporal) {
+      problema = `En los próximos 30 días no hay un día en que no agregue a lo que falta. Lo que menos agrega: ` +
+        `${dinero(ev[mejor].agrega)} el ${this.textoDia(mejor)}. Opciones: en partes, gastar menos o esperar más.`;
+    } else if (mejor && ev[mejor].color === "rojo") {
       problema = `Antes del ${this.textoDia(g.fechaLimite)} no hay un día en que no agregue a lo que falta ` +
         `(lo menos: ${dinero(ev[mejor].agrega)}). Opciones: comprarlo en partes, comprar menos o mover la fecha límite.`;
     }
@@ -285,8 +291,73 @@ const Planeados = {
     window.dispatchEvent(new Event("movimientos-cambiaron"));
   },
 
+  // Cuánto le agrega un gasto a lo que falta (rápido: solo los próximos 30 días)
+  efectoRapido(monto, fecha) {
+    const g = { id: "temporal", monto, fechaLimite: fecha };
+    const escenario = Futuro.estado().escenario;
+    const op = { chequeEscenario: Escenarios.config()[escenario] };
+    const m = { op, pr: Proyeccion.calcular(op), _con: {} };
+    m.fechas = Object.keys(m.pr.porDia).sort();
+    const dia = fecha < hoy() ? hoy() : fecha;
+    const prCon = this.prCon(m, [{ fecha: dia, monto }]);
+    let agrega = 0, diaAgrega = null;
+    m.fechas.forEach(f => { const d = redondear(this.falta(prCon, f) - this.falta(m.pr, f)); if (d > agrega + 0.005) { agrega = d; diaAgrega = f; } });
+    return { agrega: agrega >= this.TOLERANCIA ? agrega : 0, diaAgrega: agrega >= this.TOLERANCIA ? diaAgrega : null, dia };
+  },
+
+  // ---------- ¿Y si gasto…? (un gasto de prueba: no se guarda nada) ----------
+  // Usa la misma pantalla de "¿Cuándo lo compro?". Lo de "un poco más adelante" busca hasta 30 días.
+  temporal: null,
+
+  abrirTemporal(monto = null, fecha = hoy(), origen = "pantalla-futuro") {
+    this.temporal = { id: "temporal", temporal: true, nombre: "¿Y si gasto…?", monto: monto > 0 ? redondear(monto) : 0,
+                      fecha, fechaLimite: Jornadas.sumarDias(fecha, 30), categoria: "Otros", tipo: "espera" };
+    this.origenTemporal = origen;
+    this.abrirCuando("temporal");
+    this.dia = fecha;
+    this.mostrarCuando();
+  },
+
+  gastoActual() {
+    return this.actual === "temporal" ? this.temporal : Almacen.leerPlaneados().find(x => x.id === this.actual);
+  },
+
+  // Con el gasto de prueba se guarda como gasto planeado de verdad (con esa fecha o en partes)
+  guardarTemporal(partes) {
+    const t = this.temporal;
+    const g = Almacen.guardarPlaneado({ nombre: ($("pc-t-nombre").value || "").trim() || "Gasto", monto: t.monto,
+      fechaLimite: t.fechaLimite, categoria: "Otros", tipo: "espera", enPartes: partes.length > 1, partes: partes.length > 1 ? partes.length : 2,
+      elegido: partes.map(p => ({ fecha: p.fecha, monto: redondear(p.monto) })) });
+    this.temporal = null;
+    this.actual = g.id;
+    this.partes = null;
+    this.alCambiar("Guardado como gasto planeado");
+    this.mostrarCuando();
+  },
+
+  cabezaTemporal(g, m = null) {
+    return `
+      <p class="estado">Solo para ver: no se guarda ni se registra nada.</p>
+      <div class="ps-dos">
+        <div class="campo"><label for="pc-t-monto">¿Cuánto?</label>
+          <input id="pc-t-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="${g.monto > 0 ? g.monto : ""}"></div>
+        <div class="campo"><label for="pc-t-fecha">¿Qué día?</label>
+          <input id="pc-t-fecha" type="date" min="${hoy()}" value="${g.fecha}"></div>
+      </div>
+      ${g.monto > 0 ? `
+        <div class="campo"><label for="pc-t-nombre">Nombre <span class="opcional">(si lo guardas como gasto planeado)</span></label>
+          <input id="pc-t-nombre" type="text" maxlength="60" placeholder="Ej.: zapatos"></div>
+        <div class="pl-botones">
+          <button id="pc-t-gaste" class="boton-chico lleno">Lo gasté</button>
+          <button id="pc-t-guardar" class="boton-chico">Guardarlo como gasto planeado</button>
+        </div>
+        ${m ? `<p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(m.pr))}</p>` : ""}` : `<p class="vacio">Escribe cuánto quieres gastar.</p>`}`;
+  },
+
   // ---------- ¿Cuándo lo compro? ----------
   abrirCuando(id) {
+    if (id !== "temporal") this.temporal = null;
+    $("pc-h1").textContent = id === "temporal" ? "¿Y si gasto…?" : "¿Cuándo lo compro?";
     this.actual = id;
     this.dia = null;
     this.partes = null;
@@ -298,19 +369,31 @@ const Planeados = {
 
   cerrarCuando() {
     $("pantalla-cuando").hidden = true;
+    if (this.actual === "temporal") {
+      this.temporal = null;
+      $(this.origenTemporal || "pantalla-futuro").hidden = false;
+      window.dispatchEvent(new Event("movimientos-cambiaron"));
+      return;
+    }
     this.abrirLista();
   },
 
   mostrarCuando() {
     if ($("pantalla-cuando").hidden) return;
-    const g = Almacen.leerPlaneados().find(x => x.id === this.actual);
+    const g = this.gastoActual();
     if (!g) return this.cerrarCuando();
+    // Gasto de prueba: arriba se escribe el monto y la fecha; sin monto no hay nada que calcular
+    const temporal = !!g.temporal;
+    [...$("pantalla-cuando").children].forEach(el => {
+      if (!["volver-cuando", "pc-h1", "pc-cabeza"].includes(el.id)) el.hidden = temporal && !(g.monto > 0) ? true : el.dataset.pcOculto === "1";
+    });
+    if (temporal && !(g.monto > 0)) { $("pc-cabeza").innerHTML = this.cabezaTemporal(g); return; }
     const m = this.motor(g);
     const s = this.sugerencias(m, g);
     this._m = m; this._s = s; this._g = g;
     const est = Futuro.estado();
 
-    $("pc-cabeza").innerHTML = `
+    $("pc-cabeza").innerHTML = temporal ? this.cabezaTemporal(g, m) : `
       <h2 class="mv-nombre">${escapar(g.nombre)}</h2>
       <ul class="resumen">
         <li><span>Monto</span><span>${dinero(g.monto)}</span></li>
@@ -331,7 +414,9 @@ const Planeados = {
     $("pc-sugerencias").innerHTML =
       (s.hueco ? `<p class="pc-hueco">Aunque no lo compres, el ${this.textoDia(s.hueco.fecha)} te faltan ${dinero(s.hueco.falta)} para ${escapar(s.hueco.pago)}.</p>` : "") +
       (s.problema ? `<p class="mensaje-sobrante negativo pc-problema">${escapar(s.problema)}</p>` : "") +
-      [["Mejor fecha", s.mejor, "mejor"], ["Segunda opción", s.segunda, "segunda"]].filter(([, f]) => f).map(([t, f, id]) => `
+      (g.temporal
+        ? [[s.mejor === g.fecha ? "Ese día está bien" : "Mejor un poco más adelante", s.mejor, "mejor"]]
+        : [["Mejor fecha", s.mejor, "mejor"], ["Segunda opción", s.segunda, "segunda"]]).filter(([, f]) => f).map(([t, f, id]) => `
           <div class="mv-opcion">
             <span class="mv-etiqueta ${id}">${t}</span>
             <p>${Jornadas.textoDia(f)}: ${textoOp(s.ev[f])}</p>
@@ -586,6 +671,7 @@ const Planeados = {
   },
 
   elegir(partes) {
+    if (this.actual === "temporal") return this.guardarTemporal(partes);
     const g = this._g;
     Almacen.guardarPlaneado({ id: g.id, elegido: partes.map(p => ({ fecha: p.fecha, monto: redondear(p.monto) })) });
     this.partes = null;
@@ -632,17 +718,45 @@ const Planeados = {
         { partes: (this._movimientos || {})[opMover.dataset.opMover], motivo: `Para "${this._g.nombre}"` });
       if (e.target.closest("[data-op-partes]")) {
         const g = this._g;
-        if (!g.enPartes) Almacen.guardarPlaneado({ id: g.id, enPartes: true, partes: g.partes && g.partes > 1 ? g.partes : 2 });
-        this._g = Almacen.leerPlaneados().find(x => x.id === g.id);
+        if (g.temporal) Object.assign(this.temporal, { enPartes: true, partes: 2 });
+        else if (!g.enPartes) Almacen.guardarPlaneado({ id: g.id, enPartes: true, partes: g.partes && g.partes > 1 ? g.partes : 2 });
+        this._g = this.gastoActual();
         this.partes = this.sugerirPartes(this._m, this._g);
         Pantalla.aviso("Aplicado: comprar en partes");
         this.mostrarCuando();
       }
       if (e.target.closest("[data-op-menos]")) {
         const v = redondear(Number($("pc-menos-monto").value));
-        if (v > 0) { Almacen.guardarPlaneado({ id: this.actual, monto: v, elegido: null }); this.partes = null; Pantalla.aviso(`Aplicado: ${dinero(v)}`); this.mostrarCuando(); }
+        if (v > 0) {
+          if (this.actual === "temporal") this.temporal.monto = v;
+          else Almacen.guardarPlaneado({ id: this.actual, monto: v, elegido: null });
+          this.partes = null; Pantalla.aviso(`Aplicado: ${dinero(v)}`); this.mostrarCuando();
+        }
       }
       if (e.target.closest("#pc-compre")) this.comprar(this.actual);
+      // ¿Y si gasto…?
+      if (e.target.closest("#pc-t-gaste")) {
+        const t = this.temporal;
+        this.cerrarCuando();
+        abrirFormulario("gasto", { monto: t.monto, fecha: t.fecha });
+      }
+      if (e.target.closest("#pc-t-guardar")) {
+        const t = this.temporal, nombre = ($("pc-t-nombre").value || "").trim();
+        this.cerrarCuando();
+        abrirFormulario("planeado");
+        $("f-monto").value = t.monto.toFixed(2);
+        $("f-fecha").value = t.fecha;
+        if (nombre) $("f-nombre").value = nombre;
+      }
+    });
+    $("pantalla-cuando").addEventListener("change", e => {
+      if (this.actual !== "temporal") return;
+      if (e.target.id === "pc-t-monto") { this.temporal.monto = Math.max(0, redondear(Number(e.target.value) || 0)); this.partes = null; this.mostrarCuando(); }
+      if (e.target.id === "pc-t-fecha" && e.target.value) {
+        this.temporal.fecha = e.target.value < hoy() ? hoy() : e.target.value;
+        this.temporal.fechaLimite = Jornadas.sumarDias(this.temporal.fecha, 30);
+        this.dia = this.temporal.fecha; this.mostrarCuando();
+      }
     });
     $("pc-partes").addEventListener("change", e => {
       const f = e.target.closest("[data-pc-parte-fecha]");

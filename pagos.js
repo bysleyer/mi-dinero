@@ -86,9 +86,9 @@ const Vencimientos = {
       });
   },
 
-  // Clave con la que "Mover este pago" conoce este pago (la renta del mes vence el 15)
+  // Clave con la que "Mover este pago" conoce este pago (la renta: por el día 1 en que vence)
   claveMover(item) {
-    return item.id === "renta" ? `renta@${Proyeccion.limiteRenta(item.fecha)}` : item.claveMov;
+    return item.id === "renta" ? `renta@${item.fecha}` : item.claveMov;
   },
 
   // Todos los vencimientos entre dos fechas, con los pagos movidos (Bloque 12) ya en su fecha nueva.
@@ -142,6 +142,34 @@ const Vencimientos = {
     });
     return items.filter(i => i.fecha >= desde && i.fecha <= hasta)
       .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
+  },
+
+  // Fechas y montos de los pagos planeados a deudas, desde hoy. Lo ya pagado (con "Ya lo pagué") se ve como pagado;
+  // lo demás se limita a lo que se debe (en la renta: lo atrasado).
+  pagosPlaneadosDeuda(desde, hasta, pagados = this.pagados()) {
+    const hoyClave = hoy();
+    const fechas = [];
+    Almacen.leerPlanesDeuda().forEach(pl => {
+      if (pl.frecuencia === "una") { fechas.push({ pl, fecha: pl.desde }); return; }
+      for (let f = pl.desde; f <= (pl.hasta || pl.desde); f = Jornadas.sumarDias(f, 7)) fechas.push({ pl, fecha: f });
+    });
+    const resta = {};
+    const salida = [];
+    fechas.sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(({ pl, fecha }) => {
+      const d = Datos.deudas().find(x => x.id === pl.deudaId);
+      if (!d) return;
+      const clave = `plandeuda-${pl.id}@${fecha}`;
+      const item = monto => ({ id: "plandeuda", deudaId: d.id, letra: "", nombre: `${d.nombre} (pago planeado)`, orden: 12,
+        partes: [{ nombre: `${d.nombre} (pago planeado)`, monto, clave, accion: { tipo: "pagoDeuda", deudaId: d.id } }] });
+      if (pagados.has(clave)) { if (fecha >= desde && fecha <= hasta) salida.push({ item: item(pl.monto), fecha }); return; }
+      if (fecha < hoyClave) return;
+      if (resta[d.id] == null) resta[d.id] = Math.max(0, Datos.saldoReparto(d.id));
+      const monto = redondear(Math.min(pl.monto, resta[d.id]));
+      if (monto <= 0.005) return;
+      resta[d.id] = redondear(resta[d.id] - monto);
+      if (fecha >= desde && fecha <= hasta) salida.push({ item: item(monto), fecha });
+    });
+    return salida;
   },
 
   // Deuda inmediata movida: las partes se ajustan a lo que se debe HOY (lo pagado baja primero las
@@ -214,6 +242,9 @@ const Vencimientos = {
         }, hoyClave);
       });
     }
+
+    // Pagos planeados a deudas ("Planear pagos"): en sus fechas, hasta lo que se deba
+    this.pagosPlaneadosDeuda(desde, hasta, pagados).forEach(x => agregar(x.item, x.fecha));
 
     // Préstamo semanal: cada día de cobro, desde hoy, mientras tenga saldo
     const gp = this.gasto(Plan.ID_GASTO_PRESTAMO);

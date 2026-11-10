@@ -238,6 +238,62 @@ const Almacen = {
   },
 
   // ---------- Mi futuro (Bloque 14) ----------
+  // ---------- Pagos planeados a deudas ("Planear pagos" en Mis deudas) ----------
+  // [{ id, deudaId, monto, frecuencia: "semanal" | "una", desde, hasta, creado, modificado, borrado? }]
+  // El acuerdo de pago de la renta (antes en Datos fijos) se pasa aquí una sola vez.
+  leerTodosLosPlanesDeuda() {
+    let lista = this.leer("planesDeuda");
+    if (lista == null) {
+      lista = (this.leer("acuerdoRenta") || []).filter(p => p.fecha && p.monto > 0).map(p => ({
+        id: this.nuevoId(), deudaId: "deudaRenta", monto: p.monto, frecuencia: "una", desde: p.fecha, hasta: p.fecha,
+        creado: this.ahora(), modificado: this.ahora() }));
+      this.guardar("planesDeuda", lista);
+      this.borrar("acuerdoRenta");
+    }
+    return lista;
+  },
+
+  leerPlanesDeuda() {
+    return this.leerTodosLosPlanesDeuda().filter(p => !p.borrado);
+  },
+
+  guardarPlanDeuda(plan) {
+    const lista = this.leerTodosLosPlanesDeuda();
+    const momento = this.ahora();
+    const i = plan.id ? lista.findIndex(p => p.id === plan.id) : -1;
+    if (i >= 0) lista[i] = { ...lista[i], ...plan, modificado: momento };
+    else lista.push({ ...plan, id: this.nuevoId(), creado: momento, modificado: momento });
+    return this.guardar("planesDeuda", lista);
+  },
+
+  borrarPlanDeuda(id) {
+    return this.guardar("planesDeuda", this.leerTodosLosPlanesDeuda().map(p =>
+      p.id === id ? { ...p, borrado: true, modificado: this.ahora() } : p));
+  },
+
+  // ---------- Deudas que agrego yo (ej.: un préstamo sin intereses que acepté) ----------
+  leerTodasLasDeudasPropias() {
+    return this.leer("deudasPropias") || [];
+  },
+
+  leerDeudasPropias() {
+    return this.leerTodasLasDeudasPropias().filter(d => !d.borrado);
+  },
+
+  guardarDeudaPropia(deuda) {
+    const lista = this.leerTodasLasDeudasPropias();
+    const momento = this.ahora();
+    const nueva = { ...deuda, id: deuda.id || `propia-${this.nuevoId()}`, propia: true, creado: momento, modificado: momento };
+    lista.push(nueva);
+    this.guardar("deudasPropias", lista);
+    return nueva;
+  },
+
+  borrarDeudaPropia(id) {
+    return this.guardar("deudasPropias", this.leerTodasLasDeudasPropias().map(d =>
+      d.id === id ? { ...d, borrado: true, modificado: this.ahora() } : d));
+  },
+
   // Bloque 19: parámetros del simulador "Si aceptan el acuerdo de renta" (solo simulación)
   leerAcuerdoSimulado() {
     return this.leer("acuerdoSimulado");
@@ -367,6 +423,8 @@ const Almacen = {
       cambiosDatos: this.leerCambiosDatos(),
       simulaciones: this.leer("simulaciones") || [],
       acuerdoSimulado: this.leer("acuerdoSimulado"),
+      planesDeuda: this.leerTodosLosPlanesDeuda(),
+      deudasPropias: this.leerTodasLasDeudasPropias(),
       rentaCargosDesde: this.leer("rentaCargosDesde"),
       acuerdoRenta: this.leer("acuerdoRenta") || []
     };
@@ -390,6 +448,10 @@ const Almacen = {
     this.guardar("planeados", respaldo.planeados || []);
     this.guardar("cambiosDatos", respaldo.cambiosDatos || []);
     this.guardar("simulaciones", respaldo.simulaciones || []);
+    this.guardar("deudasPropias", respaldo.deudasPropias || []);
+    // Respaldo viejo con acuerdo de renta: se pasa a "Planear pagos" al leerlo
+    if (respaldo.planesDeuda) this.guardar("planesDeuda", respaldo.planesDeuda);
+    else { this.borrar("planesDeuda"); if (respaldo.acuerdoRenta && respaldo.acuerdoRenta.length) this.guardar("acuerdoRenta", respaldo.acuerdoRenta); }
     if (respaldo.acuerdoSimulado) this.guardar("acuerdoSimulado", respaldo.acuerdoSimulado);
     else this.borrar("acuerdoSimulado");
     if (respaldo.rentaCargosDesde) this.guardar("rentaCargosDesde", respaldo.rentaCargosDesde);

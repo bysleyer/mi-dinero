@@ -130,6 +130,7 @@
     <div id="fu-colchon"></div>
 
     <div id="fu-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
+    <button id="fu-gasto" class="boton-mediano fu-gasto">¿Y si gasto…? (ver qué pasa antes de gastar)</button>
 
     <section class="tarjeta">
       <div class="selector fu-vistas" role="group" aria-label="Vista">
@@ -139,11 +140,16 @@
       <div id="fu-mes">
         <div id="fu-grafica" class="fu-grafica"></div>
         <div id="fu-leyenda" class="fu-leyenda"></div>
+        <div class="cal-cabeza">
+          <button id="fu-mes-anterior" class="cal-flecha" aria-label="Mes anterior">‹</button>
+          <h2 id="fu-mes-titulo" class="cal-titulo fu-sem-titulo"></h2>
+          <button id="fu-mes-siguiente" class="cal-flecha" aria-label="Mes siguiente">›</button>
+        </div>
         <div class="cal-dias cal-nombres" aria-hidden="true">
           <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
         </div>
         <div id="fu-calendario" class="cal-dias fu-calendario"></div>
-        <p class="estado">Toca un día para ver lo que pasa. Verde: bien · amarillo: cerca de cero · rojo: bajo cero · azul ◇: día libre.</p>
+        <p class="estado">Toca un día para ver lo que pasa. Verde: bien · amarillo: cerca de cero · rojo: bajo cero · azul ◇: día libre. Con las flechas ves hasta 3 meses adelante (después del próximo cheque, todo es estimado).</p>
       </div>
       <div id="fu-semana" hidden>
         <div class="cal-cabeza">
@@ -183,7 +189,7 @@
   <!-- Pantalla: ¿Cuándo lo compro? (Bloque 15) -->
   <main id="pantalla-cuando" class="contenedor" hidden>
     <button id="volver-cuando" class="volver">← Volver</button>
-    <h1>¿Cuándo lo compro?</h1>
+    <h1 id="pc-h1">¿Cuándo lo compro?</h1>
     <section id="pc-cabeza" class="tarjeta"></section>
     <div id="pc-colchon"></div>
     <div id="pc-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
@@ -269,17 +275,24 @@
     <h1>¿Me conviene un préstamo?</h1>
     <p class="estado">Solo simula: no registra dinero ni agrega deudas.</p>
     <section class="tarjeta">
+      <div class="campo"><label for="ps-tipo">¿Qué tipo de préstamo?</label>
+        <select id="ps-tipo">
+          <option value="fijo">Con pagos fijos (ej.: $130 cada viernes)</option>
+          <option value="libre">Sin intereses: lo pago cuando pueda</option>
+        </select></div>
+      <div class="campo ps-solo-libre" hidden><label for="ps-quien">¿Quién te presta? <span class="opcional">(opcional)</span></label>
+        <input id="ps-quien" type="text" maxlength="40" placeholder="Ej.: mi hermano"></div>
       <div class="campo"><label for="ps-monto">Monto que recibiría</label>
         <input id="ps-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-      <div class="campo"><label for="ps-pago">Pago por semana</label>
+      <div class="campo ps-solo-fijo"><label for="ps-pago">Pago por semana</label>
         <input id="ps-pago" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-      <div class="ps-dos">
+      <div class="ps-dos ps-solo-fijo">
         <div class="campo"><label for="ps-semanas">Número de semanas</label>
           <input id="ps-semanas" type="number" inputmode="numeric" step="1" min="1"></div>
         <div class="campo"><label for="ps-total">o total a devolver</label>
           <input id="ps-total" type="number" inputmode="decimal" step="0.01" min="0"></div>
       </div>
-      <div class="campo"><label for="ps-dia">Día de la semana del pago</label>
+      <div class="campo ps-solo-fijo"><label for="ps-dia">Día de la semana del pago</label>
         <select id="ps-dia">
           <option value="lunes">Lunes</option><option value="martes">Martes</option><option value="miércoles">Miércoles</option>
           <option value="jueves">Jueves</option><option value="viernes" selected>Viernes</option><option value="sábado">Sábado</option><option value="domingo">Domingo</option>
@@ -491,6 +504,13 @@
     <button id="volver" class="volver">← Volver</button>
     <h1>Plan de la semana</h1>
 
+    <section class="tarjeta p-sobres">
+      <h2>Tus sobres (dinero apartado)</h2>
+      <div id="p-sobres" class="p-sobres-lista"></div>
+      <button id="apartar" class="boton-grande guardar">Apartar lo de esta semana</button>
+      <p id="apartar-texto" class="nota-sobre"></p>
+    </section>
+
     <section class="tarjeta">
       <h2>1. Ingreso esperado</h2>
       <p id="p-ingreso-origen" class="origen-ingreso"></p>
@@ -516,17 +536,13 @@
     </section>
 
     <section class="tarjeta">
-      <h2>2. Gastos fijos por semana</h2>
-      <ul id="p-gastos" class="resumen"></ul>
+      <h2>2. Esta semana</h2>
+      <p id="p-semana-rango" class="estado"></p>
+      <div id="p-semana"></div>
     </section>
 
     <section class="tarjeta">
-      <h2>3. Sobrante</h2>
-      <p id="p-sobrante" class="mensaje-sobrante"></p>
-    </section>
-
-    <section class="tarjeta">
-      <h2>4. Colchón para semanas malas</h2>
+      <h2>3. Colchón para semanas malas</h2>
       <ul class="resumen">
         <li><span>Meta del colchón</span><span id="p-meta"></span></li>
       </ul>
@@ -537,27 +553,23 @@
       <div class="barra"><div id="p-barra" class="barra-relleno"></div></div>
       <p id="p-barra-texto" class="barra-texto"></p>
       <div class="campo">
-        <label for="p-porcentaje">Porcentaje del sobrante que va al colchón</label>
+        <label for="p-porcentaje">Si mandas algo al colchón: porcentaje de lo libre (sugerencia)</label>
         <input id="p-porcentaje" type="number" inputmode="numeric" step="1" min="0" max="100">
       </div>
-      <ul class="resumen">
-        <li><span>Al colchón</span><span id="p-a-colchon"></span></li>
-        <li><span>A pagar deudas</span><span id="p-a-deudas"></span></li>
-      </ul>
-      <p id="p-amigo" class="mensaje-sobrante positivo" hidden>Ya puedes pagarle a tu amigo</p>
     </section>
 
     <section class="tarjeta">
-      <h2>5. Sobres (dinero apartado)</h2>
-      <ul class="resumen">
-        <li><span>Renta</span><span id="s-renta"></span></li>
-        <li><span>Servicios</span><span id="s-servicios"></span></li>
-        <li><span>Colchón</span><span id="s-colchon"></span></li>
-      </ul>
-      <p id="s-renta-texto" class="nota-sobre"></p>
-      <button id="apartar" class="boton-grande guardar">Apartar esta semana</button>
-      <p id="apartar-texto" class="nota-sobre"></p>
+      <h2>4. Si quieres usar lo libre (tú decides)</h2>
+      <div id="p-sugerencia"></div>
+      <p id="p-amigo" class="mensaje-sobrante positivo" hidden>Ya puedes pagarle a tu amigo</p>
     </section>
+
+    <details class="tarjeta p-promedio">
+      <summary>Promedio semanal de tus gastos fijos (solo referencia)</summary>
+      <p class="estado">Es la renta y las facturas del mes divididas entre semanas. No mira el calendario: para saber qué es libre usa "Esta semana".</p>
+      <ul id="p-gastos" class="resumen"></ul>
+      <p id="p-sobrante" class="estado"></p>
+    </details>
   </main>
 
   <!-- Pantalla: Mis deudas (Bloque 4) -->

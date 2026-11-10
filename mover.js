@@ -20,7 +20,7 @@ const Mover = {
       luz: { gracia_dias: 0, recargo: null, riesgo: "" },
       telefono: { gracia_dias: 0, recargo: null, riesgo: "" },
       renta: { gracia_dias: 0, recargo: rec.renta && typeof rec.renta === "object" ? rec.renta.monto ?? null : rec.renta ?? null, riesgoAlto: true,
-               riesgo: "Después de la fecha límite puede haber recargo y acción legal. Pide el acuerdo por escrito." },
+               riesgo: "Después del día 1 cobran late fee; el 15 puede haber acción legal. Pide el acuerdo por escrito." },
       prestamo: { gracia_dias: 0, recargo: null, riesgo: "Sin recargo, salvo que lo acuerden. Avisa antes a quien te prestó." },
       deudaInternet: { gracia_dias: 0, recargo: rec.internetPorFactura ?? null, riesgoAlto: false,
                        riesgo: (((Datos.actual.reglasDePrioridad || {}).nivel2 || {}).deudaInternet || {}).nota || "Pago atrasado: acuerda la fecha con la empresa." }
@@ -66,10 +66,10 @@ const Mover = {
       return { id, fecha: hoy(), nombre: item.nombre, monto: redondear(item.partes[0].monto), item };
     }
     if (id === "renta") {
-      // La renta del mes sale de la cuenta (vence el 15), con su fecha original
+      // La renta del mes: vence el día 1 (fecha de la clave); su meta es el último viernes antes
       const l = Proyeccion.rentaLineas(hoy(), fecha, { sinMover: true }).find(x => x.claveMov === clave);
       if (!l) return null;
-      return { id, fecha, nombre: l.nombre, monto: redondear(-l.monto), item: { id, nombre: l.nombre } };
+      return { id, fecha, meta: l.fecha, nombre: l.nombre, monto: redondear(-l.monto), item: { id, nombre: l.nombre } };
     }
     const item = Vencimientos.entreBase(fecha, fecha).find(i => i.id === id);
     if (!item) return null;
@@ -251,7 +251,7 @@ const Mover = {
     const guardado = Almacen.leerPagosMovidos()[clave];
     const original = this.pagoOriginal(clave);
     this.horizonte = Math.max(this.config().horizonte, this.diferencia(original.fecha, hoy()) + 15);
-    this.ajuste = guardado ? guardado.partes.map(p => ({ ...p })) : [{ fecha: original.fecha < hoy() ? hoy() : original.fecha, monto: original.monto }];
+    this.ajuste = guardado ? guardado.partes.map(p => ({ ...p })) : [{ fecha: (original.meta || original.fecha) < hoy() ? hoy() : (original.meta || original.fecha), monto: original.monto }];
     $("mv-prestamo-opciones").hidden = !clave.startsWith("prestamo@");
     $("mv-recargo").value = guardado && guardado.recargo ? guardado.recargo : "";
     $("mv-correr").value = guardado && guardado.correr ? "si" : "no";
@@ -306,6 +306,7 @@ const Mover = {
         ${this.esDeuda(pago)
           ? `<li><span>Fecha</span><span>Sin fecha (deuda atrasada)</span></li>`
           : `<li><span>Vencimiento original</span><span>${Jornadas.textoDia(pago.fecha)}</span></li>`}
+        ${pago.meta ? `<li><span>Tu meta</span><span>${Jornadas.textoDia(pago.meta)} (último viernes)</span></li>` : ""}
         <li><span>Para cubrirlo hoy te falta</span><span class="${faltaHoy > 0 ? "error" : "ok"}">${dinero(faltaHoy)}</span></li>
         ${estadoFecha && !this.esDeuda(pago) ? `<li><span>En su fecha</span><span class="${estadoFecha.startsWith("No") ? "error" : "ok"}">${estadoFecha}</span></li>` : ""}
       </ul>
@@ -411,7 +412,7 @@ const Mover = {
     if (!(await preguntar("¿Volver este pago a su fecha original?", "Sí, volver"))) return;
     Almacen.quitarPagoMovido(this.clave);
     const original = this.pagoOriginal(this.clave);
-    this.ajuste = [{ fecha: original.fecha < hoy() ? hoy() : original.fecha, monto: original.monto }];
+    this.ajuste = [{ fecha: (original.meta || original.fecha) < hoy() ? hoy() : (original.meta || original.fecha), monto: original.monto }];
     $("mv-acordado").checked = false;
     $("mv-nota").value = "";
     $("mv-recargo").value = "";

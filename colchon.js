@@ -32,14 +32,15 @@ const RentaUI = {
       // La próxima renta vence después de estos días: se mira con la misma cuenta un poco más lejos
       const sig = Proyeccion.rentaMeses(pr.desde, Jornadas.sumarDias(pr.desde, 62)).find(c => c.pendiente > 0.005);
       if (sig) {
-        const dias = Math.round((Jornadas.aFecha(sig.limite) - Jornadas.aFecha(pr.desde)) / 86400000) + 1;
+        const dias = Math.round((Jornadas.aFecha(sig.meta) - Jornadas.aFecha(pr.desde)) / 86400000) + 1;
         r = Proyeccion.estadoRenta(Proyeccion.calcular({ ...pr.opciones, horizonte: Math.max(dias, 31) }));
       }
     }
     const atrasada = Proyeccion.rentaAtrasada();
+    const cuando = r ? `para el ${Futuro.dia(r.fecha)}${r.vence ? ` (vence el ${Futuro.diaCorto(r.vence)})` : ""}` : "";
     const linea = !r ? "" : r.falta > 0.005
-      ? `<p class="renta-linea falta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} antes del ${Futuro.dia(r.fecha)}</span><strong>Faltan ${dinero(r.falta)}</strong>${this.boton(r)}</p>`
-      : `<p class="renta-linea cubierta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} antes del ${Futuro.dia(r.fecha)}</span><strong>✓ Queda cubierta</strong>${this.boton(r)}</p>`;
+      ? `<p class="renta-linea falta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>Faltan ${dinero(r.falta)}</strong>${this.boton(r)}</p>`
+      : `<p class="renta-linea cubierta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>✓ Queda cubierta</strong>${this.boton(r)}</p>`;
     const atr = atrasada > 0.005
       ? `<p class="renta-atrasada">Renta atrasada (aparte, no es la de este mes): <strong>${dinero(atrasada)}</strong>. Se paga con lo que sobra.</p>` : "";
     return linea + atr;
