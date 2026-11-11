@@ -118,7 +118,7 @@ const Resumen = {
             <span class="deuda-nombre">${cat.nombre}</span>
             <span class="deuda-saldo neutro">${dinero(cat.total)}</span>
           </div>
-          <div class="barra fina"><div class="barra-relleno" style="width:${parte * 100}%"></div></div>
+          <div class="barra fina"><div class="barra-relleno" style="--p:${parte}"></div></div>
           ${this.lineaPresupuesto(cat.nombre, cat.total, c.rango.factor)}
         </li>`;
     }).join("");

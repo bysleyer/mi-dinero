@@ -385,7 +385,7 @@ const Plan = {
     if (document.activeElement !== $("p-colchon")) $("p-colchon").value = ahorrado;
     $("p-meta").textContent = dinero(c.meta);
     const avance = c.meta > 0 ? Math.min(1, ahorrado / c.meta) : 1;
-    $("p-barra").style.width = (avance * 100) + "%";
+    $("p-barra").style.setProperty("--p", avance);
     $("p-barra-texto").textContent =
       `${Math.round(avance * 100)}% — llevas ${dinero(ahorrado)} de ${dinero(c.meta)}`;
 
@@ -405,7 +405,7 @@ const Plan = {
       const av = meta > 0 ? Math.min(1, guardado / meta) : 1;
       return `<div class="p-sobre">
         <div class="deuda-cabeza"><span class="deuda-nombre">${titulo}</span><span>${guardado >= meta - 0.005 && meta > 0 ? "✓ " : ""}${dinero(guardado)} de ${dinero(meta)}</span></div>
-        <div class="barra"><div class="barra-relleno" style="width:${av * 100}%"></div></div>
+        <div class="barra"><div class="barra-relleno" style="--p:${av}"></div></div>
         ${detalle ? `<p class="estado">${detalle}</p>` : ""}
       </div>`;
     };

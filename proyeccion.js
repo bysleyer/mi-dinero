@@ -308,7 +308,9 @@ const Proyeccion = {
 
   // El texto del faltante, igual en todas las pantallas
   textoFaltante(f) {
-    return `El ${Jornadas.textoDia(f.fecha).toLowerCase()} te faltan ${dinero(f.falta)} para ${this.lista(f.cortos)}` +
+    const hoyC = hoy(), cuando = f.fecha === hoyC ? "Hoy" : f.fecha === Jornadas.sumarDias(hoyC, 1) ? "Mañana"
+      : `El ${Jornadas.textoDia(f.fecha).toLowerCase()}`;
+    return `${cuando} te faltan ${dinero(f.falta)} para ${this.lista(f.cortos)}` +
       (f.rentaCubierta ? ` (la ${f.rentaNombre.charAt(0).toLowerCase() + f.rentaNombre.slice(1)} sí se cubre).` : ".");
   },
 

@@ -835,3 +835,80 @@ button, [role="button"], summary, .nav-item, .pestanas button {
 .enlace:active { opacity: .6; }
 /* La ventana de los formularios deja espacio para la rayita del iPhone; su scroll no mueve la pantalla de atrás */
 .ventana-caja { padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); overscroll-behavior: contain; }
+
+/* =========================================================
+   break-ui: datos extremos en pantallas chicas
+   ========================================================= */
+/* La parte de arriba del inicio nunca se sale: el título se achica y la cifra no empuja */
+.cabeza-inicio h1 { flex: 1; min-width: 0; font-size: clamp(1.5rem, 8vw, 2rem); line-height: 1.05; }
+.cabeza-inicio .campana, .cabeza-inicio .dinero-tengo { flex-shrink: 0; }
+.dinero-cifra { font-size: clamp(1.1rem, 6vw, 1.45rem); white-space: nowrap; }
+/* Números del mismo ancho: los montos quedan alineados */
+body { font-variant-numeric: tabular-nums; }
+/* Textos largos en las listas pasan a otra línea en vez de cortarse */
+.mov-info { min-width: 0; }
+.mov-tipo { overflow-wrap: anywhere; }
+
+/* =========================================================
+   emil-design-eng: animaciones cortas y con propósito
+   ========================================================= */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* como las hojas del iPhone */
+}
+/* Barras de progreso: se estiran (no se recalcula la pantalla) */
+.barra-relleno { width: 100%; transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform 250ms var(--ease-out); }
+/* Ventanas de abajo (＋, Más, Avisos, formularios): suben al abrir, el fondo se oscurece suave; al cerrar, más rápido */
+.hoja, .ventana { transition: background-color 250ms ease, display 200ms allow-discrete, overlay 200ms allow-discrete; }
+.hoja-caja, .ventana-caja { transition: transform 300ms var(--ease-drawer), opacity 200ms ease; }
+@starting-style {
+  .hoja, .ventana { background-color: rgba(0, 0, 0, 0); }
+  .hoja-caja, .ventana-caja { transform: translateY(100%); }
+}
+.hoja[hidden], .ventana[hidden] { background-color: rgba(0, 0, 0, 0); transition-duration: 200ms; }
+.hoja[hidden] .hoja-caja, .ventana[hidden] .ventana-caja { transform: translateY(100%); transition: transform 200ms var(--ease-out); }
+/* En el computador las ventanas van al centro: aparecen con un pequeño movimiento hacia arriba */
+@media (min-width: 900px) {
+  @starting-style { body.con-nav .hoja-caja, body.con-nav .ventana-caja { transform: translateY(16px); opacity: 0; } }
+  body.con-nav .hoja[hidden] .hoja-caja, body.con-nav .ventana[hidden] .ventana-caja { transform: translateY(16px); opacity: 0; }
+}
+/* Aviso "Guardado": sube un poquito y aparece */
+.aviso-flotante { transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), display 150ms allow-discrete; }
+@starting-style { .aviso-flotante { opacity: 0; transform: translate(-50%, 8px); } }
+.aviso-flotante[hidden] { opacity: 0; transform: translate(-50%, 8px); transition-duration: 150ms; }
+/* "Reducir movimiento" en el iPhone: sin deslizar ni achicar, solo aparecer */
+@media (prefers-reduced-motion: reduce) {
+  .hoja-caja, .ventana-caja, .aviso-flotante, .barra-relleno { transition: opacity 150ms ease !important; transform: none !important; }
+  .barra-relleno { transform: scaleX(var(--p, 0)) !important; }
+  @starting-style { .hoja-caja, .ventana-caja, .aviso-flotante { transform: none !important; opacity: 0; } }
+  .boton-grande:active, .boton-mediano:active, .boton-chico:active, .nav-item:active, .pestanas button:active,
+  .hoja-lista button:active, button.dia:active, .volver:active, .campana:active, .inicio-libre:active,
+  .dinero-tengo:active, .cal-flecha:active, .selector button:active, .borrar:active { transform: none; opacity: .7; }
+}
+
+/* =========================================================
+   apple-design: barra translúcida y títulos con letras más juntas
+   ========================================================= */
+h1 { letter-spacing: -0.02em; line-height: 1.1; }
+@media (max-width: 899px) {
+  body.con-nav .nav {
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+}
+@media (max-width: 899px) and (prefers-reduced-transparency: reduce) {
+  body.con-nav .nav { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--borde); }
+}
+/* Teléfonos muy chicos (iPhone SE de 1ª gen.): título y campana un poco más chicos */
+@media (max-width: 360px) {
+  .cabeza-inicio h1 { font-size: 1.35rem; }
+  .cabeza-inicio .campana { width: 44px; height: 44px; font-size: 1.25rem; }
+  .dinero-tengo { padding-left: 10px; padding-right: 10px; }
+}
+/* Mientras una ventana se cierra (200 ms), no bloquea los toques */
+.hoja[hidden], .ventana[hidden], .aviso-flotante[hidden] { pointer-events: none; }
+/* Listas de "etiqueta · valor": si el valor no cabe al lado, baja a la línea siguiente (a la derecha) en vez de salirse */
+.resumen li { flex-wrap: wrap; }
+.resumen li span:last-child { margin-left: auto; }
