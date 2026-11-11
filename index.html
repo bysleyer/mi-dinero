@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <!-- Seguridad: solo código de la propia app; conexiones solo a GitHub (sincronización) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mi dinero</title>
   <meta name="theme-color" content="#f4f6f8">
@@ -14,6 +16,7 @@
   <link rel="apple-touch-icon" href="iconos/icono-180.png">
   <!-- manifest.json se agrega desde app.js solo cuando la app se abre desde una dirección web -->
   <link rel="stylesheet" href="estilos.css">
+  <script src="arranque.js"></script>
 </head>
 <body>
   <!-- Menú: barra abajo (teléfono) o a la izquierda (computador) -->
