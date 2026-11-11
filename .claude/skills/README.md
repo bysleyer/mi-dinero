@@ -11,3 +11,14 @@ Solo las que sirven para Mi dinero (app web para iPhone, sin frameworks):
 
 Nota para Mi dinero: varias skills traen ejemplos con React/Tailwind. Aquí se aplican los
 principios con HTML, CSS y JavaScript simple, sin agregar librerías ni frameworks.
+
+# Skill de PWA (de popey/claude-code-skills)
+
+Copiada de https://github.com/popey/claude-code-skills (licencia MIT, ver LICENSE-popey-claude-code-skills.txt):
+
+- progressive-web-app: instalación, service worker, caché y funcionamiento sin internet.
+  Nota: Mi dinero no usa Workbox ni herramientas de build; la versión del caché se sube a mano (CACHE en sw.js).
+
+# Otras (instaladas en la cuenta, no en esta carpeta)
+
+- a11y-enforcer: accesibilidad (WCAG): contraste, etiquetas, teclado, lectores de pantalla.
