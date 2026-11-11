@@ -11,6 +11,9 @@
 
 * { box-sizing: border-box; }
 
+/* Botones, campos y selectores heredan la fuente de la app (antes usaban Arial por defecto). */
+button, input, select, textarea { font-family: inherit; }
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
