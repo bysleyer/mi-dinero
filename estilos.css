@@ -938,6 +938,3 @@ h1 { letter-spacing: -0.02em; line-height: 1.1; }
 #vigilante textarea { width: 100%; padding: 10px; border: 1px solid var(--borde); border-radius: 10px; font: inherit; font-size: 16px; }
 .oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (prefers-reduced-motion: reduce) { .cj-barra span { transition: none; } }
-
-/* Arranque (arranque.js): en blanco un instante mientras carga, para que no "salte" */
-html.cargando body { visibility: hidden; }

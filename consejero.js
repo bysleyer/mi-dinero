@@ -271,7 +271,7 @@ Object.assign(Consejero, {
     if (!pregunta) { $("cj-pregunta").focus(); return; }
     const texto = this.resumen(pregunta);
     try { await navigator.clipboard.writeText(texto); } catch (e) { /* sin permiso: va igual en el enlace */ }
-    window.open("https://claude.ai/new?q=" + encodeURIComponent(texto), "_blank", "noopener");
+    window.open("https://claude.ai/new?q=" + encodeURIComponent(texto), "_blank");
     $("cj-pregunta-ayuda").hidden = false;
   },
 
