@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 38, fecha: "11 nov 2026" };
+const VERSION_APP = { numero: 39, fecha: "11 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -674,8 +674,10 @@ const Pantalla = {
 
   aviso(texto, duracion = 1800) {
     const el = $("aviso");
-    el.textContent = texto;
+    // Primero se muestra y después se pone el texto: así VoiceOver lo anuncia
     el.hidden = false;
+    el.textContent = "";
+    requestAnimationFrame(() => { el.textContent = texto; });
     clearTimeout(this._t);
     this._t = setTimeout(() => { el.hidden = true; }, duracion);
   },
@@ -783,6 +785,18 @@ try {
   document.querySelectorAll("[data-form]").forEach(b =>
     b.addEventListener("click", () => abrirFormulario(b.dataset.form)));
   $("formulario").addEventListener("submit", guardarFormulario);
+  // Tecla Esc (en el computador): cierra la ventana que esté encima
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    const abierto = id => $(id) && !$(id).hidden;
+    if (abierto("vigilante")) $("vg-volver").click();
+    else if (abierto("pregunta")) $("pregunta-no").click();
+    else if (abierto("ventana")) cerrarFormulario();
+    else if (abierto("hoja") && typeof Nav !== "undefined") Nav.cerrarHoja();
+    else if (abierto("fu-dia")) $("fu-dia").hidden = true;
+    else return;
+    e.preventDefault();
+  });
   $("cancelar").addEventListener("click", cerrarFormulario);
   $("movimientos").addEventListener("click", e => {
     const b = e.target.closest("[data-borrar]");

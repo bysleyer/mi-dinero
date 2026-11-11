@@ -3,9 +3,9 @@
   --tarjeta: #ffffff;
   --texto: #1d2329;
   --suave: #5c6670;
-  --ok: #1e8e3e;
+  --ok: #1a7f37;
   --error: #c5221f;
-  --aviso: #b06000;
+  --aviso: #9a5400;
   --borde: #e6e9ec;
 }
 
@@ -52,7 +52,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
   cursor: pointer;
 }
 .boton-grande:active { transform: scale(.98); }
-.boton-grande.ingreso { background: #1e8e3e; }
+.boton-grande.ingreso { background: #1a7f37; }
 .boton-grande.gasto { background: #c5221f; }
 .boton-grande.deuda { background: #1a5fb4; }
 .boton-grande.guardar { background: #1a5fb4; margin-top: 8px; }
@@ -161,7 +161,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
   min-height: 44px; padding: 0 16px; margin-top: 10px; font-size: 1rem; font-weight: 700;
   border: 2px solid #1a5fb4; border-radius: 12px; background: #fff; color: #1a5fb4; cursor: pointer;
 }
-.boton-chico.lleno { background: #1e8e3e; border-color: #1e8e3e; color: #fff; }
+.boton-chico.lleno { background: #1a7f37; border-color: #1a7f37; color: #fff; }
 .pago-bloque { padding: 12px 0; border-top: 1px solid var(--borde); }
 .pago-bloque:first-child { border-top: none; padding-top: 0; }
 .pago-bloque .resumen li { padding: 6px 0; border: none; }
@@ -262,7 +262,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .dia-num small { font-size: .7rem; margin-left: 1px; }
 .dia-horas { margin-top: auto; font-size: .68rem; font-weight: 700; line-height: 1.1; white-space: nowrap; }
 .dia-punto { margin-top: auto; font-size: 1.2rem; line-height: .8; color: #8a949c; }
-.dia.trabajado { background: #1e8e3e; border-color: #1e8e3e; color: #fff; }
+.dia.trabajado { background: #1a7f37; border-color: #1a7f37; color: #fff; }
 .dia.no-trabajo { background: #fbe3e1; border-color: #f2b8b4; color: #8c1d18; }
 .dia.pendiente { background: #eceff1; }
 .dia.hoy { border: 3px solid #1d2329; }
@@ -270,7 +270,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .dia.dia-15 .dia-num, .muestra.dia-15 { color: var(--error); }
 .dia.trabajado.dia-15 .dia-num { color: #fff; text-decoration: underline; }
 .marca-cobro {
-  position: absolute; top: 1px; right: 2px; font-size: .62rem; font-weight: 700; color: #1e8e3e;
+  position: absolute; top: 1px; right: 2px; font-size: .62rem; font-weight: 700; color: #1a7f37;
 }
 .dia.trabajado .marca-cobro { color: #fff; }
 .marca-renta {
@@ -286,9 +286,9 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .cal-leyenda li { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 .muestra {
   flex: none; width: 34px; height: 26px; border-radius: 6px; border: 1px solid var(--borde);
-  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; color: #1e8e3e;
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; color: #1a7f37;
 }
-.muestra.trabajado { background: #1e8e3e; color: #fff; }
+.muestra.trabajado { background: #1a7f37; color: #fff; }
 .muestra.no-trabajo { background: #fbe3e1; color: #8c1d18; }
 .muestra.pendiente { background: #eceff1; color: #8a949c; }
 .muestra.hoy { border: 3px solid #1d2329; }
@@ -409,7 +409,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .mv-opcion p { margin: 6px 0; }
 .mv-opcion .boton-chico { margin-top: 0; margin-right: 6px; }
 .mv-etiqueta { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .3px; }
-.mv-etiqueta.mejor { background: #1e8e3e; color: #fff; }
+.mv-etiqueta.mejor { background: #1a7f37; color: #fff; }
 .mv-etiqueta.segunda { background: #e6e9ec; color: var(--texto); }
 .mv-calendario { display: grid; gap: 4px; }
 .dia.mv-verde, .muestra.mv-verde { background: #cdebd6; border-color: #8fd0a2; }
@@ -419,7 +419,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .dia.mv-fuera { opacity: .3; cursor: default; }
 .dia.mv-elegido { outline: 3px solid #1a5fb4; outline-offset: 1px; }
 .mv-vence { font-size: .55rem; font-weight: 700; color: var(--error); line-height: 1; }
-.mv-sugerida { font-size: .55rem; font-weight: 700; padding: 1px 3px; border-radius: 4px; background: #1e8e3e; color: #fff; margin-top: auto; }
+.mv-sugerida { font-size: .55rem; font-weight: 700; padding: 1px 3px; border-radius: 4px; background: #1a7f37; color: #fff; margin-top: auto; }
 .mv-riesgo { margin: 10px 0; padding: 8px 10px; border-radius: 10px; background: #fbe3e1; color: #8c1d18; font-weight: 700; font-size: .9rem; }
 .mv-check { display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 44px; margin-bottom: 8px; }
 .mv-check input { width: 24px; height: 24px; }
@@ -434,7 +434,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .mover-igual { font-size: .8rem; padding: 2px 0; }
 
 /* ---------- Tipo de ingreso ---------- */
-.cambiar-tipo { font-size: .8rem; padding: 2px 0; }
+.cambiar-tipo { font-size: .8rem; padding: 2px 0; min-height: 28px; }
 
 /* ---------- Bloque 13: Días libres ---------- */
 .dia.libre, .muestra.libre { background: #dceafc; border-color: #9cc0ef; color: #174a8c; }
@@ -567,7 +567,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .botones-final .boton-chico { margin-top: 0; }
 .df-campo { margin-bottom: 14px; }
 .df-original { font-size: .8rem; color: var(--suave); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
-.df-original .enlace { font-size: .8rem; padding: 0; }
+.df-original .enlace { font-size: .8rem; padding: 4px 0; min-height: 28px; }
 .df-programado { width: 100%; color: #1a5fb4; font-weight: 700; }
 .df-confirmar { font-size: .7rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: #fff4e0; color: #8a5a00; vertical-align: middle; }
 .df-dias { display: flex; flex-wrap: wrap; gap: 6px; }
