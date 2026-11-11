@@ -466,7 +466,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .fu-cobro { font-size: 11px; font-weight: 800; fill: var(--ok); color: var(--ok); }
 .fu-vence { font-size: 9px; font-weight: 700; fill: var(--suave); color: var(--suave); letter-spacing: .5px; }
 .fu-toque { fill: transparent; cursor: pointer; }
-.fu-toque:hover { fill: rgba(26, 95, 180, .08); }
+@media (hover: hover) and (pointer: fine) { .fu-toque:hover { fill: rgba(26, 95, 180, .08); } }
 .fu-leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78rem; color: var(--suave); margin: 4px 0 12px; }
 .fu-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
 .fu-muestra { display: inline-block; width: 18px; height: 0; border-top: 3px solid #1a5fb4; }
@@ -687,7 +687,7 @@ body.con-nav .botones-final { display: none; }
 
 /* Hojas: "＋ Registrar" y "Más" */
 .hoja { position: fixed; inset: 0; z-index: 12; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
-.hoja-caja { background: var(--tarjeta); width: 100%; max-width: 560px; border-radius: 20px 20px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 90vh; overflow-y: auto; }
+.hoja-caja { background: var(--tarjeta); width: 100%; max-width: 560px; border-radius: 20px 20px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 90vh; max-height: 90dvh; overflow-y: auto; overscroll-behavior: contain; }
 .hoja-caja h2 { color: var(--texto); font-size: 1.3rem; }
 .hoja-grilla { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 .hoja-grilla .boton-grande, .hoja-grilla .boton-mediano { width: 100%; margin: 0; min-height: 64px; font-size: 1.05rem; }
@@ -732,7 +732,7 @@ body.con-nav .botones-final { display: none; }
   body.con-nav .hoja { align-items: center; }
   body.con-nav .hoja-caja { border-radius: 20px; max-width: 520px; }
   body.con-nav .ventana { align-items: center; }
-  body.con-nav .ventana-caja { border-radius: 20px; max-height: 92vh; }
+  body.con-nav .ventana-caja { border-radius: 20px; max-height: 92vh; max-height: 92dvh; }
   body.con-nav .pestanas { display: none; }
   body.con-nav main.contenedor { max-width: 1180px; padding: 24px 28px 48px; columns: 2; column-gap: 22px; }
   body.con-nav main.contenedor > * { break-inside: avoid; }
@@ -807,3 +807,31 @@ body.con-nav #aviso-datos-viejos, body.con-nav #fu-sin-fecha { display: none !im
   body.con-nav { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
   body.con-nav .aviso-flotante { bottom: calc(90px + env(safe-area-inset-bottom)); }
 }
+
+/* =========================================================
+   Que se sienta como app en el iPhone (skill mobile-native)
+   ========================================================= */
+:root { color-scheme: light; } /* la app es de modo claro: los campos no se oscurecen en modo oscuro */
+html {
+  -webkit-tap-highlight-color: transparent; /* sin el cuadro gris al tocar (cada botón tiene su :active) */
+  -webkit-text-size-adjust: 100%;           /* la letra no crece sola al girar el teléfono */
+}
+/* El iPhone hace zoom si un campo tiene letra de menos de 16px (y no vuelve) */
+input, select, textarea { font-size: 16px; }
+.texto-respaldo, .df-acuerdo-fila input, .ac-tramo input { font-size: 16px; }
+/* Toques al instante (sin esperar un doble toque) y sin seleccionar el texto de los botones */
+button, a, label, select, summary, [role="button"], input[type="checkbox"] { touch-action: manipulation; }
+button, [role="button"], summary, .nav-item, .pestanas button {
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+/* Respuesta al tocar en todos los botones (antes solo en los grandes) */
+.boton-chico, .nav-item, .pestanas button, .hoja-lista button, button.dia, .enlace, .volver, .campana,
+.inicio-libre, .dinero-tengo, .cal-flecha, .selector button, .borrar {
+  transition: transform 120ms cubic-bezier(.23, 1, .32, 1), background-color 120ms;
+}
+.boton-chico:active, .nav-item:active, .pestanas button:active, .hoja-lista button:active, button.dia:active,
+.volver:active, .campana:active, .inicio-libre:active, .dinero-tengo:active, .cal-flecha:active,
+.selector button:active, .borrar:active { transform: scale(.97); }
+.enlace:active { opacity: .6; }
+/* La ventana de los formularios deja espacio para la rayita del iPhone; su scroll no mueve la pantalla de atrás */
+.ventana-caja { padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); overscroll-behavior: contain; }
