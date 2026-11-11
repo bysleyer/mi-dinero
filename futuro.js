@@ -45,7 +45,8 @@ const Futuro = {
     $("pantalla-futuro").hidden = false;
     $("fu-detalle").open = false;
     window.scrollTo(0, 0);
-    this.mostrar();
+    // Primero se ve la pantalla y un instante después se hacen las cuentas (así responde al toque enseguida)
+    requestAnimationFrame(() => setTimeout(() => this.mostrar(), 0));
   },
 
   cerrar() {
