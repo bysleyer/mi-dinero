@@ -99,7 +99,8 @@ const Futuro = {
     // Calendario, semana y ventana del día: hasta 3 meses (los primeros 30 días son los mismos de arriba)
     const prLargo = this.proyeccion(est.escenario, this.DIAS_LARGO);
     this._prLargo = prLargo;
-    if (est.vista === "mes") { this.dibujarGrafica(prs, est.escenario); this.dibujarCalendario(prLargo); }
+    this.dibujarGrafica(prs, est.escenario); // la gráfica tiene su propia tarjeta (pestaña "Gráfica")
+    if (est.vista === "mes") this.dibujarCalendario(prLargo);
     else this.dibujarSemana(prLargo);
 
     this.dibujarTarjetas(pr, est.escenario);

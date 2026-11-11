@@ -620,7 +620,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 
 /* Botón Volver: se queda fijo arriba mientras bajas */
 main.contenedor > .volver {
-  position: sticky; top: 8px; z-index: 30;
+  position: sticky; top: 8px; z-index: 8;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
 }
 .fu-gasto { width: 100%; margin: 8px 0; }
@@ -648,3 +648,103 @@ main.contenedor > .volver {
 .ver-si, .ver-no { font-size: 1.35rem !important; }
 .ver-no strong { color: #b42318; }
 .ver-si strong { color: #1d6b3a; }
+
+/* =========================================================
+   MENÚ Y PESTAÑAS: la misma app se acomoda al tamaño de la pantalla
+   Teléfono: barra abajo (Inicio · Mi futuro · ＋ · Plan · Más) y pestañas en las pantallas largas.
+   Computador (900px o más): menú a la izquierda y tarjetas en 2 columnas.
+   ========================================================= */
+.nav[hidden], .hoja[hidden] { display: none !important; }
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9;
+  display: flex; justify-content: space-around; align-items: stretch;
+  background: var(--tarjeta); border-top: 1px solid var(--borde);
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 10px rgba(0,0,0,.06);
+}
+.nav-marca { display: none; }
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: none; background: none; color: var(--suave); font-size: .72rem; font-weight: 700;
+  padding: 6px 2px; border-radius: 10px; cursor: pointer; min-height: 52px;
+}
+.nav-ico { font-size: 1.35rem; line-height: 1; }
+.nav-item.activo { color: #1a5fb4; background: #e8f0fb; }
+.nav-registrar .nav-ico {
+  background: #1a5fb4; color: #fff; width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 1.7rem; margin-top: -14px;
+  box-shadow: 0 2px 8px rgba(26,95,180,.35);
+}
+.nav-registrar .nav-txt { display: none; }
+.solo-pc { display: none; }
+body.con-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+body.con-nav .aviso-flotante { bottom: calc(90px + env(safe-area-inset-bottom)); }
+body.con-nav .volver-principal { display: none; }
+/* En el inicio, las secciones ya están en el menú */
+body.con-nav #abrir-calendario, body.con-nav #abrir-futuro, body.con-nav #abrir-planeados,
+body.con-nav #abrir-plan, body.con-nav #abrir-deudas, body.con-nav #abrir-resumen,
+body.con-nav .botones-final { display: none; }
+
+/* Hojas: "＋ Registrar" y "Más" */
+.hoja { position: fixed; inset: 0; z-index: 12; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
+.hoja-caja { background: var(--tarjeta); width: 100%; max-width: 560px; border-radius: 20px 20px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 90vh; overflow-y: auto; }
+.hoja-caja h2 { color: var(--texto); font-size: 1.3rem; }
+.hoja-grilla { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.hoja-grilla .boton-grande, .hoja-grilla .boton-mediano { width: 100%; margin: 0; min-height: 64px; font-size: 1.05rem; }
+.hoja-lista { display: grid; gap: 8px; margin-bottom: 12px; }
+.hoja-lista button { text-align: left; font-size: 1.1rem; font-weight: 700; padding: 14px; border: 1px solid var(--borde); border-radius: 12px; background: #fff; color: var(--texto); cursor: pointer; }
+#hoja-cerrar { width: 100%; }
+
+/* Pestañas (teléfono) */
+.pestanas { display: flex; gap: 6px; margin: 8px 0 14px; background: #e6e9ec; padding: 4px; border-radius: 12px; }
+.pestanas button { flex: 1; border: none; background: none; padding: 10px 4px; border-radius: 9px; font-size: .95rem; font-weight: 700; color: var(--suave); cursor: pointer; }
+.pestanas button.activo { background: #fff; color: var(--texto); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+@media (max-width: 899px) {
+  main[data-tab="sobres"] [data-sec]:not([data-sec="sobres"]),
+  main[data-tab="semana"] [data-sec]:not([data-sec="semana"]),
+  main[data-tab="colchon"] [data-sec]:not([data-sec="colchon"]),
+  main[data-tab="deudas"] [data-sec]:not([data-sec="deudas"]),
+  main[data-tab="pagos"] [data-sec]:not([data-sec="pagos"]),
+  main[data-tab="termino"] [data-sec]:not([data-sec="termino"]),
+  main[data-tab="calendario"] [data-sec]:not([data-sec="calendario"]),
+  main[data-tab="grafica"] [data-sec]:not([data-sec="grafica"]),
+  main[data-tab="preguntas"] [data-sec]:not([data-sec="preguntas"]) { display: none !important; }
+}
+
+/* Computador: menú a la izquierda y contenido a lo ancho, en 2 columnas */
+@media (min-width: 900px) {
+  body { font-size: 18px; }
+  body.con-nav { padding: 0 0 0 240px; }
+  body.con-nav .nav {
+    top: 0; right: auto; width: 240px; flex-direction: column; justify-content: flex-start; gap: 2px;
+    border-top: none; border-right: 1px solid var(--borde); padding: 16px 10px; overflow-y: auto; box-shadow: none;
+  }
+  body.con-nav .nav-marca { display: block; font-size: 1.4rem; font-weight: 800; padding: 6px 12px 14px; }
+  body.con-nav .nav-item { flex: none; flex-direction: row; justify-content: flex-start; gap: 10px; font-size: 1rem; padding: 10px 12px; min-height: 0; }
+  body.con-nav .nav-ico { font-size: 1.15rem; }
+  body.con-nav .solo-pc { display: flex; }
+  body.con-nav .solo-tel { display: none; }
+  body.con-nav .nav-registrar { order: -1; background: #1a5fb4; color: #fff; margin-bottom: 10px; justify-content: center; }
+  body.con-nav .nav-marca { order: -2; }
+  body.con-nav .nav-registrar .nav-ico { background: none; box-shadow: none; width: auto; height: auto; margin: 0; font-size: 1.3rem; }
+  body.con-nav .nav-registrar .nav-txt { display: inline; }
+  body.con-nav .aviso-flotante { bottom: 32px; left: calc(50% + 120px); }
+  body.con-nav .hoja { align-items: center; }
+  body.con-nav .hoja-caja { border-radius: 20px; max-width: 520px; }
+  body.con-nav .ventana { align-items: center; }
+  body.con-nav .ventana-caja { border-radius: 20px; max-height: 92vh; }
+  body.con-nav .pestanas { display: none; }
+  body.con-nav main.contenedor { max-width: 1180px; padding: 24px 28px 48px; columns: 2; column-gap: 22px; }
+  body.con-nav main.contenedor > * { break-inside: avoid; }
+  body.con-nav main.contenedor > :not(.tarjeta):not(details):not([data-sec]) { column-span: all; }
+  /* Pantallas que se leen mejor en una sola columna */
+  body.con-nav #pantalla-mover, body.con-nav #pantalla-cuando, body.con-nav #pantalla-alcanza,
+  body.con-nav #pantalla-ver, body.con-nav #pantalla-primera { columns: 1; max-width: 820px; }
+}
+@media (min-width: 900px) {
+  body.con-nav .nav-item .nav-txt { text-align: left; }
+  body.con-nav #pantalla-inicio .botones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  body.con-nav #pantalla-inicio .botones .boton-grande { margin: 0; min-height: 64px; }
+  body.con-nav #pantalla-inicio .botones .rapidos { grid-column: span 3; display: flex; gap: 10px; margin: 0; }
+  body.con-nav #pantalla-inicio .botones .rapidos > * { flex: 1; margin: 0; }
+}

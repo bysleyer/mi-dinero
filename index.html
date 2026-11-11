@@ -15,6 +15,51 @@
   <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
+  <!-- Menú: barra abajo (teléfono) o a la izquierda (computador) -->
+  <nav id="nav" class="nav" aria-label="Menú" hidden>
+    <div class="nav-marca">Mi dinero</div>
+    <button class="nav-item" data-nav="inicio"><span class="nav-ico" aria-hidden="true">🏠</span><span class="nav-txt">Inicio</span></button>
+    <button class="nav-item" data-nav="futuro"><span class="nav-ico" aria-hidden="true">📈</span><span class="nav-txt">Mi futuro</span></button>
+    <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar"><span class="nav-ico" aria-hidden="true">＋</span><span class="nav-txt">Registrar</span></button>
+    <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true">📋</span><span class="nav-txt">Plan</span></button>
+    <button class="nav-item solo-pc" data-nav="deudas"><span class="nav-ico" aria-hidden="true">💳</span><span class="nav-txt">Mis deudas</span></button>
+    <button class="nav-item solo-pc" data-nav="planeados"><span class="nav-ico" aria-hidden="true">🛍️</span><span class="nav-txt">Gastos planeados</span></button>
+    <button class="nav-item solo-pc" data-nav="calendario"><span class="nav-ico" aria-hidden="true">📅</span><span class="nav-txt">Calendario</span></button>
+    <button class="nav-item solo-pc" data-nav="resumen"><span class="nav-ico" aria-hidden="true">📊</span><span class="nav-txt">A dónde va · ¿Cuadra?</span></button>
+    <button class="nav-item solo-pc" data-nav="datosfijos"><span class="nav-ico" aria-hidden="true">⚙️</span><span class="nav-txt">Datos fijos</span></button>
+    <button class="nav-item solo-pc" data-nav="respaldo"><span class="nav-ico" aria-hidden="true">☁️</span><span class="nav-txt">Respaldo</span></button>
+    <button id="nav-mas" class="nav-item solo-tel"><span class="nav-ico" aria-hidden="true">☰</span><span class="nav-txt">Más</span></button>
+  </nav>
+
+  <div id="hoja" class="hoja" hidden>
+    <div class="hoja-caja" role="dialog" aria-modal="true">
+      <div id="hoja-registrar">
+        <h2>Registrar</h2>
+        <div class="hoja-grilla">
+          <button class="boton-grande ingreso" data-registrar="ingreso">Me pagaron</button>
+          <button class="boton-grande gasto" data-registrar="gasto">Gasté</button>
+          <button class="boton-grande deuda" data-registrar="pagoDeuda">Pagué una deuda</button>
+          <button class="boton-mediano" data-registrar="transporte">Transporte</button>
+          <button class="boton-mediano" data-registrar="trabaje">Trabajé hoy</button>
+          <button class="boton-mediano" data-registrar="no-trabaje">No trabajé hoy</button>
+          <button class="boton-mediano" data-registrar="ysigasto">¿Y si gasto…?</button>
+        </div>
+      </div>
+      <div id="hoja-mas">
+        <h2>Más</h2>
+        <div class="hoja-lista">
+          <button data-nav="deudas">💳 Mis deudas</button>
+          <button data-nav="planeados">🛍️ Gastos planeados</button>
+          <button data-nav="calendario">📅 Calendario</button>
+          <button data-nav="resumen">📊 A dónde va mi dinero · ¿Cuadra?</button>
+          <button data-nav="datosfijos">⚙️ Datos fijos</button>
+          <button data-nav="respaldo">☁️ Respaldo y sincronizar</button>
+        </div>
+      </div>
+      <button id="hoja-cerrar" class="boton-chico">Cerrar</button>
+    </div>
+  </div>
+
   <main id="pantalla-inicio" class="contenedor">
     <div class="cabeza-inicio">
       <h1>Mi dinero</h1>
@@ -80,7 +125,7 @@
 
   <!-- Pantalla: Calendario (Bloque 8) -->
   <main id="pantalla-calendario" class="contenedor" hidden>
-    <button id="volver-calendario" class="volver">← Volver</button>
+    <button id="volver-calendario" class="volver volver-principal">← Volver</button>
     <h1>Calendario</h1>
 
     <section class="tarjeta cal-tarjeta">
@@ -122,7 +167,7 @@
 
   <!-- Pantalla: Mi futuro (Bloque 14) - solo muestra -->
   <main id="pantalla-futuro" class="contenedor" hidden>
-    <button id="volver-futuro" class="volver">← Volver</button>
+    <button id="volver-futuro" class="volver volver-principal">← Volver</button>
     <h1>Mi futuro</h1>
 
     <p id="fu-frase" class="fu-frase"></p>
@@ -132,15 +177,22 @@
 
     <div id="fu-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
     <button id="fu-gasto" class="boton-mediano fu-gasto">¿Y si gasto…? (ver qué pasa antes de gastar)</button>
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes de Mi futuro">
+      <button data-pestana="calendario">Calendario</button><button data-pestana="grafica">Gráfica</button><button data-pestana="preguntas">Preguntas</button>
+    </div>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="grafica">
+      <h2>Saldo de los próximos 30 días</h2>
+      <div id="fu-grafica" class="fu-grafica"></div>
+      <div id="fu-leyenda" class="fu-leyenda"></div>
+    </section>
+
+    <section class="tarjeta" data-sec="calendario">
       <div class="selector fu-vistas" role="group" aria-label="Vista">
         <button data-fu-vista="mes">Mes</button>
         <button data-fu-vista="semana">Semana</button>
       </div>
       <div id="fu-mes">
-        <div id="fu-grafica" class="fu-grafica"></div>
-        <div id="fu-leyenda" class="fu-leyenda"></div>
         <div class="cal-cabeza">
           <button id="fu-mes-anterior" class="cal-flecha" aria-label="Mes anterior">‹</button>
           <h2 id="fu-mes-titulo" class="cal-titulo fu-sem-titulo"></h2>
@@ -162,12 +214,12 @@
       </div>
     </section>
 
-    <div id="fu-arrastre"></div>
-    <div id="fu-tarjetas" class="fu-tarjetas"></div>
+    <div id="fu-arrastre" data-sec="preguntas"></div>
+    <div id="fu-tarjetas" class="fu-tarjetas" data-sec="preguntas"></div>
 
-    <button id="fu-libre" class="boton-mediano">No voy a trabajar un día</button>
+    <button id="fu-libre" class="boton-mediano" data-sec="preguntas">No voy a trabajar un día</button>
 
-    <details id="fu-detalle" class="tarjeta fu-detalle">
+    <details id="fu-detalle" class="tarjeta fu-detalle" data-sec="preguntas">
       <summary>Ver detalle</summary>
       <p class="estado">Las mismas cuentas, en lista.</p>
       <button id="abrir-alcanza" class="boton-mediano">¿Me alcanza? (día por día)</button>
@@ -179,7 +231,7 @@
 
   <!-- Pantalla: Gastos planeados (Bloque 15) -->
   <main id="pantalla-planeados" class="contenedor" hidden>
-    <button id="volver-planeados" class="volver">← Volver</button>
+    <button id="volver-planeados" class="volver volver-principal">← Volver</button>
     <h1>Gastos planeados</h1>
     <button id="pl-agregar" class="boton-grande deuda">Agregar gasto planeado</button>
     <section class="tarjeta">
@@ -198,7 +250,7 @@
       <h2>Sugerencia</h2>
       <div id="pc-sugerencias"></div>
     </section>
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="calendario">
       <div class="selector fu-vistas" role="group" aria-label="Vista">
         <button data-pc-vista="mes">Mes</button>
         <button data-pc-vista="semana">Semana</button>
@@ -320,7 +372,7 @@
 
   <!-- Pantalla: Datos fijos (Bloque 17) -->
   <main id="pantalla-datosfijos" class="contenedor" hidden>
-    <button id="volver-datosfijos" class="volver">← Volver</button>
+    <button id="volver-datosfijos" class="volver volver-principal">← Volver</button>
     <h1>Datos fijos</h1>
     <p class="estado">Tus cifras. Los cambios se guardan en este teléfono, no cambian tu archivo mis-datos.json,
       y lo que ya pasó no se recalcula.</p>
@@ -450,7 +502,7 @@
 
   <!-- Pantalla: Respaldo (Bloque 6) -->
   <main id="pantalla-respaldo" class="contenedor" hidden>
-    <button id="volver-respaldo" class="volver">← Volver</button>
+    <button id="volver-respaldo" class="volver volver-principal">← Volver</button>
     <h1>Respaldo</h1>
 
     <section class="tarjeta">
@@ -565,17 +617,20 @@
 
   <!-- Pantalla: Plan de la semana -->
   <main id="pantalla-plan" class="contenedor" hidden>
-    <button id="volver" class="volver">← Volver</button>
+    <button id="volver" class="volver volver-principal">← Volver</button>
     <h1>Plan de la semana</h1>
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes del plan">
+      <button data-pestana="sobres">Sobres</button><button data-pestana="semana">Esta semana</button><button data-pestana="colchon">Colchón</button>
+    </div>
 
-    <section class="tarjeta p-sobres">
+    <section class="tarjeta p-sobres" data-sec="sobres">
       <h2>Tus sobres (dinero apartado)</h2>
       <div id="p-sobres" class="p-sobres-lista"></div>
       <button id="apartar" class="boton-grande guardar">Apartar lo de esta semana</button>
       <p id="apartar-texto" class="nota-sobre"></p>
     </section>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="semana">
       <h2>1. Ingreso esperado</h2>
       <p id="p-ingreso-origen" class="origen-ingreso"></p>
       <p id="p-cuenta" class="estado esc-cuenta"></p>
@@ -599,13 +654,13 @@
       </div>
     </section>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="semana">
       <h2>2. Esta semana</h2>
       <p id="p-semana-rango" class="estado"></p>
       <div id="p-semana"></div>
     </section>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="colchon">
       <h2>3. Colchón para semanas malas</h2>
       <ul class="resumen">
         <li><span>Meta del colchón</span><span id="p-meta"></span></li>
@@ -622,13 +677,13 @@
       </div>
     </section>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="semana">
       <h2>4. Si quieres usar lo libre (tú decides)</h2>
       <div id="p-sugerencia"></div>
       <p id="p-amigo" class="mensaje-sobrante positivo" hidden>Ya puedes pagarle a tu amigo</p>
     </section>
 
-    <details class="tarjeta p-promedio">
+    <details class="tarjeta p-promedio" data-sec="semana">
       <summary>Promedio semanal de tus gastos fijos (solo referencia)</summary>
       <p class="estado">Es la renta y las facturas del mes divididas entre semanas. No mira el calendario: para saber qué es libre usa "Esta semana".</p>
       <ul id="p-gastos" class="resumen"></ul>
@@ -639,25 +694,28 @@
   <!-- Pantalla: Mis deudas (Bloque 4) -->
   <main id="pantalla-deudas" class="contenedor" hidden>
     <div id="alerta-15" class="alerta" hidden></div>
-    <button id="volver-deudas" class="volver">← Volver</button>
+    <button id="volver-deudas" class="volver volver-principal">← Volver</button>
     <h1>Mis deudas</h1>
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes de mis deudas">
+      <button data-pestana="deudas">Deudas</button><button data-pestana="pagos">Pagos</button><button data-pestana="termino">Cuándo termino</button>
+    </div>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="deudas">
       <h2>1. Lista de deudas (en orden de prioridad)</h2>
       <ul id="d-lista" class="lista-deudas"></ul>
     </section>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="deudas">
       <h2>Automático</h2>
       <ul id="d-automaticas" class="lista-deudas"></ul>
     </section>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="pagos">
       <h2>2. Qué pagar esta semana</h2>
       <div id="d-pagar"></div>
     </section>
 
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="termino">
       <h2>3. Proyección</h2>
       <div class="campo">
         <label for="d-extra">¿Y si pago $___ extra por semana?</label>
@@ -673,7 +731,7 @@
 
   <!-- Pantalla: A dónde se va mi dinero (Bloque 5) -->
   <main id="pantalla-resumen" class="contenedor" hidden>
-    <button id="volver-resumen" class="volver">← Volver</button>
+    <button id="volver-resumen" class="volver volver-principal">← Volver</button>
     <h1>A dónde se va mi dinero</h1>
 
     <div class="selector" role="group" aria-label="Período">
@@ -726,7 +784,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo, sincronizar -->
+  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo, sincronizar, nav -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="campos.js"></script>
@@ -749,5 +807,6 @@
   <script src="acuerdo.js"></script>
   <script src="respaldo.js"></script>
   <script src="sincronizar.js"></script>
+  <script src="nav.js"></script>
 </body>
 </html>
