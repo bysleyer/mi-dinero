@@ -221,9 +221,8 @@ const Plan = {
       .filter(l => l.monto < 0 && (l.id === "renta" || l.tipo === "pago") && l.id !== "prestamo").slice(0, 4);
     let hueco = null;
     if (despues && despues.saldo < -0.005) {
-      // Se nombra lo más grande de ese día (ej.: la renta), no solo el último pago que ya no alcanza
-      const grande = pr.porDia[despues.fecha].lineas.filter(l => l.monto < 0).sort((a, b) => a.monto - b.monto)[0];
-      hueco = { fecha: despues.fecha, falta: redondear(-despues.saldo), pago: grande ? grande.nombre : "tus pagos" };
+      const q = Proyeccion.quienFalta(pr, despues.fecha);
+      hueco = { fecha: despues.fecha, falta: redondear(-despues.saldo), pago: Proyeccion.lista(q.cortos) + (q.rentaCubierta ? "; la renta sí se cubre" : "") };
     }
     return { pr, lunes, domingo, desde, inicial: pr.inicial, entra, gastos,
              totalGastos: redondear(-gastos.reduce((s, l) => s + l.monto, 0)), finSemana, libre, guardar, para, hueco,
@@ -379,7 +378,7 @@ const Plan = {
           <p class="estado">Lo puedes gastar sin que ningún día de los próximos 3 meses quede bajo cero.</p>
         </div>
       </div>
-      ${sem.hueco ? `<p class="pc-hueco">Aunque guardes todo, el ${Futuro.dia(sem.hueco.fecha)} te faltan ${dinero(sem.hueco.falta)} (ese día va ${escapar(sem.hueco.pago)}).</p>` : ""}`;
+      ${sem.hueco ? `<p class="pc-hueco">Aunque guardes todo, el ${Futuro.dia(sem.hueco.fecha)} te faltan ${dinero(sem.hueco.falta)} para ${escapar(sem.hueco.pago)}.</p>` : ""}`;
 
     // 3. Colchón
     const ahorrado = c.plan.sobres.colchon;

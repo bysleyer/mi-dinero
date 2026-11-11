@@ -40,6 +40,8 @@ const RentaUI = {
     const cuando = r ? `para el ${Futuro.dia(r.fecha)}${r.vence ? ` (vence el ${Futuro.diaCorto(r.vence)})` : ""}` : "";
     const linea = !r ? "" : r.falta > 0.005
       ? `<p class="renta-linea falta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>Faltan ${dinero(r.falta)}</strong>${this.boton(r)}</p>`
+      : r.faltaDia > 0.005
+      ? `<p class="renta-linea parcial"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>✓ Queda cubierta, pero ese día faltan ${dinero(r.faltaDia)} para ${escapar(Proyeccion.lista(r.cortosDia))}</strong>${this.boton(r)}</p>`
       : `<p class="renta-linea cubierta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>✓ Queda cubierta</strong>${this.boton(r)}</p>`;
     const atr = atrasada > 0.005
       ? `<p class="renta-atrasada">Renta atrasada (aparte, no es la de este mes): <strong>${dinero(atrasada)}</strong>. Se paga con lo que sobra.</p>` : "";

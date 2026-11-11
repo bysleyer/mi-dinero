@@ -14,7 +14,8 @@ const Nav = {
     "pantalla-inicio": "inicio", "pantalla-futuro": "futuro", "pantalla-alcanza": "futuro", "pantalla-escenarios": "futuro",
     "pantalla-prestamo": "futuro", "pantalla-acuerdo": "futuro", "pantalla-mover": "futuro", "pantalla-plan": "plan",
     "pantalla-deudas": "deudas", "pantalla-planeados": "planeados", "pantalla-cuando": "planeados",
-    "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-datosfijos": "datosfijos", "pantalla-respaldo": "respaldo"
+    "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-datosfijos": "datosfijos", "pantalla-respaldo": "respaldo",
+    "pantalla-cubrir": "inicio"
   },
   EN_MAS: ["deudas", "planeados", "calendario", "resumen", "datosfijos", "respaldo"],
 
@@ -45,6 +46,7 @@ const Nav = {
     $("hoja").hidden = false;
     $("hoja-registrar").hidden = cual !== "registrar";
     $("hoja-mas").hidden = cual !== "mas";
+    $("hoja-avisos").hidden = cual !== "avisos";
   },
 
   cerrarHoja() { if ($("hoja")) $("hoja").hidden = true; },
@@ -52,6 +54,7 @@ const Nav = {
   iniciar() {
     document.body.classList.add("con-nav");
     $("nav").hidden = false;
+    $("campana").hidden = false;
     $("nav").addEventListener("click", e => {
       const b = e.target.closest("[data-nav]");
       if (b) this.ir(b.dataset.nav);
@@ -83,18 +86,16 @@ const Inicio = {
   mostrar() {
     const caja = $("inicio-semana");
     if (!caja || !document.body.classList.contains("con-nav") || $("pantalla-inicio").hidden) return;
-    const pr = Futuro.proyeccion(Futuro.estado().escenario);
     const sem = Plan.semanaReal();
     caja.hidden = false;
     caja.innerHTML = `
       <h2>Esta semana</h2>
-      ${RentaUI.html(pr)}
       <button class="inicio-libre" data-nav-ir="plan">
         <span><span class="inicio-etq">Libre para lo que quieras</span><strong>${dinero(sem.libre)}</strong></span>
         <span><span class="inicio-etq">Guárdalo para más adelante</span><strong>${dinero(sem.guardar)}</strong></span>
         <span class="inicio-ver">Ver el plan ›</span>
-      </button>
-      ${sem.hueco ? `<p class="pc-hueco">El ${Futuro.dia(sem.hueco.fecha)} te faltan ${dinero(sem.hueco.falta)} (ese día va ${escapar(sem.hueco.pago)}).</p>` : ""}`;
+      </button>`;
+    if (typeof Avisos !== "undefined") Avisos.mostrar();
   },
 
   iniciar() {

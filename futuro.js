@@ -99,6 +99,8 @@ const Futuro = {
     // Calendario, semana y ventana del día: hasta 3 meses (los primeros 30 días son los mismos de arriba)
     const prLargo = this.proyeccion(est.escenario, this.DIAS_LARGO);
     this._prLargo = prLargo;
+    // "¿Cómo lo cubro?" si en los próximos 3 meses hay un faltante (mismo escenario)
+    if ($("fu-cubrir")) $("fu-cubrir").hidden = !document.body.classList.contains("con-nav") || !Proyeccion.faltante(prLargo);
     this.dibujarGrafica(prs, est.escenario); // la gráfica tiene su propia tarjeta (pestaña "Gráfica")
     if (est.vista === "mes") this.dibujarCalendario(prLargo);
     else this.dibujarSemana(prLargo);

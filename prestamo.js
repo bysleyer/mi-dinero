@@ -8,6 +8,7 @@ const Prestamo = {
   ultimoEditado: "semanas", // si se escriben semanas se calcula el total, y al revés
 
   abrir() {
+    this.origen = null;
     document.querySelectorAll("main.contenedor").forEach(x => { x.hidden = true; });
     $("pantalla-prestamo").hidden = false;
     if (!$("ps-fecha").value) $("ps-fecha").value = hoy();
@@ -18,7 +19,9 @@ const Prestamo = {
 
   cerrar() {
     $("pantalla-prestamo").hidden = true;
-    $("pantalla-futuro").hidden = false;
+    $(this.origen || "pantalla-futuro").hidden = false;
+    this.origen = null;
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
     window.scrollTo(0, 0);
   },
 

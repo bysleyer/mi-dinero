@@ -774,3 +774,28 @@ body.con-nav #pantalla-inicio .botones { display: none; }
 .inicio-libre > span:nth-child(2) strong { color: #7a4b00; }
 .inicio-etq { font-size: .8rem; color: var(--suave); font-weight: 700; }
 .inicio-ver { grid-column: 1 / -1; font-size: .9rem; color: #1a5fb4; font-weight: 700; }
+.renta-linea.parcial { background: #fff4e0; color: #7a4b00; }
+
+/* ---------- Campana y avisos ---------- */
+.cabeza-inicio { gap: 10px; }
+.campana[hidden], .badge[hidden], .badge-txt[hidden], .avisos-afuera[hidden] { display: none !important; }
+.campana { position: relative; margin-left: auto; border: 1px solid var(--borde); background: #fff; border-radius: 14px; width: 52px; height: 52px; font-size: 1.5rem; cursor: pointer; }
+.badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #c5221f; color: #fff; font-size: .72rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.nav-ico { position: relative; }
+.nav-ico .badge { top: -8px; right: -12px; }
+.badge-txt { background: #c5221f; color: #fff; border-radius: 10px; padding: 0 7px; font-size: .78rem; margin-left: 4px; }
+.avisos-afuera { display: grid; gap: 8px; margin: 10px 0 14px; }
+.aviso-item { border-radius: 12px; padding: 12px; background: #eef0f2; }
+.aviso-item p { margin: 0 0 8px; font-size: .98rem; font-weight: 600; }
+.aviso-item.rojo { background: #fdecec; color: #8a1c1c; }
+.aviso-item.amarillo { background: #fff4e0; color: #7a4b00; }
+.aviso-item .pl-botones { margin: 0; }
+#avisos-lista { display: grid; gap: 8px; margin-bottom: 12px; }
+.avisos-vistos summary { cursor: pointer; color: var(--suave); font-weight: 700; margin: 6px 0; }
+.avisos-vistos .aviso-item { opacity: .75; margin-top: 6px; }
+/* Con la campana, estos avisos ya no van sueltos en las pantallas */
+body.con-nav #aviso-hoy, body.con-nav #aviso-respaldo, body.con-nav #aviso-ejemplo,
+body.con-nav #aviso-datos-viejos, body.con-nav #fu-sin-fecha { display: none !important; }
+/* ¿Cómo lo cubro? */
+.cb-faltante { font-size: 1.15rem; font-weight: 700; color: #8a1c1c; margin: 6px 0; }
+.cb-lista .pago-lado { align-items: flex-end; }

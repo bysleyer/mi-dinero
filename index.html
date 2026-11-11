@@ -18,7 +18,8 @@
   <!-- Menú: barra abajo (teléfono) o a la izquierda (computador) -->
   <nav id="nav" class="nav" aria-label="Menú" hidden>
     <div class="nav-marca">Mi dinero</div>
-    <button class="nav-item" data-nav="inicio"><span class="nav-ico" aria-hidden="true">🏠</span><span class="nav-txt">Inicio</span></button>
+    <button class="nav-item" data-nav="inicio"><span class="nav-ico" aria-hidden="true">🏠<span id="nav-inicio-num" class="badge" hidden></span></span><span class="nav-txt">Inicio</span></button>
+    <button id="nav-avisos" class="nav-item solo-pc"><span class="nav-ico" aria-hidden="true">🔔</span><span class="nav-txt">Avisos <span id="nav-avisos-num" class="badge-txt" hidden></span></span></button>
     <button class="nav-item" data-nav="futuro"><span class="nav-ico" aria-hidden="true">📈</span><span class="nav-txt">Mi futuro</span></button>
     <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar"><span class="nav-ico" aria-hidden="true">＋</span><span class="nav-txt">Registrar</span></button>
     <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true">📋</span><span class="nav-txt">Plan</span></button>
@@ -56,6 +57,10 @@
           <button data-nav="respaldo">☁️ Respaldo y sincronizar</button>
         </div>
       </div>
+      <div id="hoja-avisos">
+        <h2>🔔 Avisos</h2>
+        <div id="avisos-lista"></div>
+      </div>
       <button id="hoja-cerrar" class="boton-chico">Cerrar</button>
     </div>
   </div>
@@ -63,8 +68,10 @@
   <main id="pantalla-inicio" class="contenedor">
     <div class="cabeza-inicio">
       <h1>Mi dinero</h1>
+      <button id="campana" class="campana" aria-label="Avisos" hidden>🔔<span id="campana-num" class="badge" hidden></span></button>
       <button id="dinero-tengo" class="dinero-tengo" aria-label="Dinero que tengo. Toca para corregirlo"></button>
     </div>
+    <div id="avisos-afuera" class="avisos-afuera" hidden></div>
     <p id="estado-carga" class="estado"></p>
     <button id="aviso-ejemplo" class="aviso-hoy aviso-boton" hidden>Estás viendo datos de ejemplo. Toca aquí para cargar mis-datos.json.</button>
     <button id="aviso-respaldo" class="aviso-hoy aviso-boton" hidden></button>
@@ -175,6 +182,7 @@
 
     <p id="fu-frase" class="fu-frase"></p>
     <button id="fu-cuenta" class="enlace fu-cuenta"></button>
+    <button id="fu-cubrir" class="boton-mediano fu-gasto" data-cubrir hidden>¿Cómo lo cubro?</button>
     <button id="fu-sin-fecha" class="aviso-hoy aviso-boton" hidden></button>
     <div id="fu-colchon"></div>
 
@@ -288,6 +296,23 @@
   </main>
 
   <!-- Pantalla: ¿Me conviene un préstamo? (Bloque 18) - solo simula -->
+  <!-- Pantalla: ¿Cómo lo cubro? (solo sugiere) -->
+  <main id="pantalla-cubrir" class="contenedor" hidden>
+    <button id="volver-cubrir" class="volver">← Volver</button>
+    <h1>¿Cómo lo cubro?</h1>
+    <div id="cb-objetivo"></div>
+    <section class="tarjeta">
+      <h2>Te recomiendo</h2>
+      <div id="cb-plan"></div>
+    </section>
+    <section id="cb-otra" class="tarjeta" hidden></section>
+    <section class="tarjeta">
+      <h2>Todas las opciones</h2>
+      <ul id="cb-todas" class="movimientos cb-lista"></ul>
+    </section>
+    <p class="estado">Solo sugiere: nada cambia hasta que toques un botón. Las sugerencias solo mueven el teléfono; el tren y el taxi no se tocan.</p>
+  </main>
+
   <!-- Pantalla: Si aceptan el acuerdo de renta (Bloque 19) - solo simula -->
   <main id="pantalla-acuerdo" class="contenedor" hidden>
     <button id="volver-acuerdo" class="volver">← Volver</button>
@@ -360,6 +385,7 @@
           <option value="renta">Renta atrasada</option>
           <option value="planeado">Un gasto planeado</option>
           <option value="otro">Otro</option>
+          <option value="cubrir">Para cubrir lo que me falta</option>
         </select></div>
       <div class="campo" id="ps-campo-planeado" hidden><label for="ps-planeado">¿Cuál gasto planeado?</label>
         <select id="ps-planeado"></select></div>
@@ -787,7 +813,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo, sincronizar, nav -->
+  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, cubrir, avisos -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="campos.js"></script>
@@ -811,5 +837,7 @@
   <script src="respaldo.js"></script>
   <script src="sincronizar.js"></script>
   <script src="nav.js"></script>
+  <script src="cubrir.js"></script>
+  <script src="avisos.js"></script>
 </body>
 </html>

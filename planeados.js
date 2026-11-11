@@ -72,8 +72,9 @@ const Planeados = {
     let peor = null;
     m.fechas.forEach(f => { if (pr.porDia[f].saldoFin < -0.005 && (!peor || pr.porDia[f].saldoFin < pr.porDia[peor].saldoFin)) peor = f; });
     if (!peor) return null;
-    // Lo más grande de ese día (ej.: la renta), no solo el último pago que ya no alcanza
-    const pago = pr.porDia[peor].lineas.filter(l => l.monto < 0 && l.tipo !== "simulado").sort((a, b) => a.monto - b.monto)[0];
+    // Lo que de verdad no alcanza ese día (y si la renta sí se cubre)
+    const q = Proyeccion.quienFalta(pr, peor);
+    const pago = { nombre: Proyeccion.lista(q.cortos) + (q.rentaCubierta ? " (la renta sí se cubre)" : "") };
     return { fecha: peor, falta: redondear(-pr.porDia[peor].saldoFin), pago: pago ? pago.nombre : "tus pagos" };
   },
 

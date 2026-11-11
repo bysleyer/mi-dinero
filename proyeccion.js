@@ -153,10 +153,10 @@ const Proyeccion = {
 
     // Vencimientos sin pagar (con las fechas movidas)
     Vencimientos.entre(hoyClave, fin).forEach(item => {
-      if (item.alerta || item.claveMov === excluir) return;
+      if (item.alerta || [].concat(excluir || []).includes(item.claveMov)) return; // excluir: una clave o varias
       if (item.id === "renta") return; // la renta se cuenta aparte (rentaLineas)
       if (item.inmediato && !item.movido) return; // deuda atrasada sin fecha (internet atrasado): no se asume que la pagas
-      if (excluirPlaneado && item.planeadoId === excluirPlaneado) return;
+      if (excluirPlaneado && [].concat(excluirPlaneado).includes(item.planeadoId)) return;
       const pendientes = item.partes.filter(p => !p.pagado);
       const pendiente = pendientes.reduce((s, p) => s + p.monto, 0);
       if (pendiente <= 0) return;
@@ -256,7 +256,7 @@ const Proyeccion = {
     this.rentaMeses(hoyClave, Jornadas.sumarDias(fin, 8)).forEach(c => {
       if (c.pendiente <= 0.005) return;
       const clave = `renta@${c.fecha}`;
-      if (clave === opciones.excluir) return;
+      if ([].concat(opciones.excluir || []).includes(clave)) return;
       const nombre = `Renta de ${mes(c.fecha)}`;
       const mv = movidos[clave];
       const meta = c.meta < hoyClave ? hoyClave : c.meta; // la meta ya pasó pero aún no vence: hoy
@@ -275,6 +275,43 @@ const Proyeccion = {
       .map(l => ({ ...l, orden: 1, tipo: "pago", id: "renta", letra: "R" }));
   },
 
+  // ---------- El faltante más cercano ----------
+  // Primer tramo de días bajo cero: desde qué día, hasta cuándo y cuánto falta en el peor día del tramo.
+  faltante(pr) {
+    const fechas = Object.keys(pr.porDia).sort();
+    const i0 = fechas.findIndex(f => pr.porDia[f].saldoFin < -0.005);
+    if (i0 < 0) return null;
+    let peor = fechas[i0], fin = fechas[i0];
+    for (let i = i0; i < fechas.length && pr.porDia[fechas[i]].saldoFin < -0.005; i++) {
+      fin = fechas[i];
+      if (pr.porDia[fechas[i]].saldoFin < pr.porDia[peor].saldoFin) peor = fechas[i];
+    }
+    const quien = this.quienFalta(pr, fechas[i0]);
+    return { fecha: fechas[i0], peor, fin, falta: redondear(-pr.porDia[peor].saldoFin), ...quien };
+  },
+
+  // Qué pagos de ese día no alcanzan (los que dejan el saldo bajo cero) y si la renta sí se cubre
+  quienFalta(pr, fecha) {
+    const limpio = n => n.replace(/\s*\(.*\)\s*$/, "").trim();
+    const lineas = pr.porDia[fecha].lineas.filter(l => l.monto < 0 && l.tipo !== "simulado");
+    const cortos = [...new Set(lineas.filter(l => l.saldo < -0.005).map(l => limpio(l.nombre)))];
+    const renta = lineas.filter(l => l.id === "renta");
+    const rentaCubierta = renta.length > 0 && renta.every(l => l.saldo >= -0.005);
+    return { cortos, rentaCubierta, rentaNombre: renta.length ? limpio(renta[0].nombre) : null };
+  },
+
+  // "préstamo semanal, transporte y comida"
+  lista(nombres) {
+    const n = nombres.map(x => /^Renta/.test(x) ? x.charAt(0).toLowerCase() + x.slice(1) : x.toLowerCase());
+    return n.length <= 1 ? (n[0] || "tus pagos") : `${n.slice(0, -1).join(", ")} y ${n[n.length - 1]}`;
+  },
+
+  // El texto del faltante, igual en todas las pantallas
+  textoFaltante(f) {
+    return `El ${Jornadas.textoDia(f.fecha).toLowerCase()} te faltan ${dinero(f.falta)} para ${this.lista(f.cortos)}` +
+      (f.rentaCubierta ? ` (la ${f.rentaNombre.charAt(0).toLowerCase() + f.rentaNombre.slice(1)} sí se cubre).` : ".");
+  },
+
   // ¿La renta queda cubierta antes de su fecha límite? (la primera que viene en la cuenta)
   estadoRenta(pr) {
     const rentas = pr.lineas.filter(l => l.id === "renta");
@@ -283,8 +320,11 @@ const Proyeccion = {
     const delDia = rentas.filter(l => l.fecha === fecha);
     const monto = redondear(delDia.reduce((s, l) => s - l.monto, 0));
     const saldo = delDia[delDia.length - 1].saldo;
+    const finDia = pr.porDia[fecha] ? pr.porDia[fecha].saldoFin : saldo;
+    const q = pr.porDia[fecha] ? this.quienFalta(pr, fecha) : { cortos: [] };
     return { fecha, monto, falta: redondear(Math.min(monto, Math.max(0, -saldo))), nombre: delDia.map(l => l.nombre).join(" + "),
-             claveMov: delDia[0].claveMov || null, vence: delDia[0].cargo || null };
+             claveMov: delDia[0].claveMov || null, vence: delDia[0].cargo || null,
+             faltaDia: redondear(Math.max(0, -finDia)), cortosDia: q.cortos };
   },
 
   // ---------- Largo plazo: ¿cuándo se pagan las deudas? ----------
