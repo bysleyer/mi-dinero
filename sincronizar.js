@@ -11,7 +11,7 @@
  */
 const Sync = {
   ARCHIVO: "datos.json",
-  LISTAS: ["movimientos", "jornadas", "planeados", "diasLibres", "cambiosDatos", "planesDeuda", "deudasPropias", "simulaciones"],
+  LISTAS: ["movimientos", "jornadas", "planeados", "diasLibres", "cambiosDatos", "planesDeuda", "deudasPropias", "simulaciones", "notasConsejero"],
   VALORES: ["datos", "plan", "revision", "lineaTiempo", "escenarios", "dineroInicial", "futuro", "rentaCargosDesde", "acuerdoSimulado"],
   MAPAS: ["pagosMovidos"], // { clave: { ..., modificado, borrado? } }
 
@@ -182,6 +182,7 @@ const Sync = {
         }
         estado("Al día");
         this._reintentos = 0;
+        if (typeof Consejero !== "undefined") Consejero.bajar();
         this.despues(delOtro, aviso);
         return { delOtro };
       }

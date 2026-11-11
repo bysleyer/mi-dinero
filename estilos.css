@@ -682,7 +682,7 @@ body.con-nav .aviso-flotante { bottom: calc(90px + env(safe-area-inset-bottom));
 body.con-nav .volver-principal { display: none; }
 /* En el inicio, las secciones ya están en el menú */
 body.con-nav #abrir-calendario, body.con-nav #abrir-futuro, body.con-nav #abrir-planeados,
-body.con-nav #abrir-plan, body.con-nav #abrir-deudas, body.con-nav #abrir-resumen,
+body.con-nav #abrir-plan, body.con-nav #abrir-deudas, body.con-nav #abrir-resumen, body.con-nav #abrir-consejero,
 body.con-nav .botones-final { display: none; }
 
 /* Hojas: "＋ Registrar" y "Más" */
@@ -912,3 +912,29 @@ h1 { letter-spacing: -0.02em; line-height: 1.1; }
 /* Listas de "etiqueta · valor": si el valor no cabe al lado, baja a la línea siguiente (a la derecha) en vez de salirse */
 .resumen li { flex-wrap: wrap; }
 .resumen li span:last-child { margin-left: auto; }
+
+/* ---------- Tu consejero (consejero.js) ---------- */
+.inicio-consejero p { margin: 4px 0; }
+.cj-comentario { padding: 8px 10px; border-radius: 10px; background: #eef4ff; }
+.cj-lista > li { display: block; padding: 10px 0; }
+.cj-lista p { margin: 2px 0; }
+.cj-regla { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; }
+.cj-regla span:last-child { margin-left: auto; text-align: right; }
+.cj-barra { height: 6px; margin-top: 6px; border-radius: 3px; background: var(--borde); overflow: hidden; }
+.cj-barra span { display: block; height: 100%; background: var(--ok); transform-origin: left; transition: transform .3s var(--ease-out, ease-out); }
+.cj-lista li.cerca .cj-barra span { background: var(--aviso); }
+.cj-lista li.negativo .cj-barra span { background: var(--error); }
+.cj-lista li.negativo .cj-regla span:last-child { color: var(--error); font-weight: 600; }
+.cj-puntos { padding-left: 0; list-style: none; margin: 8px 0; }
+.cj-puntos li { margin: 6px 0; }
+.cj-prioridades { margin: 4px 0 0; padding-left: 22px; }
+.cj-respuesta { padding: 6px 10px; border-radius: 10px; background: #e8f5ec; }
+#pantalla-consejero textarea { width: 100%; padding: 10px; border: 1px solid var(--borde); border-radius: 10px; font: inherit; font-size: 16px; }
+#pantalla-consejero h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.vg-texto p { margin: 6px 0; }
+.vg-incluido { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: var(--fondo); font-size: .95rem; }
+.vg-incluido p { white-space: pre-line; margin: 0 0 6px; }
+.vg-incluido label { display: block; padding: 6px 0; }
+#vigilante textarea { width: 100%; padding: 10px; border: 1px solid var(--borde); border-radius: 10px; font: inherit; font-size: 16px; }
+.oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (prefers-reduced-motion: reduce) { .cj-barra span { transition: none; } }

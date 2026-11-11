@@ -24,6 +24,7 @@
     <button class="nav-item" data-nav="futuro"><span class="nav-ico" aria-hidden="true">📈</span><span class="nav-txt">Mi futuro</span></button>
     <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar"><span class="nav-ico" aria-hidden="true">＋</span><span class="nav-txt">Registrar</span></button>
     <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true">📋</span><span class="nav-txt">Plan</span></button>
+    <button class="nav-item solo-pc" data-nav="consejero"><span class="nav-ico" aria-hidden="true">🧑‍💼</span><span class="nav-txt">Tu consejero</span></button>
     <button class="nav-item solo-pc" data-nav="deudas"><span class="nav-ico" aria-hidden="true">💳</span><span class="nav-txt">Mis deudas</span></button>
     <button class="nav-item solo-pc" data-nav="planeados"><span class="nav-ico" aria-hidden="true">🛍️</span><span class="nav-txt">Gastos planeados</span></button>
     <button class="nav-item solo-pc" data-nav="calendario"><span class="nav-ico" aria-hidden="true">📅</span><span class="nav-txt">Calendario</span></button>
@@ -50,6 +51,7 @@
       <div id="hoja-mas">
         <h2>Más</h2>
         <div class="hoja-lista">
+          <button data-nav="consejero">🧑‍💼 Tu consejero</button>
           <button data-nav="deudas">💳 Mis deudas</button>
           <button data-nav="planeados">🛍️ Gastos planeados</button>
           <button data-nav="calendario">📅 Calendario</button>
@@ -81,6 +83,7 @@
 
     <!-- Resumen de esta semana (con el menú: el inicio es un resumen; registrar está en ＋) -->
     <section id="inicio-semana" class="tarjeta inicio-semana" hidden></section>
+    <section id="inicio-consejero" class="tarjeta inicio-consejero" hidden></section>
 
     <div class="botones">
       <button class="boton-grande ingreso" data-form="ingreso">Me pagaron</button>
@@ -99,6 +102,7 @@
       <button id="abrir-plan" class="boton-mediano">Plan de la semana</button>
       <button id="abrir-deudas" class="boton-mediano">Mis deudas</button>
       <button id="abrir-resumen" class="boton-mediano">A dónde se va mi dinero</button>
+      <button id="abrir-consejero" class="boton-mediano">Tu consejero</button>
     </div>
 
     <section class="tarjeta">
@@ -298,6 +302,32 @@
 
   <!-- Pantalla: ¿Me conviene un préstamo? (Bloque 18) - solo simula -->
   <!-- Pantalla: ¿Cómo lo cubro? (solo sugiere) -->
+  <!-- Pantalla: Tu consejero (consejero.js) -->
+  <main id="pantalla-consejero" class="contenedor" hidden>
+    <button id="volver-consejero" class="volver">← Volver</button>
+    <h1>Tu consejero</h1>
+    <p id="cj-estado" class="opcional"></p>
+    <section class="tarjeta"><h2>Informe</h2><div id="cj-informe"></div></section>
+    <section id="cj-pasos-caja" class="tarjeta"><h2>Tu plan</h2><div id="cj-pasos"></div></section>
+    <section class="tarjeta"><h2>Tus reglas</h2><ul id="cj-reglas" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta"><h2>Comentarios</h2><ul id="cj-comentarios" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta"><h2>Fuera del plan esta semana</h2><ul id="cj-fuera" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta">
+      <h2>Háblale a tu consejero</h2>
+      <p class="ayuda">Cuéntale algo que la app no sabe (un cumpleaños, un cambio de turno, una duda). Lo lee en la próxima revisión y te contesta aquí.</p>
+      <div class="campo"><label for="cj-nota" class="oculto">Tu nota</label><textarea id="cj-nota" rows="3" maxlength="400"></textarea></div>
+      <button id="cj-enviar" class="boton-mediano">Enviar</button>
+      <ul id="cj-notas" class="movimientos cj-lista"></ul>
+    </section>
+    <section class="tarjeta">
+      <h2>¿Una duda ya?</h2>
+      <p class="ayuda">Se abre tu app de Claude con tu situación y tu pregunta ya escritas.</p>
+      <div class="campo"><label for="cj-pregunta" class="oculto">Tu pregunta</label><textarea id="cj-pregunta" rows="2" maxlength="300" placeholder="Ej.: ¿me alcanza para unos zapatos de $80?"></textarea></div>
+      <button id="cj-preguntar" class="boton-mediano">Preguntar en Claude</button>
+      <p id="cj-pregunta-ayuda" class="ayuda" hidden>Si no aparece escrito, pégalo: ya está copiado.</p>
+    </section>
+  </main>
+
   <main id="pantalla-cubrir" class="contenedor" hidden>
     <button id="volver-cubrir" class="volver">← Volver</button>
     <h1>¿Cómo lo cubro?</h1>
@@ -806,6 +836,23 @@
   <div id="aviso" class="aviso-flotante" hidden>Guardado</div>
 
   <!-- Pregunta "¿Seguro?" de la app -->
+  <div id="vigilante" class="ventana pregunta" hidden>
+    <div class="ventana-caja pregunta-caja" role="alertdialog" aria-labelledby="vg-titulo">
+      <p id="vg-titulo" class="pregunta-texto"><strong>👀 Tu consejero</strong></p>
+      <div id="vg-texto" class="vg-texto"></div>
+      <div id="vg-incluido" class="vg-incluido" hidden>
+        <p id="vg-incluido-texto"></p>
+        <label><input type="radio" name="vg-inc" value="si"> Sí, ya estaba incluido</label>
+        <label><input type="radio" name="vg-inc" value="no"> No, fue después</label>
+      </div>
+      <div class="campo"><label for="vg-razon">¿Por qué este gasto fuera del plan?</label>
+        <textarea id="vg-razon" rows="2" maxlength="140"></textarea></div>
+      <p id="vg-error" class="error"></p>
+      <button id="vg-guardar" class="boton-grande deuda">Guardar con esta razón</button>
+      <button id="vg-volver" class="boton-grande cancelar">Volver</button>
+    </div>
+  </div>
+
   <div id="pregunta" class="ventana pregunta" hidden>
     <div class="ventana-caja pregunta-caja" role="alertdialog" aria-labelledby="pregunta-texto">
       <p id="pregunta-texto" class="pregunta-texto"></p>
@@ -814,7 +861,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, cubrir, avisos -->
+  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, cubrir, avisos, consejero -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="campos.js"></script>
@@ -840,5 +887,6 @@
   <script src="nav.js"></script>
   <script src="cubrir.js"></script>
   <script src="avisos.js"></script>
+  <script src="consejero.js"></script>
 </body>
 </html>

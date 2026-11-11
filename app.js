@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 37, fecha: "11 nov 2026" };
+const VERSION_APP = { numero: 38, fecha: "11 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -276,13 +276,15 @@ const Formularios = {
         const factura = Plan.CATEGORIAS_SERVICIOS.includes($("f-categoria").value);
         if (formularioExtra || !(monto > 0) || !fecha || factura) { caja.hidden = true; return; }
         const e = Planeados.efectoRapido(monto, fecha);
+        const vig = typeof Vigilante !== "undefined"
+          ? Vigilante.previa({ tipo: "gasto", monto, fecha, categoria: $("f-categoria").value, nota: $("f-nota").value }) : "";
         caja.hidden = false;
-        caja.className = "f-efecto " + (e.agrega > 0 ? "negativo" : "positivo");
-        caja.innerHTML = e.agrega > 0
+        caja.className = "f-efecto " + (e.agrega > 0 || vig ? "negativo" : "positivo");
+        caja.innerHTML = (vig ? vig + "<br>" : "") + (e.agrega > 0
           ? `⚠ Este gasto agrega <strong>${dinero(e.agrega)}</strong> a lo que falta el ${Futuro.dia(e.diaAgrega)}.
              <button type="button" class="enlace" data-ver-gasto>Ver opciones</button>`
           : `✓ Con lo que ya tienes previsto, este gasto no deja ningún día bajo cero.
-             <button type="button" class="enlace" data-ver-gasto>Ver detalle</button>`;
+             <button type="button" class="enlace" data-ver-gasto>Ver detalle</button>`);
       }, 300);
     },
     leer(base) {
@@ -488,13 +490,22 @@ async function guardarFormulario(evento) {
   if (formularioExtra) Object.assign(mov, formularioExtra);
   // ¿Ya estaba dentro de lo que contaste al corregir tu dinero? Así no se cuenta dos veces.
   const inicial = ["ingreso", "gasto", "pagoDeuda"].includes(mov.tipo) && Dinero.podriaEstarIncluido(mov.fecha);
-  if (inicial) {
+  const textoInicial = inicial ? (() => {
     const cuando = new Date(inicial.momento).toLocaleString("es", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
-    const incluido = await preguntar(
-      `Corregiste tu dinero el ${cuando} a ${dinero(inicial.monto)}.\n` +
+    return `Corregiste tu dinero el ${cuando} a ${dinero(inicial.monto)}.\n` +
       `Este ${{ ingreso: "ingreso", gasto: "gasto", pagoDeuda: "pago" }[mov.tipo]} es del ${fechaCorta(mov.fecha)}: ¿ya estaba incluido en ese número?\n` +
-      "Si sí, se guarda en tu historial pero no se vuelve a contar en tu dinero.",
-      "Sí, ya estaba incluido", "No, fue después");
+      "Si sí, se guarda en tu historial pero no se vuelve a contar en tu dinero.";
+  })() : "";
+  // Tu consejero: si el gasto se pasa de una regla, pide la razón (y la pregunta de arriba va en el mismo paso)
+  const rotas = typeof Vigilante !== "undefined" && mov.tipo === "gasto" ? Vigilante.revisar(mov) : [];
+  if (rotas.length) {
+    const r = await Vigilante.preguntar(rotas, inicial ? { texto: textoInicial } : null);
+    if (!r) return; // "Volver": el formulario sigue abierto
+    mov.razonFueraPlan = r.razon;
+    mov.reglasFueraPlan = rotas.map(x => x.regla.id || x.regla.nombre);
+    if (r.incluido) mov.incluidoEnCorreccion = true;
+  } else if (inicial) {
+    const incluido = await preguntar(textoInicial, "Sí, ya estaba incluido", "No, fue después");
     if (incluido) mov.incluidoEnCorreccion = true;
   }
   if (!registrarMovimiento(mov)) {
@@ -782,7 +793,7 @@ try {
   // "Me pagaron": con "Otro ingreso" se ocultan las horas y se muestra la nota
   $("form-campos").addEventListener("input", e => {
     const f = Formularios[formularioAbierto];
-    if (f && f.alCambiar && e.target.id === "f-monto") f.alCambiar(e);
+    if (f && f.alCambiar && (e.target.id === "f-monto" || (formularioAbierto === "gasto" && e.target.id === "f-nota"))) f.alCambiar(e);
   });
   $("form-campos").addEventListener("change", e => {
     const f = Formularios[formularioAbierto];
