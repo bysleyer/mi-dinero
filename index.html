@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mi dinero</title>
   <meta name="theme-color" content="#1e8e3e">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -70,6 +70,9 @@
     <button id="aviso-respaldo" class="aviso-hoy aviso-boton" hidden></button>
     <button id="aviso-datos-viejos" class="aviso-hoy aviso-boton" hidden>Tus datos son de una versión anterior. Toca aquí y carga tu mis-datos.json más reciente.</button>
     <p id="aviso-hoy" class="aviso-hoy" hidden>Hoy no has registrado nada</p>
+
+    <!-- Resumen de esta semana (con el menú: el inicio es un resumen; registrar está en ＋) -->
+    <section id="inicio-semana" class="tarjeta inicio-semana" hidden></section>
 
     <div class="botones">
       <button class="boton-grande ingreso" data-form="ingreso">Me pagaron</button>

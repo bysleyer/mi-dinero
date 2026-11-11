@@ -29,7 +29,7 @@ const Nav = {
     document.querySelectorAll("main.contenedor").forEach(x => { x.hidden = true; });
     $("pantalla-inicio").hidden = false;
     window.scrollTo(0, 0);
-    if (seccion === "inicio") { Pantalla.actualizar(); this.marcar(); return; }
+    if (seccion === "inicio") { Pantalla.actualizar(); this.marcar(); return; } // también arma el resumen
     $(this.SECCIONES[seccion]).click(); // la pantalla se abre como siempre (y oculta el inicio)
     this.marcar();
   },
@@ -78,6 +78,35 @@ const Nav = {
   }
 };
 
+/* INICIO COMO RESUMEN: la renta del mes y lo libre de esta semana (misma cuenta que Mi futuro y el Plan) */
+const Inicio = {
+  mostrar() {
+    const caja = $("inicio-semana");
+    if (!caja || !document.body.classList.contains("con-nav") || $("pantalla-inicio").hidden) return;
+    const pr = Futuro.proyeccion(Futuro.estado().escenario);
+    const sem = Plan.semanaReal();
+    caja.hidden = false;
+    caja.innerHTML = `
+      <h2>Esta semana</h2>
+      ${RentaUI.html(pr)}
+      <button class="inicio-libre" data-nav-ir="plan">
+        <span><span class="inicio-etq">Libre para lo que quieras</span><strong>${dinero(sem.libre)}</strong></span>
+        <span><span class="inicio-etq">Guárdalo para más adelante</span><strong>${dinero(sem.guardar)}</strong></span>
+        <span class="inicio-ver">Ver el plan ›</span>
+      </button>
+      ${sem.hueco ? `<p class="pc-hueco">El ${Futuro.dia(sem.hueco.fecha)} te faltan ${dinero(sem.hueco.falta)} (ese día va ${escapar(sem.hueco.pago)}).</p>` : ""}`;
+  },
+
+  iniciar() {
+    $("inicio-semana").addEventListener("click", e => {
+      if (e.target.closest("[data-nav-ir]")) Nav.ir(e.target.closest("[data-nav-ir]").dataset.navIr);
+    });
+    window.addEventListener("movimientos-cambiaron", () => this.mostrar());
+    window.addEventListener("jornadas-cambiaron", () => this.mostrar());
+    this.mostrar();
+  }
+};
+
 /* Pestañas dentro de las pantallas largas (solo en el teléfono; en el computador se ve todo en columnas) */
 const Pestanas = {
   iniciar() {
@@ -102,4 +131,5 @@ const Pestanas = {
 if (Datos.actual && !(typeof Sync !== "undefined" && Sync.soloVer())) {
   Nav.iniciar();
   Pestanas.iniciar();
+  Inicio.iniciar();
 }

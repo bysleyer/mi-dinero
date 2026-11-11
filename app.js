@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 32, fecha: "11 nov 2026" };
+const VERSION_APP = { numero: 33, fecha: "11 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -625,6 +625,7 @@ const Pantalla = {
   actualizar() {
     $("deuda-total").textContent = dinero(Datos.deudaTotal());
     Dinero.mostrar();
+    if (typeof Inicio !== "undefined") Inicio.mostrar(); // resumen de la semana (nav.js)
 
     // Lunes a viernes, si no hay movimientos con fecha de hoy
     const diaSemana = new Date().getDay();
