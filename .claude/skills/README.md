@@ -19,6 +19,12 @@ Copiada de https://github.com/popey/claude-code-skills (licencia MIT, ver LICENS
 - progressive-web-app: instalación, service worker, caché y funcionamiento sin internet.
   Nota: Mi dinero no usa Workbox ni herramientas de build; la versión del caché se sube a mano (CACHE en sw.js).
 
-# Otras (instaladas en la cuenta, no en esta carpeta)
+# Calidad web (de Addy Osmani)
 
-- a11y-enforcer: accesibilidad (WCAG): contraste, etiquetas, teclado, lectores de pantalla.
+Copiadas de https://github.com/addyosmani/web-quality-skills (licencia MIT, ver LICENSE-addyosmani-web-quality-skills.txt):
+
+- performance: que la app cargue y responda rápido.
+- core-web-vitals: LCP, INP y CLS (velocidad de carga, respuesta al tocar y saltos de pantalla).
+- best-practices: seguridad y buenas prácticas web.
+- accessibility: accesibilidad WCAG (reemplaza a a11y-enforcer).
+Nota: traen ejemplos con Lighthouse y axe (npx); para Mi dinero se usa Playwright, que ya está instalado.
