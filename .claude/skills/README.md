@@ -28,3 +28,8 @@ Copiadas de https://github.com/addyosmani/web-quality-skills (licencia MIT, ver 
 - best-practices: seguridad y buenas prácticas web.
 - accessibility: accesibilidad WCAG (reemplaza a a11y-enforcer).
 Nota: traen ejemplos con Lighthouse y axe (npx); para Mi dinero se usa Playwright, que ya está instalado.
+
+# Propia
+
+- mi-contexto: `/mi-contexto` carga el contexto del dueño en un chat nuevo; `/mi-contexto guardar` lo actualiza
+  (la parte privada vive en `CONTEXTO.md` del repositorio privado de datos).
