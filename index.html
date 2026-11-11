@@ -692,12 +692,15 @@
     <section class="tarjeta">
       <h2>2. ¿Cuadra mi dinero? <span class="opcional">(opcional)</span></h2>
       <p id="r-ultimo" class="nota-sobre"></p>
+      <button id="r-ver" class="enlace">Ver de dónde sale</button>
+      <div id="r-detalle" hidden></div>
       <div class="campo">
-        <label for="r-dinero">Dinero que tengo hoy (efectivo + cuenta)</label>
-        <input id="r-dinero" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+        <label for="r-dinero">Lo que tienes de verdad (efectivo + cuenta)</label>
+        <input id="r-dinero" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Cuéntalo y escríbelo aquí">
       </div>
       <button id="r-revisar" class="boton-chico lleno">Revisar</button>
       <p id="r-resultado" class="mensaje-sobrante"></p>
+      <div id="r-acciones" class="pl-botones"></div>
     </section>
   </main>
 

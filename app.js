@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 30, fecha: "10 nov 2026" };
+const VERSION_APP = { numero: 31, fecha: "11 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -465,7 +465,7 @@ function cerrarFormulario() {
   document.body.style.overflow = "";
 }
 
-function guardarFormulario(evento) {
+async function guardarFormulario(evento) {
   evento.preventDefault();
   const f = Formularios[formularioAbierto];
   const mostrarError = msg => { $("form-error").textContent = msg; };
@@ -486,6 +486,17 @@ function guardarFormulario(evento) {
   if (mov.error) return mostrarError(mov.error);
 
   if (formularioExtra) Object.assign(mov, formularioExtra);
+  // ¿Ya estaba dentro de lo que contaste al corregir tu dinero? Así no se cuenta dos veces.
+  const inicial = ["ingreso", "gasto", "pagoDeuda"].includes(mov.tipo) && Dinero.podriaEstarIncluido(mov.fecha);
+  if (inicial) {
+    const cuando = new Date(inicial.momento).toLocaleString("es", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+    const incluido = await preguntar(
+      `Corregiste tu dinero el ${cuando} a ${dinero(inicial.monto)}.\n` +
+      `Este ${{ ingreso: "ingreso", gasto: "gasto", pagoDeuda: "pago" }[mov.tipo]} es del ${fechaCorta(mov.fecha)}: ¿ya estaba incluido en ese número?\n` +
+      "Si sí, se guarda en tu historial pero no se vuelve a contar en tu dinero.",
+      "Sí, ya estaba incluido", "No, fue después");
+    if (incluido) mov.incluidoEnCorreccion = true;
+  }
   if (!registrarMovimiento(mov)) {
     return mostrarError("No se pudo guardar en este dispositivo.");
   }
@@ -532,12 +543,31 @@ const Dinero = {
     const inicial = Almacen.leerDineroInicial(); // { monto, fecha, momento } o null
     const desde = inicial ? inicial.momento : "";
     return redondear(Almacen.leerMovimientos()
-      .filter(m => !desde || m.creado > desde)
+      .filter(m => (!desde || m.creado > desde) && !m.incluidoEnCorreccion)
       .reduce((s, m) => {
         if (m.tipo === "ingreso") return s + m.monto;
         if (m.tipo === "gasto" || m.tipo === "pagoDeuda") return s - m.monto;
         return s;
       }, inicial ? inicial.monto : 0));
+  },
+
+  // La cuenta paso a paso: la última corrección y cada movimiento que cuenta desde entonces
+  pasoAPaso() {
+    const inicial = Almacen.leerDineroInicial();
+    const desde = inicial ? inicial.momento : "";
+    const movs = Almacen.leerMovimientos()
+      .filter(m => (!desde || m.creado > desde) && !m.incluidoEnCorreccion && ["ingreso", "gasto", "pagoDeuda"].includes(m.tipo))
+      .sort((a, b) => a.creado.localeCompare(b.creado));
+    return { inicial, movs, total: this.actual() };
+  },
+
+  // ¿Un movimiento con esta fecha pudo estar ya incluido en la última corrección?
+  // Sí si es de antes del día en que corregiste, o del mismo día pero lo registras un día después.
+  podriaEstarIncluido(fecha) {
+    const inicial = Almacen.leerDineroInicial();
+    if (!inicial || !fecha) return null;
+    if (fecha < inicial.fecha || (fecha === inicial.fecha && hoy() > inicial.fecha)) return inicial;
+    return null;
   },
 
   // Valor escrito a mano en ¿Me alcanza?: vale solo hoy y hasta el siguiente movimiento
