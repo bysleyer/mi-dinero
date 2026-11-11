@@ -44,7 +44,7 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
    - **Pendientes**: quita lo resuelto, agrega lo nuevo, con lo que falta para decidir.
    - **La app**: versión actual y cambios grandes (una línea cada uno).
    - **Skills sugeridas**: si en este chat se usó o instaló alguna skill útil para lo que sigue, anótala.
-   - Lo que el usuario contó de su vida que importe (trabajo, metas, el casero...). Sin copiar montos que cambian
+   - Lo que el usuario contó de su vida que importe (trabajo, metas, trámites pendientes...). Sin copiar montos que cambian
      solos: para la situación al día se lee `consejero.json`.
 2. Si cambió algo de cómo trabajamos o de cómo está hecha la app, actualiza también **esta** skill
    (es pública: **nunca** pongas aquí datos personales ni cifras).
