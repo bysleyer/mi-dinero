@@ -799,3 +799,11 @@ body.con-nav #aviso-datos-viejos, body.con-nav #fu-sin-fecha { display: none !im
 /* ¿Cómo lo cubro? */
 .cb-faltante { font-size: 1.15rem; font-weight: 700; color: #8a1c1c; margin: 6px 0; }
 .cb-lista .pago-lado { align-items: flex-end; }
+/* El numerito de Inicio no hace falta cuando ya estás en el inicio */
+.nav-item.activo .badge { display: none; }
+/* Barra flotante un poco más abajo (más cerca de la rayita del iPhone) */
+@media (max-width: 899px) {
+  body.con-nav .nav { bottom: max(6px, calc(env(safe-area-inset-bottom) - 14px)); }
+  body.con-nav { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+  body.con-nav .aviso-flotante { bottom: calc(90px + env(safe-area-inset-bottom)); }
+}

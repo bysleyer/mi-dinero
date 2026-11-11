@@ -25,7 +25,8 @@ const Avisos = {
 
     // 1) El faltante más cercano
     const f = Proyeccion.faltante(pr);
-    if (f) afuera.push({ id: "faltante", clase: "rojo", texto: Proyeccion.textoFaltante(f), acciones: [["¿Cómo lo cubro?", "cubrir"]] });
+    const avisoFaltante = f ? { id: "faltante", clase: "rojo", texto: Proyeccion.textoFaltante(f), acciones: [["¿Cómo lo cubro?", "cubrir"]] } : null;
+    if (avisoFaltante) afuera.push(avisoFaltante);
 
     // 2) La renta del mes
     const r = Proyeccion.estadoRenta(pr);
@@ -37,21 +38,34 @@ const Avisos = {
       texto: `${r.nombre}: ${dinero(r.monto)} para el ${dia(r.fecha)} — queda cubierta` +
         (r.faltaDia > 0.005 ? `, pero ese día faltan ${dinero(r.faltaDia)} para ${Proyeccion.lista(r.cortosDia)}.` : "."), acciones: [["Ver en Mi futuro", "futuro"]] });
     const atr = Proyeccion.rentaAtrasada();
-    if (atr > 0.005) campana.push({ id: "renta-atrasada", firma: String(atr), texto: `Renta atrasada (aparte de la del mes): ${dinero(atr)}. Se paga con lo que sobra o con un plan de pagos.`, acciones: [["Mis deudas", "deudas"]] });
+    const diaLegal = Calendario.diaDelMes("accionLegal", 15);
+    const faltan = Deudas.diasParaDia(diaLegal);
+    if (atr > 0.005 && faltan > 7) campana.push({ id: "renta-atrasada", firma: String(atr), texto: `Renta atrasada (aparte de la del mes): ${dinero(atr)}. Se paga con lo que sobra o con un plan de pagos.`, acciones: [["Mis deudas", "deudas"]] });
 
     // 3) Pagos que vencen hoy o mañana sin pagar
     const vencen = Vencimientos.entre(hoyClave, manana).filter(i => !i.alerta && !(i.inmediato && !i.movido))
       .map(i => ({ fecha: i.fecha, nombre: i.nombre, monto: redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0)) }))
       .filter(v => v.monto > 0.005);
+    // Si el faltante es de hoy o mañana, lo que vence ese día va en el mismo aviso (no dos veces)
+    if (avisoFaltante && (f.fecha === hoyClave || f.fecha === manana)) {
+      const delDia = vencen.filter(v => v.fecha === f.fecha);
+      if (delDia.length) {
+        avisoFaltante.texto = `${f.fecha === hoyClave ? "Hoy" : "Mañana"} vence ${delDia.map(v => `${v.nombre} ${dinero(v.monto)}`).join(", ")}` +
+          ` y te faltan ${dinero(f.falta)} para ` +
+          (f.cortos.every(c => delDia.some(v => v.nombre.replace(/\s*\(.*\)\s*$/, "").trim() === c))
+            ? (delDia.length > 1 ? "pagarlas." : "pagarla.") : `${Proyeccion.lista(f.cortos)}.`) +
+          (f.rentaCubierta ? ` (La ${f.rentaNombre.charAt(0).toLowerCase() + f.rentaNombre.slice(1)} sí se cubre.)` : "");
+        avisoFaltante.acciones.push(["Ver próximos pagos", "pagos"]);
+        delDia.forEach(v => vencen.splice(vencen.indexOf(v), 1));
+      }
+    }
     if (vencen.length) afuera.push({ id: "vencen", clase: "rojo",
       texto: "Vence " + ["hoy", "mañana"].map((cuando, k) => {
         const l = vencen.filter(v => v.fecha === (k ? manana : hoyClave));
         return l.length ? `${cuando}: ${l.map(v => `${v.nombre} ${dinero(v.monto)}`).join(", ")}` : "";
       }).filter(Boolean).join("; ") + ".", acciones: [["Ver próximos pagos", "pagos"]] });
 
-    // 4) Acción legal del día 15
-    const diaLegal = Calendario.diaDelMes("accionLegal", 15);
-    const faltan = Deudas.diasParaDia(diaLegal);
+    // 4) Acción legal del día 15 (ya dice cuánto es la renta atrasada)
     if (atr > 0.005 && faltan <= 7) {
       const a = { id: "dia15", firma: `${faltan}|${atr}`, clase: "amarillo",
         texto: `El día ${diaLegal} (${faltan === 0 ? "hoy" : `en ${faltan} ${faltan === 1 ? "día" : "días"}`}) puede haber acción legal si queda renta atrasada (${dinero(atr)}). Manda tus comprobantes y pide un acuerdo de pago por escrito.`,
@@ -62,7 +76,7 @@ const Avisos = {
     // 5) Sincronización
     const sc = typeof Sync !== "undefined" && Sync.activo() ? Sync.config() : null;
     if (sc && sc.error) {
-      const leve = /^Sin internet|otro aparato estaba guardando/.test(sc.estado || "");
+      const leve = /^Sin internet|No se pudo conectar con GitHub|otro aparato estaba guardando/.test(sc.estado || "");
       (leve ? campana : afuera).push({ id: "sync", firma: sc.estado, clase: "amarillo", texto: `Sincronizar: ${sc.estado}`, acciones: [["Ir a Respaldo", "respaldo"]] });
     }
 
@@ -70,9 +84,6 @@ const Avisos = {
     const d = new Date().getDay();
     if (d >= 1 && d <= 5 && !Almacen.leerMovimientos().some(m => m.fecha === hoyClave))
       campana.push({ id: "hoy", firma: hoyClave, texto: "Hoy no has registrado nada.", acciones: [["Registrar", "registrar"]] });
-    const pr30 = Futuro.proyeccion(esc);
-    const ar = Proyeccion.arrastre(pr30);
-    if (ar) campana.push({ id: "arrastre", firma: `${ar.fecha}|${ar.falta}`, texto: `Antes del ${dia(ar.fecha)}: a ${ar.nombre.toLowerCase()} le faltan ${dinero(ar.falta)}.`, acciones: [["Ver en Mi futuro", "futuro"]] });
     const sinFecha = Planeados.sinFecha();
     if (sinFecha) campana.push({ id: "sin-fecha", firma: String(sinFecha), texto: `Tienes ${sinFecha} ${sinFecha === 1 ? "gasto planeado" : "gastos planeados"} sin fecha.`, acciones: [["Ver", "planeados"]] });
     Datos.deudas().filter(x => x.venceInmediato && Datos.saldoDeuda(x.id) > 0.005 && !Almacen.leerPagosMovidos()[`${x.id}@inmediato`]).forEach(x =>

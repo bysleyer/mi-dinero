@@ -181,13 +181,19 @@ const Sync = {
           if (r.conflicto) continue; // otro aparato subió justo ahora: se vuelve a combinar
         }
         estado("Al día");
+        this._reintentos = 0;
         this.despues(delOtro, aviso);
         return { delOtro };
       }
       estado("No se pudo sincronizar: otro aparato estaba guardando. Se intenta otra vez.", true);
     } catch (e) {
-      const sinInternet = e instanceof TypeError || !navigator.onLine;
-      estado(sinInternet ? "Sin internet: se sincroniza cuando vuelva." : e.message, true);
+      const deRed = e instanceof TypeError || !navigator.onLine;
+      // Al abrir la app (o al volver a ella) la conexión puede tardar unos segundos: se reintenta solo
+      if (deRed) {
+        this._reintentos = (this._reintentos || 0) + 1;
+        if (this._reintentos <= 4) { clearTimeout(this._tr); this._tr = setTimeout(() => this.sincronizar({ aviso: true }), 10000 * this._reintentos); }
+      }
+      estado(!deRed ? e.message : navigator.onLine ? "No se pudo conectar con GitHub. Se vuelve a intentar solo." : "Sin internet: se sincroniza cuando vuelva.", true);
     }
     this.mostrarEstado();
     return null;
