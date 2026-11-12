@@ -116,7 +116,12 @@ const Avisos = {
     const v = this.vistos();
     const nuevos = campana.filter(a => v[a.id] !== (a.firma || ""));
     this._campana = campana;
-    $("avisos-afuera").innerHTML = afuera.map(a => this.html(a, false)).join("");
+    this._afuera = afuera;
+    const resto = afuera.slice(1);
+    if (!resto.length) this._masAbierto = false;
+    $("avisos-afuera").innerHTML = (afuera[0] ? this.html(afuera[0], false) : "") + (resto.length
+      ? `<button class="avisos-mas" data-av-mas aria-expanded="${!!this._masAbierto}">${this._masAbierto ? "Ocultar" : `${resto.length} ${resto.length === 1 ? "aviso urgente más" : "avisos urgentes más"} ›`}</button>` +
+        (this._masAbierto ? resto.map(a => this.html(a, false)).join("") : "") : "");
     $("avisos-afuera").hidden = !afuera.length;
     const n = nuevos.length;
     $("campana-num").textContent = n;
@@ -135,7 +140,8 @@ const Avisos = {
     const lista = this._campana || [];
     const nuevos = lista.filter(a => v[a.id] !== (a.firma || ""));
     const vistos = lista.filter(a => v[a.id] === (a.firma || ""));
-    $("avisos-lista").innerHTML = (nuevos.length ? `<p class="avisos-titulo">Nuevos · ${nuevos.length}</p>` + nuevos.map(a => this.html(a, true)).join("") : `<p class="vacio">No hay avisos nuevos.</p>`) +
+    const urgentes = this._afuera || [];
+    $("avisos-lista").innerHTML = (urgentes.length ? `<p class="avisos-titulo">Urgente · ${urgentes.length}</p>` + urgentes.map(a => this.html(a, false)).join("") : "") + (nuevos.length ? `<p class="avisos-titulo">Nuevos · ${nuevos.length}</p>` + nuevos.map(a => this.html(a, true)).join("") : `<p class="vacio">No hay avisos nuevos.</p>`) +
       (vistos.length ? `<details class="avisos-vistos"><summary>Ya los viste (${vistos.length})</summary>${vistos.map(a => this.html(a, false)).join("")}</details>` : "");
   },
 
@@ -164,6 +170,7 @@ const Avisos = {
     $("campana").addEventListener("click", () => this.abrirCampana());
     $("nav-avisos").addEventListener("click", () => this.abrirCampana());
     document.addEventListener("click", e => {
+      if (e.target.closest("[data-av-mas]")) { this._masAbierto = !this._masAbierto; this.mostrar(); return; }
       const a = e.target.closest("[data-av-accion]");
       if (a) this.accion(a.dataset.avAccion, a.dataset.avClave);
       const en = e.target.closest("[data-av-entendido]");

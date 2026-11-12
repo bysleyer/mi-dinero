@@ -41,10 +41,14 @@
     <div class="hoja-caja" role="dialog" aria-modal="true">
       <div id="hoja-registrar">
         <h2>Registrar</h2>
+        <div class="campo campo-monto hoja-monto">
+          <label for="hoja-monto">Monto</label>
+          <input id="hoja-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+        </div>
         <div class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
-          <button class="chip ingreso" data-registrar="ingreso">Me pagaron</button>
-          <button class="chip gasto" data-registrar="gasto">Gasté</button>
-          <button class="chip deuda" data-registrar="pagoDeuda">Pagué una deuda</button>
+          <button class="chip" data-tipo-hoja="gasto" aria-pressed="true">Gasté</button>
+          <button class="chip" data-tipo-hoja="ingreso" aria-pressed="false">Me pagaron</button>
+          <button class="chip" data-tipo-hoja="pagoDeuda" aria-pressed="false">Deuda</button>
         </div>
         <p class="hoja-etiqueta">Atajos</p>
         <div class="hoja-atajos">
@@ -53,6 +57,7 @@
           <button data-registrar="no-trabaje"><span aria-hidden="true">🚫</span>No trabajé hoy</button>
           <button data-registrar="ysigasto"><span aria-hidden="true">🤔</span>¿Y si gasto…?</button>
         </div>
+        <button id="hoja-continuar" class="boton-grande guardar">Continuar</button>
       </div>
       <div id="hoja-mas">
         <h2>Más</h2>

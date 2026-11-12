@@ -1086,3 +1086,37 @@ button.enlace { min-height: 44px; }
 .hoja-atajos button span { font-size: 1.4rem; }
 .hoja-atajos button:active { transform: scale(.97); }
 .pl-simular { text-align: center; } .pl-simular .ayuda { margin: 0 0 4px; }
+
+/* TABLERO — Ajustes de concepto: franja única de avisos urgentes y hoja del + con monto */
+.avisos-mas { display: flex; align-items: center; min-height: 44px; border: 0; background: none; color: var(--menta, #4fd1b5); font: inherit; font-size: .9rem; font-weight: 700; padding: 0 4px; cursor: pointer; }
+.hoja-monto { margin: 4px 0 8px; }
+.hoja-tipos .chip[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); background: #11302a; }
+#hoja-continuar { margin-top: 4px; }
+
+/* TABLERO — Calendario: leyenda plegada y resumen de cada semana en una línea */
+.cal-leyenda-caja > summary { min-height: 44px; display: flex; align-items: center; color: var(--ok); font-weight: 700; cursor: pointer; }
+.cal-leyenda-caja[open] > summary { margin-bottom: 4px; }
+.cal-resumen { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .8rem; margin: 2px 2px 8px; }
+
+/* TABLERO — Mi futuro: la respuesta, los escenarios y la gráfica primero (teléfono) */
+@media (max-width: 899px) {
+  #pantalla-futuro:not([hidden]) { display: flex; flex-direction: column; }
+  #pantalla-futuro > * { order: 20; }
+  #pantalla-futuro > .volver { order: 0; align-self: flex-start; }
+  #pantalla-futuro > h1 { order: 1; }
+  #pantalla-futuro > #fu-frase { order: 2; }
+  #pantalla-futuro > #fu-cuenta { order: 3; align-self: flex-start; }
+  #pantalla-futuro > #fu-cubrir { order: 4; }
+  #pantalla-futuro > #fu-sin-fecha { order: 5; }
+  #pantalla-futuro > #fu-escenarios { order: 6; }
+  #pantalla-futuro > .pestanas { order: 7; }
+  #pantalla-futuro > [data-sec] { order: 8; }
+  #pantalla-futuro > #fu-colchon { order: 9; }
+  #pantalla-futuro > #fu-gasto { order: 10; }
+}
+
+/* TABLERO — Datos fijos: cada cifra como una fila (nombre a la izquierda, valor a la derecha) */
+.df-campo:has(> label) { display: grid; grid-template-columns: 1fr minmax(110px, 38%); grid-template-areas: "et valor" "orig valor"; column-gap: 12px; row-gap: 2px; align-items: center; padding: 10px 0; border-top: 1px solid var(--borde); margin: 0; }
+.df-campo:has(> label) > label { grid-area: et; margin: 0; font-size: 1rem; }
+.df-campo:has(> label) > input, .df-campo:has(> label) > select { grid-area: valor; text-align: right; min-height: 48px; }
+.df-campo:has(> label) > .df-original { grid-area: orig; margin: 0; }

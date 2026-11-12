@@ -44,6 +44,10 @@ const Nav = {
 
   // ---------- Hojas: "＋ Registrar" y "Más" ----------
   abrirHoja(cual) {
+    if (cual === "registrar") { // cada vez empieza limpia: sin monto y con "Gasté" elegido
+      $("hoja-monto").value = "";
+      document.querySelectorAll("[data-tipo-hoja]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tipoHoja === "gasto"));
+    }
     $("hoja").hidden = false;
     $("hoja-registrar").hidden = cual !== "registrar";
     $("hoja-mas").hidden = cual !== "mas";
@@ -66,6 +70,14 @@ const Nav = {
       if (e.target.id === "hoja" || e.target.closest("#hoja-cerrar")) return this.cerrarHoja();
       const b = e.target.closest("[data-nav]");
       if (b) return this.ir(b.dataset.nav);
+      const t = e.target.closest("[data-tipo-hoja]");
+      if (t) { document.querySelectorAll("[data-tipo-hoja]").forEach(b => b.setAttribute("aria-pressed", b === t)); return; }
+      if (e.target.closest("#hoja-continuar")) { // abre el formulario del tipo elegido con el monto ya escrito
+        const tipo = document.querySelector("[data-tipo-hoja][aria-pressed='true']").dataset.tipoHoja;
+        const txt = $("hoja-monto").value.trim();
+        this.cerrarHoja();
+        return abrirFormulario(tipo, { selector: true, monto: txt !== "" && Number(txt) >= 0 ? Number(txt) : undefined });
+      }
       const r = e.target.closest("[data-registrar]");
       if (!r) return;
       this.cerrarHoja();
