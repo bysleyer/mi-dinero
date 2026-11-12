@@ -5,6 +5,29 @@
  * "Ya lo pagué" usa el mismo formulario del Bloque 2; el movimiento guarda
  * qué vencimiento pagó (campo "vencimiento"), así la app sabe que ya está pagado.
  */
+/*
+ * RECIBOS de los pagos que varían cada mes (la luz, y los pagos fijos marcados "Varía cada mes").
+ * Si ya llegó el recibo de ese mes, se usa lo que dice. Si no, un ESTIMADO: el promedio de los
+ * últimos 3 recibos (o, si todavía no hay, el monto de tus datos). El estimado se marca como tal.
+ */
+const Recibos = {
+  delMes(pagoId, mes) {
+    return Almacen.leerRecibos().find(r => r.pagoId === pagoId && r.mes === mes) || null;
+  },
+
+  // { monto, estimado, recibo } para un pago en un mes; base = el monto de tus datos
+  monto(pagoId, base, mes) {
+    const r = this.delMes(pagoId, mes);
+    if (r) return { monto: r.monto, estimado: false, recibo: r };
+    const antes = Almacen.leerRecibos().filter(x => x.pagoId === pagoId && x.mes < mes).sort((a, b) => b.mes.localeCompare(a.mes)).slice(0, 3);
+    if (!antes.length) return { monto: base, estimado: true, recibo: null };
+    return { monto: redondear(antes.reduce((s, x) => s + x.monto, 0) / antes.length), estimado: true, recibo: null, promedio: antes.length };
+  },
+
+  // ¿Este pago varía cada mes? (la luz sí, salvo que se diga lo contrario)
+  varia(g) { return !!g && (g.id === "luz" ? g.variable !== false : !!g.variable); }
+};
+
 const Vencimientos = {
   DIAS_ADELANTE: 14, // tarjeta: lo que vence en los siguientes 14 días
   DIAS_ATRAS: 5,     // y lo que venció hace poco y sigue sin pagar
@@ -45,10 +68,16 @@ const Vencimientos = {
     const luz = this.gasto("luz");
     if (luz && luz.venceDia) lista.push({
       id: "luz", letra: "L", nombre: luz.nombre, dia: luz.venceDia, orden: 10,
-      partes: () => {
-        if (!luz.partes) return [{ nombre: luz.nombre, monto: luz.monto, accion: { tipo: "gasto", categoria: "Luz" } }];
+      partes: fecha => {
+        // Paso 4: el recibo del mes (total, con la cuota del plan incluida) o el estimado
+        const varia = Recibos.varia(luz);
+        const r = varia && fecha ? Recibos.monto("luz", luz.monto, fecha.slice(0, 7)) : { monto: luz.monto, estimado: false };
+        const marca = { estimado: varia && r.estimado, variable: varia, pagoId: "luz" };
+        if (!luz.partes) return [{ nombre: luz.nombre, monto: r.monto, ...marca, accion: { tipo: "gasto", categoria: "Luz" } }];
         const saldoPlan = luz.deudaPlan ? Datos.saldoDeuda(luz.deudaPlan) : 0;
-        const p = [{ nombre: `${luz.nombre} – consumo`, monto: luz.partes.consumo, accion: { tipo: "gasto", categoria: "Luz" } }];
+        // Sin recibos todavía, el consumo es el de tus datos (igual que antes); con recibos, lo que queda sin la cuota del plan
+        const consumo = r.recibo || r.promedio ? Math.max(0, redondear(r.monto - (luz.partes.cuotaPlan || 0))) : luz.partes.consumo;
+        const p = [{ nombre: `${luz.nombre} – consumo`, monto: consumo, ...marca, accion: { tipo: "gasto", categoria: "Luz" } }];
         const cuota = Math.min(luz.partes.cuotaPlan, Math.max(0, saldoPlan));
         if (cuota > 0) p.push({ nombre: `${luz.nombre} – cuota del plan`, monto: cuota, accion: { tipo: "pagoDeuda", deudaId: luz.deudaPlan } });
         return p;
@@ -226,7 +255,11 @@ const Vencimientos = {
         if (!v || v.fecha < desde || v.fecha > hasta) return;
         agregar({ id: p.id, letra: p.grupo === "suscripcion" ? "S" : "E", nombre: p.nombre, orden: p.grupo === "suscripcion" ? 11 : 10,
           propio: true, grupo: p.grupo, variable: !!p.variable,
-          partes: [{ nombre: p.nombre, monto: v.monto, accion: { tipo: "gasto", categoria: p.categoria || "Otros" } }] }, v.fecha);
+          partes: [(() => {
+            const r = p.variable ? Recibos.monto(p.id, v.monto, v.fecha.slice(0, 7)) : { monto: v.monto, estimado: false };
+            return { nombre: p.nombre, monto: r.monto, estimado: !!p.variable && r.estimado, variable: !!p.variable, pagoId: p.id,
+                     accion: { tipo: "gasto", categoria: p.categoria || "Otros" } };
+          })()] }, v.fecha);
       });
 
       // Día 15: alerta (solo si queda saldo de renta)
@@ -342,9 +375,11 @@ const Vencimientos = {
               </div>
             </li>`;
           }
+          const recibo = p.variable && !p.pagado
+            ? `<button class="boton-chico" data-recibo="${escapar(p.pagoId)}" data-recibo-mes="${item.fecha.slice(0, 7)}">${p.estimado ? "Llegó el recibo" : "Cambiar recibo"}</button>` : "";
           const boton = p.pagado
             ? `<span class="pago-hecho">✓ Pagado</span>`
-            : `<button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo pagué</button>` +
+            : `<button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo pagué</button>` + recibo +
               (puedeMover ? `<button class="boton-chico" data-mover="${escapar(this.claveMover(item))}">Mover</button>` : "");
           const movido = item.movido
             ? `<div class="mov-detalle"><span class="marca-movido">movido</span> del ${Jornadas.textoDia(item.movido.fechaOriginal).toLowerCase()}</div>` +
@@ -354,7 +389,7 @@ const Vencimientos = {
             <li class="pago-fila ${color}">
               <div class="mov-info">
                 <div class="mov-tipo">${simbolo ? `<span aria-hidden="true">${simbolo}</span> ` : ""}${escapar(p.nombre)}</div>
-                <div class="mov-detalle">${sinFecha ? "Sin fecha · lo puedes pagar más adelante" : this.cuandoCorto(item.fecha, dias)}</div>
+                <div class="mov-detalle">${sinFecha ? "Sin fecha · lo puedes pagar más adelante" : this.cuandoCorto(item.fecha, dias)}${p.estimado && !p.pagado ? ' · <span class="marca-estimado">estimado</span>' : ""}</div>
                 ${movido}
               </div>
               <div class="pago-lado">
@@ -387,6 +422,8 @@ const Vencimientos = {
       if (b) this.pagar(b.dataset.pagarVenc);
       const m = e.target.closest("[data-mover]");
       if (m) Mover.abrir(m.dataset.mover, "pantalla-inicio");
+      const rc = e.target.closest("[data-recibo]");
+      if (rc) PagosFijos.abrirRecibo(rc.dataset.recibo, rc.dataset.reciboMes);
     });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
     this.mostrar();

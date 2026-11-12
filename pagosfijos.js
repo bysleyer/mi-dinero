@@ -69,6 +69,10 @@ const PagosFijos = {
     if (p.estado === "pausado") return "No cuenta en tus números mientras esté pausada";
     if (p.estado === "cancelado") return `Ya no cuenta desde el ${fechaCorta(p.canceladoDesde)}`;
     if (p.estado === "empieza") return `Empieza el ${fechaCorta(p.desde)}`;
+    if (p.variable) {
+      const d = this.delMes(p);
+      if (d) return `Vence el día ${p.venceDia} · ${d.recibo ? `recibo de ${this.nombreMes(d.mes).split(" ")[0]}` : d.promedio ? `estimado (promedio de ${d.promedio} ${d.promedio === 1 ? "recibo" : "recibos"})` : "varía cada mes · estimado"}`;
+    }
     return `Vence el día ${p.venceDia} · ${p.variable ? "Varía cada mes" : "Fijo"}`;
   },
 
@@ -97,7 +101,7 @@ const PagosFijos = {
             <span class="pf-nombre">${escapar(p.nombre)} ${marca}</span>
             <span class="pf-sub">${escapar(this.textoEstado(p))}</span>
           </span>
-          <span class="pf-monto">${p.variable && !apagado ? "≈ " : ""}${dineroCorto(p.monto)}</span>
+          <span class="pf-monto">${(() => { const d = !apagado && this.delMes(p); return d ? `${d.estimado ? "≈ " : ""}${dineroCorto(d.monto)}` : dineroCorto(p.monto); })()}</span>
           <svg class="pf-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </button>
       </li>`;
@@ -122,6 +126,68 @@ const PagosFijos = {
       ${ahorro > 0 ? `<p class="pf-ahorro">Pausadas o canceladas: <strong>ahorras ${dineroCorto(ahorro)} al mes</strong>.</p>` : ""}
       <button class="boton-chico pf-agregar" data-pf-agregar="suscripcion">+ Agregar suscripción</button>`;
     this.mostrarOrden();
+  },
+
+  // ---------- Recibos (pagos que varían: pagos.js → Recibos) ----------
+  // Mes del próximo vencimiento sin pagar de ese pago (o este mes)
+  mesProximo(pagoId) {
+    const it = Vencimientos.entre(Jornadas.sumarDias(hoy(), -Vencimientos.DIAS_ATRAS), Jornadas.sumarDias(hoy(), 45))
+      .find(i => i.id === pagoId && i.partes.some(p => !p.pagado));
+    return it ? it.fecha.slice(0, 7) : hoy().slice(0, 7);
+  },
+
+  nombreMes(mes) {
+    const [a, m] = mes.split("-").map(Number);
+    return new Date(a, m - 1, 1).toLocaleDateString("es", { month: "long", year: "numeric" });
+  },
+
+  // Lo de este mes en la lista: el recibo si llegó; si no, el estimado
+  delMes(p) {
+    if (!p.variable || p.estado !== "activo") return null;
+    const mes = this.mesProximo(p.id);
+    const r = Recibos.monto(p.id, p.monto, mes);
+    return { mes, ...r };
+  },
+
+  abrirRecibo(pagoId, mes) {
+    this.recibo = { pagoId, mes: mes || this.mesProximo(pagoId) };
+    abrirFormulario("recibo");
+    const r = Recibos.delMes(pagoId, this.recibo.mes);
+    if (r) $("f-monto").value = redondear(r.monto).toFixed(2);
+    $("form-titulo").textContent = "Llegó el recibo";
+    $("form-titulo").dataset.ceja = this.nombreDe(pagoId);
+  },
+
+  htmlRecibo() {
+    const { pagoId, mes } = this.recibo;
+    const luz = pagoId === "luz" ? Datos.actual.gastosFijos.find(g => g.id === "luz") : null;
+    const cuota = luz && luz.partes && luz.deudaPlan && Datos.saldoDeuda(luz.deudaPlan) > 0 ? luz.partes.cuotaPlan : 0;
+    const [a, m] = mes.split("-").map(Number);
+    const meses = [-1, 0, 1].map(k => Resumen.aClave(new Date(a, m - 1 + k, 1)).slice(0, 7));
+    const ya = Recibos.delMes(pagoId, mes);
+    return `
+      <p class="ayuda">Escribe lo que dice el recibo${cuota ? `, <strong>con la cuota del plan (${dinero(cuota)}) incluida</strong>` : ""}.
+        Ese mes se usa este número; los meses que todavía no llegan se estiman con el promedio de tus últimos recibos.</p>` +
+      campoMonto() + `
+      <div class="campo">
+        <label for="f-rc-mes">¿De qué mes?</label>
+        <select id="f-rc-mes">${meses.map(x => `<option value="${x}" ${x === mes ? "selected" : ""}>${this.nombreMes(x)}</option>`).join("")}</select>
+      </div>
+      ${ya ? `<div class="pf-acciones"><button type="button" class="boton-chico boton-borrar" data-rc-borrar="${escapar(ya.id)}">Borrar este recibo</button></div>` : ""}`;
+  },
+
+  guardarRecibo(error) {
+    const { pagoId } = this.recibo;
+    const txt = $("f-monto").value.trim();
+    const monto = redondear(Number(txt));
+    if (txt === "" || !(monto > 0)) return error("Escribe el monto del recibo (mayor que 0).");
+    const luz = pagoId === "luz" ? Datos.actual.gastosFijos.find(g => g.id === "luz") : null;
+    const cuota = luz && luz.partes && luz.deudaPlan && Datos.saldoDeuda(luz.deudaPlan) > 0 ? luz.partes.cuotaPlan : 0;
+    if (cuota && monto < cuota) return error(`El recibo incluye la cuota del plan (${dinero(cuota)}): tiene que ser al menos eso.`);
+    const mes = $("f-rc-mes").value;
+    Almacen.guardarRecibo({ pagoId, mes, monto });
+    this.recibo = null;
+    this.listo(`Recibo de ${this.nombreMes(mes).split(" ")[0]}: ${dineroCorto(monto)}`);
   },
 
   // ---------- Orden de prioridad (campos.js: Prioridad) ----------
@@ -253,16 +319,19 @@ const PagosFijos = {
 
   htmlFormulario() {
     const e = this.editando || {};
+    const botonRecibo = id => `<button type="button" class="boton-mediano pf-recibo" data-rc-abrir="${escapar(id)}">Llegó el recibo</button>`;
     if (e.deDatos) {
       const def = this.PROPIOS_DE_DATOS.find(x => x.id === e.id);
-      return `<p class="ayuda">Viene de tus datos. Lo que cambies aquí aplica desde la fecha que elijas; lo que ya pasó no se recalcula.</p>
+      const g = Datos.actual.gastosFijos.find(x => x.id === e.id);
+      return (Recibos.varia(g) ? botonRecibo(e.id) : "") + `<p class="ayuda">Viene de tus datos. Lo que cambies aquí aplica desde la fecha que elijas; lo que ya pasó no se recalcula.</p>
         ${this.camposDatos(def.seccion)}${this.campoDesde()}`;
     }
     const p = e.id ? this.propios().find(x => x.id === e.id) : null;
     const grupo = p ? p.grupo : e.grupo;
     const variable = p ? !!p.variable : false;
+    const reciboArriba = p && p.variable && p.estado === "activo" ? botonRecibo(p.id) : "";
     const chip = (attr, val, txt, on) => `<button type="button" class="chip" data-${attr}="${val}" aria-pressed="${on}">${txt}</button>`;
-    return `
+    return reciboArriba + `
       <div class="campo">
         <label for="f-pf-nombre">Nombre</label>
         <input id="f-pf-nombre" type="text" maxlength="60" autocomplete="off" value="${p ? escapar(p.nombre) : ""}"
@@ -391,7 +460,12 @@ const PagosFijos = {
         Pantalla.aviso("Orden de siempre");
       }
     });
-    $("form-campos").addEventListener("click", e => {
+    $("form-campos").addEventListener("click", async e => {
+      const rb = e.target.closest("[data-rc-borrar]");
+      if (rb && formularioAbierto === "recibo") {
+        if (!(await preguntar("¿Borrar este recibo? Ese mes vuelve a usar el estimado.", "Sí, borrar", "Volver"))) return;
+        Almacen.borrarRecibo(rb.dataset.rcBorrar); this.recibo = null; return this.listo("Recibo borrado");
+      }
       if (formularioAbierto !== "pagoFijo") return;
       const ch = e.target.closest("[data-pf-variable], [data-pf-grupo]");
       if (ch) {
@@ -402,12 +476,19 @@ const PagosFijos = {
       if (e.target.closest("[data-pf-pausar]")) this.pausar();
       if (e.target.closest("[data-pf-reanudar]")) this.reanudar();
       if (e.target.closest("[data-pf-cancelar]")) this.cancelar();
+      const ra = e.target.closest("[data-rc-abrir]"); if (ra) this.abrirRecibo(ra.dataset.rcAbrir);
     });
     $("form-campos").addEventListener("change", e => {
       if (e.target.id === "f-pf-aplica") $("campo-pf-fecha").hidden = e.target.value !== "fecha";
     });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
   }
+};
+
+Formularios.recibo = {
+  titulo: "Llegó el recibo",
+  campos: () => PagosFijos.htmlRecibo(),
+  guardar: error => PagosFijos.guardarRecibo(error)
 };
 
 Formularios.pagoFijo = {

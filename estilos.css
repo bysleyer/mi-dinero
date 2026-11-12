@@ -1555,3 +1555,5 @@ details.mas-detalles > summary .opcional { display: none; }
 .pf-orden-boton:not(:disabled):active { background: #26313a; }
 .pf-orden-boton:focus-visible { outline: 3px solid #8fe3d0; outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .pf-orden-boton:not(:disabled):hover { border-color: var(--menta); color: var(--menta); } }
+.marca-estimado { font-size: .6875rem; font-weight: 700; letter-spacing: .02em; padding: 1px 6px; border-radius: 6px; background: #26313a; color: var(--suave); }
+.pf-recibo { width: 100%; margin: 0 0 12px; }

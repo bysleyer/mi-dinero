@@ -11,7 +11,7 @@
  */
 const Sync = {
   ARCHIVO: "datos.json",
-  LISTAS: ["movimientos", "jornadas", "planeados", "diasLibres", "cambiosDatos", "planesDeuda", "deudasPropias", "pagosPropios", "simulaciones", "notasConsejero"],
+  LISTAS: ["movimientos", "jornadas", "planeados", "diasLibres", "cambiosDatos", "planesDeuda", "deudasPropias", "pagosPropios", "recibos", "simulaciones", "notasConsejero"],
   VALORES: ["datos", "plan", "revision", "lineaTiempo", "escenarios", "dineroInicial", "futuro", "rentaCargosDesde", "acuerdoSimulado", "prioridad"],
   MAPAS: ["pagosMovidos"], // { clave: { ..., modificado, borrado? } }
 

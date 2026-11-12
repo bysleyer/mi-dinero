@@ -22,6 +22,7 @@
  *   notasConsejero tus notas para el consejero: { id, texto, creado, modificado }
  *   cambiosDatos   "Datos fijos": { id, campo, valor, anterior, desde, creado, deshecho }
  *   prioridad      orden de prioridad editable (campos.js: Prioridad) { n1, n2, n3 } sin la renta
+ *   recibos        lo que dijo el recibo de un pago que varía (luz...): { id, pagoId, mes, monto }
  *   pagosPropios   pagos fijos que agrego yo (pagosfijos.js): esenciales y suscripciones con sus fechas
  *   planeados      gastos planeados: { id, nombre, monto, fechaLimite, categoria, nota, tipo,
  *                  enPartes, partes, elegido: [{ fecha, monto }] | null }
@@ -345,6 +346,31 @@ const Almacen = {
       p.id === id ? { ...p, borrado: true, modificado: this.ahora() } : p));
   },
 
+  // ---------- Recibos de pagos que varían (luz y los que marques "Varía cada mes") ----------
+  // [{ id, pagoId, mes: "AAAA-MM", monto (total del recibo), creado, modificado, borrado? }]
+  leerTodosLosRecibos() {
+    return this.leer("recibos") || [];
+  },
+
+  leerRecibos() {
+    return this.leerTodosLosRecibos().filter(r => !r.borrado);
+  },
+
+  // Un recibo por pago y mes: si ya había uno, se reemplaza
+  guardarRecibo(recibo) {
+    const lista = this.leerTodosLosRecibos();
+    const momento = this.ahora();
+    const i = lista.findIndex(r => !r.borrado && r.pagoId === recibo.pagoId && r.mes === recibo.mes);
+    if (i >= 0) lista[i] = { ...lista[i], ...recibo, modificado: momento };
+    else lista.push({ ...recibo, id: this.nuevoId(), creado: momento, modificado: momento });
+    return this.guardar("recibos", lista);
+  },
+
+  borrarRecibo(id) {
+    return this.guardar("recibos", this.leerTodosLosRecibos().map(r =>
+      r.id === id ? { ...r, borrado: true, modificado: this.ahora() } : r));
+  },
+
   // Bloque 19: parámetros del simulador "Si aceptan el acuerdo de renta" (solo simulación)
   leerAcuerdoSimulado() {
     return this.leer("acuerdoSimulado");
@@ -480,6 +506,7 @@ const Almacen = {
       planesDeuda: this.leerTodosLosPlanesDeuda(),
       deudasPropias: this.leerTodasLasDeudasPropias(),
       pagosPropios: this.leerTodosLosPagosPropios(),
+      recibos: this.leerTodosLosRecibos(),
       notasConsejero: this.leer("notasConsejero") || [],
       rentaCargosDesde: this.leer("rentaCargosDesde"),
       prioridad: this.leer("prioridad"),
@@ -507,6 +534,7 @@ const Almacen = {
     this.guardar("simulaciones", respaldo.simulaciones || []);
     this.guardar("deudasPropias", respaldo.deudasPropias || []);
     this.guardar("pagosPropios", respaldo.pagosPropios || []);
+    this.guardar("recibos", respaldo.recibos || []);
     this.guardar("notasConsejero", respaldo.notasConsejero || []);
     // Respaldo viejo con acuerdo de renta: se pasa a "Planear pagos" al leerlo
     if (respaldo.planesDeuda) this.guardar("planesDeuda", respaldo.planesDeuda);

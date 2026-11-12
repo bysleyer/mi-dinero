@@ -90,7 +90,7 @@ const { chromium } = require("playwright");
         try {
           const fila = x => ({ id: x.id, nombre: x.nombre, monto: x.monto, venceDia: x.venceDia, variable: !!x.variable, estado: x.estado, grupo: x.grupo });
           const es = PagosFijos.lista("esencial").map(fila), su = PagosFijos.lista("suscripcion").map(fila);
-          return { esenciales: es, suscripciones: su, totalEsenciales: PagosFijos.total(es), totalSuscripciones: PagosFijos.total(su),
+          return { recibos: Almacen.leerRecibos().map(x => ({ pagoId: x.pagoId, mes: x.mes, monto: x.monto })), esenciales: es, suscripciones: su, totalEsenciales: PagosFijos.total(es), totalSuscripciones: PagosFijos.total(su),
                    suscripcionesActivas: su.filter(x => x.estado === "activo").length };
         } catch (e) { return { error: e.message }; }
       })(),
