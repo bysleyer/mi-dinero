@@ -98,8 +98,35 @@ const Inicio = {
       <button class="kpi kpi-guardar" data-nav-ir="plan" aria-label="Guárdalo para más adelante: ${dinero(sem.guardar)}. Ver el plan">
         <span class="kpi-etq">Para después</span><strong>${dinero(sem.guardar)}</strong></button>`;
     this.ajustarCifras();
+    this.mostrarHoy();
     if (typeof Avisos !== "undefined") Avisos.mostrar();
     if (typeof Consejero !== "undefined") Consejero.tarjetaInicio();
+  },
+
+  // Tarjeta "Hoy": lo que registraste hoy, o la invitación a registrar
+  mostrarHoy() {
+    const caja = $("inicio-hoy");
+    if (!caja) return;
+    const delDia = Almacen.leerMovimientos().filter(m => m.fecha === hoy());
+    const gastado = delDia.filter(m => m.tipo === "gasto" || m.tipo === "pagoDeuda").reduce((t, m) => t + m.monto, 0);
+    const entro = delDia.filter(m => m.tipo === "ingreso").reduce((t, m) => t + m.monto, 0);
+    const texto = !delDia.length ? "Todavía no registras nada hoy."
+      : `${delDia.length} ${delDia.length === 1 ? "movimiento" : "movimientos"} hoy` +
+        `${gastado > 0 ? ` · gastaste ${dinero(gastado)}` : ""}${entro > 0 ? ` · entró ${dinero(entro)}` : ""}.`;
+    caja.hidden = false;
+    caja.innerHTML = `<h2>Hoy</h2><p class="hoy-texto">${texto}</p>
+      <button id="inicio-hoy-registrar" class="boton-chico lleno">${delDia.length ? "Registrar otro" : "Registrar"}</button>`;
+  },
+
+  // "Ver todos": con más de 3 pagos próximos se ven 3 y el resto se abre con el botón
+  ajustarPagos() {
+    const ul = $("proximos-pagos"), btn = $("pagos-ver-todos");
+    if (!ul || !btn) return;
+    const n = ul.querySelectorAll(":scope > li").length;
+    btn.hidden = n <= 3;
+    if (n <= 3) { ul.classList.remove("resumido"); return; }
+    ul.classList.toggle("resumido", !this._pagosTodos);
+    btn.textContent = this._pagosTodos ? "Ver menos" : `Ver todos (${n}) ›`;
   },
 
   // Cifras grandes (ej.: $1,135,797.46) se achican hasta caber en su cuadro, en vez de cortarse o pisar al vecino
@@ -117,6 +144,10 @@ const Inicio = {
   iniciar() {
     // "Tengo" cambia desde app.js: cuando cambie su texto, se vuelve a ajustar
     new MutationObserver(() => this.ajustarCifras()).observe($("inicio-semana"), { childList: true, subtree: true, characterData: true });
+    new MutationObserver(() => this.ajustarPagos()).observe($("proximos-pagos"), { childList: true });
+    $("pagos-ver-todos").addEventListener("click", () => { this._pagosTodos = !this._pagosTodos; this.ajustarPagos(); });
+    $("inicio-hoy").addEventListener("click", e => { if (e.target.closest("#inicio-hoy-registrar")) Nav.abrirHoja("registrar"); });
+    this.ajustarPagos();
     $("inicio-semana").addEventListener("click", e => {
       if (e.target.closest("[data-nav-ir]")) Nav.ir(e.target.closest("[data-nav-ir]").dataset.navIr);
     });

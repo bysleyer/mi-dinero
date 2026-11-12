@@ -86,6 +86,13 @@
     <!-- Resumen de esta semana (con el menú: el inicio es un resumen; registrar está en ＋) -->
     <section id="inicio-semana" class="inicio-semana" hidden aria-label="Resumen: lo que tengo y esta semana"><div class="kpis"><div id="kpi-semana" class="kpi-semana"></div></div></section>
     <div id="avisos-afuera" class="avisos-afuera" hidden></div>
+    <!-- Lo que viene, lo de hoy y el consejero (con el menú); sin menú se ven los botones de siempre -->
+    <section class="tarjeta" id="inicio-pagos">
+      <h2>Próximos pagos <span class="opcional">(14 días)</span></h2>
+      <ul id="proximos-pagos" class="movimientos"></ul>
+      <button id="pagos-ver-todos" class="enlace" hidden>Ver todos ›</button>
+    </section>
+    <section id="inicio-hoy" class="tarjeta inicio-hoy" hidden></section>
     <section id="inicio-consejero" class="tarjeta inicio-consejero" hidden></section>
 
     <div class="botones">
@@ -108,11 +115,8 @@
       <button id="abrir-consejero" class="boton-mediano">Tu consejero</button>
     </div>
 
-    <section class="tarjeta">
-      <h2>Próximos pagos <span class="opcional">(14 días)</span></h2>
-      <ul id="proximos-pagos" class="movimientos"></ul>
-    </section>
-
+    <details class="tarjeta mas-detalles">
+      <summary>Más detalles <span class="opcional">(cheque, jornadas, deuda y movimientos)</span></summary>
     <section class="tarjeta">
       <h2>Próximo cheque</h2>
       <div id="cheque"></div>
@@ -132,6 +136,7 @@
       <h2>Últimos movimientos</h2>
       <ul id="movimientos" class="movimientos"></ul>
     </section>
+    </details>
 
     <div class="botones-final">
       <button id="abrir-datosfijos" class="boton-chico">Datos fijos</button>

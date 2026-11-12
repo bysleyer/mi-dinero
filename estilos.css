@@ -1011,3 +1011,19 @@ button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visib
 .marca-renta { font-size: .7rem; }
 button.enlace { min-height: 44px; }
 #pantalla-futuro .tarjeta[data-sec="calendario"] { padding: 12px 6px; }
+
+/* TABLERO — Etapa 2: Inicio corto (próximos pagos, hoy, consejero y "Más detalles") */
+#proximos-pagos.resumido > li:nth-child(n+4) { display: none; }
+#pagos-ver-todos { margin-top: 4px; }
+.inicio-hoy .hoy-texto { margin: 0 0 4px; font-size: 1rem; color: var(--texto); }
+.inicio-hoy .boton-chico { margin-top: 8px; }
+.mas-detalles > summary { font-weight: 700; color: var(--suave); cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mas-detalles[open] > summary { margin-bottom: 8px; }
+.mas-detalles > .tarjeta, .mas-detalles > details { background: none; border: 0; box-shadow: none; padding: 8px 0; margin: 0; border-top: 1px solid var(--borde); border-radius: 0; }
+/* Tarjeta del consejero en Inicio: compacta (el texto completo está en "Ver todo ›") */
+.inicio-consejero p { font-size: 1rem; line-height: 1.4; }
+.inicio-consejero .cj-comentario, .inicio-consejero p > strong {
+  display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; -webkit-line-clamp: 4;
+}
+.inicio-consejero .ayuda { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; -webkit-line-clamp: 2; }
+.mas-detalles > summary .opcional { display: block; width: 100%; font-weight: 400; font-size: .85rem; }
