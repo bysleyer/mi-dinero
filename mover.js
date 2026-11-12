@@ -82,8 +82,12 @@ const Mover = {
     const pago = this.pagoOriginal(item.claveMov);
     if (!pago || pago.monto <= 0) return false;
     const pr = Proyeccion.calcular({ excluir: item.claveMov });
-    const dia = pr.porDia[pago.fecha < pr.desde ? pr.desde : pago.fecha];
-    return !dia || dia.saldoFin - pago.monto < -0.005;
+    const desde = pago.fecha < pr.desde ? pr.desde : pago.fecha;
+    if (!pr.porDia[desde]) return false; // más allá de lo que la cuenta alcanza a ver: no se puede decir que no alcanza
+    // Saldo más bajo desde ese día hasta el siguiente cheque (pagarlo baja también los días que siguen)
+    const sig = pr.cheques.find(c => c > desde) || pr.hasta;
+    const minimo = Math.min(pr.porDia[desde].saldoFin, ...Object.keys(pr.porDia).filter(f => f >= desde && f < sig).map(f => pr.porDia[f].saldoFin));
+    return minimo - pago.monto < -0.005;
   },
 
   esDeuda(pago) { return !!(pago && pago.item && pago.item.inmediato); },
@@ -190,9 +194,18 @@ const Mover = {
     const dias = this.dias(pr.desde, pr.hasta);
     const primerDisponible = dias.find(f => pr.porDia[f].saldoFin > 0.005) || null;
     const evaluacion = {};
+    // Pagarlo ese día baja TODOS los días siguientes: lo que importa es el saldo más bajo desde ese día en adelante
+    const minDesde = {};
+    let minimo = Infinity;
+    // ...pero solo hasta el siguiente cheque: lo que falta después no es culpa de este pago
+    for (let i = dias.length - 1; i >= 0; i--) {
+      const f = dias[i];
+      minimo = Math.min(minimo, pr.porDia[f].saldoFin); minDesde[f] = minimo;
+      if (pr.cheques.includes(f)) minimo = Infinity; // la ventana de los días anteriores termina antes de este cheque
+    }
     dias.forEach(f => {
       const antes = pr.porDia[f].saldoFin;
-      const despues = redondear(antes - pago.monto);
+      const despues = redondear(minDesde[f] - pago.monto);
       const atraso = this.diferencia(f, pago.fecha);
       // Deuda atrasada (internet atrasado): se puede aplazar; no hay "atraso" ni recargo nuevo
       const fueraDeGracia = !this.esDeuda(pago) && atraso > reglas.gracia_dias;
@@ -388,7 +401,7 @@ const Mover = {
         ${this.esDeuda(pago)
           ? `<li><span>Deuda atrasada</span><span>Puedes elegir la fecha; no genera recargo nuevo</span></li>`
           : `<li><span>Atraso</span><span>${atraso}</span></li><li><span>Recargo</span><span>${recargo}</span></li>`}
-        <li><span>Saldo después de pagar</span><span class="${e.despues < 0 ? "error" : "ok"}">${e.despues < 0 ? `−${dinero(-e.despues)} · Falta ${dinero(-e.despues)}` : dinero(e.despues)}</span></li>
+        <li><span>Lo más bajo hasta tu próximo cheque</span><span class="${e.despues < 0 ? "error" : "ok"}">${e.despues < 0 ? `−${dinero(-e.despues)} · Falta ${dinero(-e.despues)}` : dinero(e.despues)}</span></li>
         <li><span>Ese día también</span><span>${choques.length ? escapar(choques.join(", ")) : "Nada más"}</span></li>
         <li><span>Cheque</span><span>${cheque}</span></li>
       </ul>

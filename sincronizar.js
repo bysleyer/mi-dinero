@@ -106,6 +106,13 @@ const Sync = {
     });
     this.VALORES.forEach(k => {
       const l = loc.valores[k], r = (rem.valores || {})[k];
+      // Desde cuándo se cargan las rentas: gana la fecha MÁS TEMPRANA (una fecha más tardía dejaría de sumar rentas ya cargadas)
+      if (k === "rentaCargosDesde" && l && r && typeof l.valor === "string" && typeof r.valor === "string") {
+        const w = r.valor < l.valor ? r : l;
+        out.valores[k] = w;
+        if (w === r && JSON.stringify(l.valor) !== JSON.stringify(r.valor)) delOtro++;
+        return;
+      }
       if (r && (!l || r.modificado > l.modificado)) { out.valores[k] = r; if (!l || JSON.stringify(l.valor) !== JSON.stringify(r.valor)) delOtro++; }
       else if (l) out.valores[k] = l;
     });

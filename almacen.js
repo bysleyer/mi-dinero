@@ -40,7 +40,9 @@ const Almacen = {
       const texto = localStorage.getItem(this.prefijo + clave);
       return texto ? JSON.parse(texto) : null;
     } catch (e) {
-      return null; // modo privado o almacenamiento bloqueado
+      // Texto dañado: se guarda una copia aparte antes de que algo lo pise (con almacenamiento bloqueado no se puede)
+      try { const t = localStorage.getItem(this.prefijo + clave); if (t && !localStorage.getItem(this.prefijo + "dañado:" + clave)) localStorage.setItem(this.prefijo + "dañado:" + clave, t); } catch (e2) { /* nada */ }
+      return null;
     }
   },
 
@@ -515,41 +517,50 @@ const Almacen = {
   },
 
   // Reemplaza TODO lo guardado por el contenido de un respaldo ya validado.
+  // Si algo no se alcanza a guardar (almacenamiento lleno), vuelve a dejar todo como estaba y devuelve false.
+  // Las claves sincronizadas quedan con la fecha DEL RESPALDO (no "ahora"): un respaldo viejo no le gana a datos más nuevos de otro aparato.
   reemplazarTodo(respaldo) {
     const config = this.leerConfig();
-    this.guardar("movimientos", respaldo.movimientos || []);
-    this.guardar("plan", respaldo.plan || {});
-    this.guardar("jornadas", respaldo.jornadas || []);
-    if (respaldo.lineaTiempo) this.guardar("lineaTiempo", respaldo.lineaTiempo);
+    const crudo = {};
+    try { for (let n = 0; n < localStorage.length; n++) { const k = localStorage.key(n); if (k.startsWith(this.prefijo)) crudo[k] = localStorage.getItem(k); } } catch (e) { /* sin almacenamiento */ }
+    const antes = this.aplicandoSync;
+    this.aplicandoSync = true;
+    let ok = true;
+    const guardar = (k, v) => { if (!this.guardar(k, v)) ok = false; };
+    try {
+    guardar("movimientos", respaldo.movimientos || []);
+    guardar("plan", respaldo.plan || {});
+    guardar("jornadas", respaldo.jornadas || []);
+    if (respaldo.lineaTiempo) guardar("lineaTiempo", respaldo.lineaTiempo);
     else this.borrar("lineaTiempo");
-    if (respaldo.escenarios) this.guardar("escenarios", respaldo.escenarios);
+    if (respaldo.escenarios) guardar("escenarios", respaldo.escenarios);
     else this.borrar("escenarios");
-    if (respaldo.dineroInicial) this.guardar("dineroInicial", respaldo.dineroInicial);
+    if (respaldo.dineroInicial) guardar("dineroInicial", respaldo.dineroInicial);
     else this.borrar("dineroInicial");
-    this.guardar("pagosMovidos", respaldo.pagosMovidos || {});
-    this.guardar("diasLibres", respaldo.diasLibres || []);
-    this.guardar("futuro", respaldo.futuro || {});
-    this.guardar("planeados", respaldo.planeados || []);
-    this.guardar("cambiosDatos", respaldo.cambiosDatos || []);
-    this.guardar("simulaciones", respaldo.simulaciones || []);
-    this.guardar("deudasPropias", respaldo.deudasPropias || []);
-    this.guardar("pagosPropios", respaldo.pagosPropios || []);
-    this.guardar("recibos", respaldo.recibos || []);
-    this.guardar("notasConsejero", respaldo.notasConsejero || []);
+    guardar("pagosMovidos", respaldo.pagosMovidos || {});
+    guardar("diasLibres", respaldo.diasLibres || []);
+    guardar("futuro", respaldo.futuro || {});
+    guardar("planeados", respaldo.planeados || []);
+    guardar("cambiosDatos", respaldo.cambiosDatos || []);
+    guardar("simulaciones", respaldo.simulaciones || []);
+    guardar("deudasPropias", respaldo.deudasPropias || []);
+    guardar("pagosPropios", respaldo.pagosPropios || []);
+    guardar("recibos", respaldo.recibos || []);
+    guardar("notasConsejero", respaldo.notasConsejero || []);
     // Respaldo viejo con acuerdo de renta: se pasa a "Planear pagos" al leerlo
-    if (respaldo.planesDeuda) this.guardar("planesDeuda", respaldo.planesDeuda);
-    else { this.borrar("planesDeuda"); if (respaldo.acuerdoRenta && respaldo.acuerdoRenta.length) this.guardar("acuerdoRenta", respaldo.acuerdoRenta); }
-    if (respaldo.acuerdoSimulado) this.guardar("acuerdoSimulado", respaldo.acuerdoSimulado);
+    if (respaldo.planesDeuda) guardar("planesDeuda", respaldo.planesDeuda);
+    else { this.borrar("planesDeuda"); if (respaldo.acuerdoRenta && respaldo.acuerdoRenta.length) guardar("acuerdoRenta", respaldo.acuerdoRenta); }
+    if (respaldo.acuerdoSimulado) guardar("acuerdoSimulado", respaldo.acuerdoSimulado);
     else this.borrar("acuerdoSimulado");
-    if (respaldo.prioridad) this.guardar("prioridad", respaldo.prioridad);
+    if (respaldo.prioridad) guardar("prioridad", respaldo.prioridad);
     else this.borrar("prioridad");
-    if (respaldo.rentaCargosDesde) this.guardar("rentaCargosDesde", respaldo.rentaCargosDesde);
+    if (respaldo.rentaCargosDesde) guardar("rentaCargosDesde", respaldo.rentaCargosDesde);
     else this.borrar("rentaCargosDesde");
-    this.guardar("acuerdoRenta", respaldo.acuerdoRenta || []);
-    if (respaldo.revision) this.guardar("revision", respaldo.revision);
+    guardar("acuerdoRenta", respaldo.acuerdoRenta || []);
+    if (respaldo.revision) guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {
-      this.guardar("datos", respaldo.datos);
+      guardar("datos", respaldo.datos);
     } else {
       this.borrar("datos");
     }
@@ -558,7 +569,19 @@ const Almacen = {
       primerUso: (respaldo.config && respaldo.config.primerUso) || config.primerUso || this.ahora(),
       ultimoRespaldo: config.ultimoRespaldo
     });
-    this.guardar("formato", respaldo.versionFormato || 1);
+    guardar("formato", respaldo.versionFormato || 1);
+    // Fecha de cada dato sincronizado = la del respaldo (si no la trae, vacía: cualquier dato del otro aparato gana)
+    const meta = this.leerMetaSync();
+    (typeof Sync !== "undefined" ? Sync.VALORES : []).forEach(k => { if (this.leer(k) !== null) meta[k] = respaldo.creado || ""; });
+    guardar("metaSync", meta);
+    } finally { this.aplicandoSync = antes; }
+    if (!ok) {
+      try {
+        Object.keys(localStorage).filter(k => k.startsWith(this.prefijo) && !(k in crudo)).forEach(k => localStorage.removeItem(k));
+        Object.entries(crudo).forEach(([k, v]) => localStorage.setItem(k, v));
+      } catch (e) { /* si ni esto se puede, el almacenamiento está bloqueado */ }
+      return false;
+    }
     this.migrar();
     return true;
   },

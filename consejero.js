@@ -51,10 +51,17 @@ const Vigilante = {
   // ¿Este gasto entra en la regla? (por categoría y/o por palabras de la nota)
   entra(regla, m) {
     if (m.tipo !== "gasto") return false;
-    if (regla.categorias && regla.categorias.length && !regla.categorias.includes(m.categoria)) return false;
+    if (regla.categorias && regla.categorias.length && !regla.categorias.some(c => this.normal(c) === this.normal(m.categoria))) return false;
     if (regla.palabras && regla.palabras.length) {
-      const n = this.normal(m.nota), sin = n.replace(/\s+/g, "");
-      return regla.palabras.some(p => { const q = this.normal(p); return n.includes(q) || sin.includes(q.replace(/\s+/g, "")); });
+      // Palabra COMPLETA (con plural): "eats" no marca "treats", "de" no marca "desayuno". Las palabras vacías no cuentan.
+      const n = this.normal(m.nota);
+      const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return regla.palabras.some(p => {
+        const q = this.normal(p).trim();
+        if (!q) return false;
+        const junto = q.replace(/\s+/g, "");
+        return [q, junto].some(x => new RegExp("(^|[^a-z])" + esc(x) + "(s|es)?([^a-z]|$)").test(n));
+      });
     }
     return true;
   },
@@ -193,11 +200,11 @@ Object.assign(Consejero, {
     $("cj-reglas").innerHTML = reglas.length ? reglas.map(r => {
       const l = Vigilante.llevas(r);
       const pasado = (r.maxVeces != null && l.veces > r.maxVeces) || (r.maxMonto != null && l.monto > r.maxMonto + 0.005);
-      const cerca = !pasado && ((r.maxVeces != null && l.veces >= r.maxVeces) || (r.maxMonto != null && l.monto >= r.maxMonto * 0.8));
+      const cerca = !pasado && ((r.maxVeces > 0 && l.veces >= r.maxVeces) || (r.maxMonto > 0 && l.monto >= r.maxMonto * 0.8));
       const partes = [];
       if (r.maxVeces != null) partes.push(`${l.veces} de ${r.maxVeces} ${r.maxVeces === 1 ? "vez" : "veces"}`);
       if (r.maxMonto != null) partes.push(`${dinero(l.monto)} de ${dinero(r.maxMonto)}`);
-      const pct = r.maxMonto ? l.monto / r.maxMonto : r.maxVeces ? l.veces / r.maxVeces : 0;
+      const pct = r.maxMonto ? l.monto / r.maxMonto : r.maxVeces ? l.veces / r.maxVeces : (l.veces > 0 ? 1 : 0);
       return `<li class="${pasado ? "negativo" : cerca ? "cerca" : ""}">
         <div class="cj-regla"><span>${escapar(r.nombre)}</span><span>${partes.join(" · ")} <span class="opcional">${l.per.texto}</span></span></div>
         <div class="cj-barra"><span style="transform:scaleX(${Math.min(1, pct)})"></span></div>
@@ -207,7 +214,7 @@ Object.assign(Consejero, {
     $("cj-metas").innerHTML = reglas.length ? reglas.map(r => {
       const l = Vigilante.llevas(r);
       const pasado = (r.maxVeces != null && l.veces > r.maxVeces) || (r.maxMonto != null && l.monto > r.maxMonto + 0.005);
-      const cerca = !pasado && ((r.maxVeces != null && l.veces >= r.maxVeces) || (r.maxMonto != null && l.monto >= r.maxMonto * 0.8));
+      const cerca = !pasado && ((r.maxVeces > 0 && l.veces >= r.maxVeces) || (r.maxMonto > 0 && l.monto >= r.maxMonto * 0.8));
       const valor = r.maxVeces != null && r.maxVeces > 0 ? `${l.veces} de ${r.maxVeces}` : r.maxMonto != null ? `${dinero(l.monto)} de ${dinero(r.maxMonto)}` : `${l.veces} de ${r.maxVeces}`;
       const pct = r.maxMonto ? l.monto / r.maxMonto : r.maxVeces ? l.veces / r.maxVeces : (l.veces > 0 ? 1 : 0);
       return `<li class="${pasado ? "negativo" : cerca ? "cerca" : ""}"><div class="cj-regla"><span>${escapar(r.nombre.replace(/\s*\(.*\)\s*$/, ""))}</span><strong>${valor}</strong></div>

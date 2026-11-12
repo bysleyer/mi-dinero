@@ -152,7 +152,12 @@ const Proyeccion = {
     }
 
     // Vencimientos sin pagar (con las fechas movidas)
-    Vencimientos.entre(hoyClave, fin).forEach(item => {
+    // Lo que venció hace poco (hasta DIAS_ATRAS días) y sigue sin pagarse NO desaparece: se cuenta como pago de hoy,
+    // marcado "vencido" (antes se olvidaba al día siguiente y la cuenta quedaba con ese dinero de más).
+    const atras = Jornadas.sumarDias(hoyClave, -Vencimientos.DIAS_ATRAS);
+    Vencimientos.entre(atras, fin).forEach(item => {
+      const vencido = item.fecha < hoyClave;
+      if (vencido && (item.planeado || item.inmediato)) return; // lo planeado y lo atrasado sin fecha no se arrastran
       if (item.alerta || [].concat(excluir || []).includes(item.claveMov)) return; // excluir: una clave o varias
       if (item.id === "renta") return; // la renta se cuenta aparte (rentaLineas)
       if (item.inmediato && !item.movido) return; // deuda atrasada sin fecha (internet atrasado): no se asume que la pagas
@@ -162,8 +167,9 @@ const Proyeccion = {
       if (pendiente <= 0) return;
       // Orden dentro del día: el de Más → Pagos fijos → Orden (renta, nivel 1, nivel 2, suscripciones)
       const orden = (!item.inmediato && !item.planeado && Prioridad.orden(item.id)) || (item.inmediato ? 5 : item.planeado ? 15 : 10);
-      lineas.push({ fecha: item.fecha, orden, tipo: "pago", id: item.id, letra: item.letra,
-        nombre: item.planeado ? `${item.nombre} (planeado)` : item.nombre,
+      lineas.push({ fecha: vencido ? hoyClave : item.fecha, orden, tipo: "pago", id: item.id, letra: item.letra,
+        vencidoDesde: vencido ? item.fecha : null,
+        nombre: item.planeado ? `${item.nombre} (planeado)` : vencido ? `${item.nombre} (vencido)` : item.nombre,
         detalle: pendientes.length > 1 ? pendientes.map(p => dinero(p.monto)).join(" + ") : "",
         monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato, deudaId: item.deudaId || null,
         planeado: !!item.planeado });
@@ -263,12 +269,18 @@ const Proyeccion = {
       const meta = c.meta < hoyClave ? hoyClave : c.meta; // la meta ya pasó pero aún no vence: hoy
       if (!mv) { lineas.push({ fecha: meta, monto: -c.pendiente, nombre, claveMov: clave, cargo: c.fecha }); return; }
       const info = { fechaOriginal: meta, acordado: !!mv.acordado, nota: mv.nota || "", dividido: mv.partes.length > 1 };
+      // Lo ya pagado se aplica a las primeras partes: lo que falta se reparte de la ÚLTIMA parte hacia atrás.
+      // Una parte cuya fecha ya pasó sin pagarse vuelve a hoy (antes desaparecía y la cuenta quedaba con ese dinero de más).
       let queda = c.pendiente;
-      mv.partes.forEach((pt, i) => {
-        const monto = redondear(i === mv.partes.length - 1 ? queda : Math.min(pt.monto, queda));
+      const partes = mv.partes.map(pt => ({ ...pt })).reverse().map(pt => {
+        const monto = redondear(Math.min(pt.monto, queda));
         queda = redondear(queda - monto);
-        if (monto > 0.005) lineas.push({ fecha: pt.fecha, monto: -monto, claveMov: clave, cargo: c.fecha,
-          nombre: mv.partes.length > 1 ? `${nombre} (parte ${i + 1} de ${mv.partes.length})` : nombre,
+        return { ...pt, monto, vencidoDesde: pt.fecha < hoyClave ? pt.fecha : null, fecha: pt.fecha < hoyClave ? hoyClave : pt.fecha };
+      }).reverse();
+      if (queda > 0.005) partes[partes.length - 1].monto = redondear(partes[partes.length - 1].monto + queda);
+      partes.forEach((pt, i) => {
+        if (pt.monto > 0.005) lineas.push({ fecha: pt.fecha, monto: -pt.monto, claveMov: clave, cargo: c.fecha, vencidoDesde: pt.vencidoDesde,
+          nombre: (mv.partes.length > 1 ? `${nombre} (parte ${i + 1} de ${mv.partes.length})` : nombre) + (pt.vencidoDesde ? " (vencido)" : ""),
           movido: { ...info, parte: mv.partes.length > 1 ? i + 1 : null } });
       });
     });

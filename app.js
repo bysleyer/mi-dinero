@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 48, fecha: "12 nov 2026" };
+const VERSION_APP = { numero: 49, fecha: "12 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -163,7 +163,10 @@ const Datos = {
     let a = h.getFullYear(), m = h.getMonth();
     if (this.diaRenta(a, m) <= hoy()) m++;          // el de este mes ya pasó (o es hoy): ya está en el portal
     const d = new Date(a, m, 1);
-    Almacen.guardar("rentaCargosDesde", this.diaRenta(d.getFullYear(), d.getMonth()));
+    // Es un valor inicial, no un cambio del dueño: no se sella "ahora" (así no le gana al de otro aparato)
+    const antes = Almacen.aplicandoSync;
+    Almacen.aplicandoSync = true;
+    try { Almacen.guardar("rentaCargosDesde", this.diaRenta(d.getFullYear(), d.getMonth())); } finally { Almacen.aplicandoSync = antes; }
   },
 
   // Cargos de renta [{ fecha, monto }] desde el primer vencimiento nuevo hasta "hasta"
@@ -655,7 +658,7 @@ const Dinero = {
         if (m.tipo === "ingreso") return s + m.monto;
         if (m.tipo === "gasto" || m.tipo === "pagoDeuda") return s - m.monto;
         return s;
-      }, inicial ? inicial.monto : 0));
+      }, inicial ? Number(inicial.monto) || 0 : 0));
   },
 
   // La cuenta paso a paso: la última corrección y cada movimiento que cuenta desde entonces

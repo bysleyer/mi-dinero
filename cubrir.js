@@ -63,7 +63,7 @@ const Cubrir = {
     // 2b) Pausar una suscripción que se cobra antes de que termine el faltante (lo primero que se deja).
     // Una sola opción por suscripción: pausarla quita todos sus cobros hasta ese día.
     Almacen.leerPagosPropios().filter(p => p.grupo === "suscripcion").forEach(p => {
-      const cobros = pr.lineas.filter(l => l.tipo === "pago" && l.id === p.id && l.claveMov && !l.movido && l.fecha <= f.fin);
+      const cobros = pr.lineas.filter(l => l.tipo === "pago" && l.id === p.id && l.claveMov && !l.movido && !l.vencidoDesde && l.fecha <= f.fin);
       if (!cobros.length) return;
       const total = redondear(-cobros.reduce((s, l) => s + l.monto, 0));
       ops.push({ id: `pausar-${p.id}`, costo: 0.5, titulo: `Pausar ${p.nombre}`,

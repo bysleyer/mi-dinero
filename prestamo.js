@@ -96,7 +96,8 @@ const Prestamo = {
     if (s.libre && s.para === "otro") lineas.push({ fecha: s.fecha, monto: -s.monto, nombre: "Préstamo: lo gastas en lo que necesitas" });
     if (s.libre) return { lineas, ajustes, ultimo: s.fecha };
     // Pagos: el día de la semana elegido, empezando después de recibirlo; el último ajusta al total
-    const diaN = Jornadas.DIAS.indexOf(s.dia);
+    let diaN = Jornadas.DIAS.indexOf(s.dia);
+    if (diaN < 0) diaN = 5; // día no válido: viernes (si no, el ciclo de abajo no terminaba)
     let f = Jornadas.sumarDias(s.fecha, 1);
     while (Jornadas.aFecha(f).getDay() !== diaN) f = Jornadas.sumarDias(f, 1);
     for (let i = 0; i < s.semanas; i++) {

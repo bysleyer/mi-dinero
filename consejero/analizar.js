@@ -8,6 +8,7 @@
  *       (FECHA=AAAA-MM-DDTHH:MM para fijar el día; por defecto, ahora mismo en Nueva York)
  * No contiene datos: solo lee el archivo que se le pasa.
  */
+process.env.TZ = "America/New_York"; // FECHA=AAAA-MM-DDTHH:MM se lee como hora de Nueva York aunque la máquina esté en UTC
 const path = require("path");
 const fs = require("fs");
 const { chromium } = require("playwright");
@@ -76,6 +77,18 @@ const { chromium } = require("playwright");
                 hueco: sem.hueco, huecoAntes: sem.huecoAntes },
       faltante: f ? { ...f, texto: Proyeccion.textoFaltante(f) } : null,
       renta: { atrasada: red(Proyeccion.rentaAtrasada()), estado: (() => { try { return Proyeccion.estadoRenta(pr); } catch (e) { return null; } })() },
+      // Día de libertad = la última de las dos fechas (renta atrasada y préstamo del amigo) que calcula la app.
+      // Cambia a saltos (unos pocos dólares pueden moverlo semanas): se calcula SIEMPRE con los datos de hoy.
+      diaLibertad: (() => {
+        if (!deudas || deudas.error) return null;
+        const nunca = (deudas.hayRenta && !deudas.rentaCero) || (deudas.hayAmigo && !deudas.amigoCero);
+        const fs = [deudas.hayRenta && deudas.rentaCero, deudas.hayAmigo && deudas.amigoCero].filter(x => x && x !== "ya").sort();
+        // sensibilidad: cuánto se mueve la fecha con $50 más o menos hoy (para que el consejero lo diga)
+        const sens = monto => { try { const d = Proyeccion.planDeudas({ ajustes: [{ fecha: hoyClave, monto }] }); return { rentaCero: d.rentaCero, amigoCero: d.amigoCero }; } catch (e) { return null; } };
+        return { fecha: nunca ? null : (fs.slice(-1)[0] || "ya"), masDeDias: nunca ? deudas.dias : null,
+                 rentaCero: deudas.rentaCero, amigoCero: deudas.amigoCero, calculadoEl: hoyClave, dineroHoy: red(Dinero.actual()),
+                 sensibilidad: { con50Menos: sens(50), con50Mas: sens(-50) } };
+      })(),
       cubrir, deudas, avisos,
       diasConPagos: dias,
       deudasDatos: Datos.deudas().map(d => ({ id: d.id, nombre: d.nombre, monto: d.monto, saldo: red(Datos.saldoReparto(d.id)), prioridad: d.prioridad, nota: d.nota })),

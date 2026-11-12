@@ -19,7 +19,7 @@ const Respaldo = {
     const ing = d.ingresos || {};
     if (!esNum(ing.pagoPorHora)) errores.push("Falta ingresos.pagoPorHora");
     if (!esNum(ing.horasPorSemana)) errores.push("Falta ingresos.horasPorSemana");
-    if (!esNum(ing.brutoSemanal)) errores.push("Falta ingresos.brutoSemanal");
+    if (!esNum(ing.brutoSemanal) || ing.brutoSemanal <= 0) errores.push("Falta ingresos.brutoSemanal (mayor que 0)");
     if (!ing.netoSemanal || !esNum(ing.netoSemanal.monto)) errores.push("Falta ingresos.netoSemanal.monto");
     if (!ing.semanaMala || !esNum(ing.semanaMala.netoMinimo)) errores.push("Falta ingresos.semanaMala.netoMinimo");
 
@@ -57,7 +57,8 @@ const Respaldo = {
   validarMovimiento(m) {
     return m && typeof m.id === "string" && this.TIPOS_MOVIMIENTO.includes(m.tipo)
       && typeof m.monto === "number" && isFinite(m.monto) && m.monto >= 0
-      && /^\d{4}-\d{2}-\d{2}$/.test(m.fecha || "");
+      && /^\d{4}-\d{2}-\d{2}$/.test(m.fecha || "") && !isNaN(new Date(m.fecha + "T12:00:00"))
+      && new Date(m.fecha + "T12:00:00").toISOString().slice(0, 10) === m.fecha; // "2026-02-31" no existe
   },
 
   // Lee el texto de un archivo y dice qué es. Devuelve { tipo, contenido, resumen } o { error }.
