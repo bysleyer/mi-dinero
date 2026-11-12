@@ -92,8 +92,10 @@ const Nav = {
       if (e.target.closest("#hoja-continuar")) { // abre el formulario del tipo elegido con el monto ya escrito
         const tipo = document.querySelector("[data-tipo-hoja][aria-pressed='true']").dataset.tipoHoja;
         const txt = $("hoja-monto").value.trim();
+        const nota = $("hoja-nota").value.trim();
         this.cerrarHoja();
-        return abrirFormulario(tipo, { selector: true, monto: txt !== "" && Number(txt) >= 0 ? Number(txt) : undefined });
+        $("hoja-nota").value = "";
+        return abrirFormulario(tipo, { selector: true, nota: nota || undefined, monto: txt !== "" && Number(txt) >= 0 ? Number(txt) : undefined });
       }
       const r = e.target.closest("[data-registrar]");
       if (!r) return;

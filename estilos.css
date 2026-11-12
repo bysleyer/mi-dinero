@@ -1080,6 +1080,7 @@ button.enlace { min-height: 44px; }
 .hoja-tipos { display: flex; gap: 8px; margin: 8px 0 4px; }
 .hoja-tipos .chip { flex: 1 1 auto; padding: 0 6px; font-size: .9rem; white-space: nowrap; }
 .hoja-tipos .chip.ingreso, .hoja-tipos .chip.gasto, .hoja-tipos .chip.deuda { min-height: 56px; }
+.hoja-nota { margin: 12px 0 0; }
 .hoja-etiqueta { margin: 14px 0 8px; font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--suave); }
 .hoja-atajos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 .hoja-atajos button { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 14px; background: #1c262d; color: var(--texto); font: inherit; font-size: .95rem; font-weight: 700; text-align: left; cursor: pointer; touch-action: manipulation; }
@@ -1243,6 +1244,9 @@ body.con-nav #volver-consejero { display: none; }
 #hoja .campo { background: #0a0f12; border: 1px solid var(--borde); border-radius: 14px; padding: 10px 14px; margin: 4px 0 10px; }
 #hoja .campo > label { display: block; font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); margin: 0 0 2px; }
 #hoja .campo input { border: 0; background: transparent; padding: 0; width: 100%; color: var(--texto); font-size: 2rem; font-weight: 800; min-height: 44px; box-shadow: none; outline: none; }
+#hoja .hoja-nota { margin: 14px 0 0; }
+#hoja .hoja-nota > label .opcional { text-transform: none; letter-spacing: 0; font-weight: 400; }
+#hoja .hoja-nota input { font-size: 1.05rem; font-weight: 400; min-height: 32px; }
 #hoja .campo:focus-within, .ventana-caja .campo:focus-within { border-color: var(--menta); }
 
 /* ---------- Formularios (ventana) ---------- */
