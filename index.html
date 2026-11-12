@@ -41,14 +41,17 @@
     <div class="hoja-caja" role="dialog" aria-modal="true">
       <div id="hoja-registrar">
         <h2>Registrar</h2>
-        <div class="hoja-grilla">
-          <button class="boton-grande ingreso" data-registrar="ingreso">Me pagaron</button>
-          <button class="boton-grande gasto" data-registrar="gasto">Gasté</button>
-          <button class="boton-grande deuda" data-registrar="pagoDeuda">Pagué una deuda</button>
-          <button class="boton-mediano" data-registrar="transporte">Transporte</button>
-          <button class="boton-mediano" data-registrar="trabaje">Trabajé hoy</button>
-          <button class="boton-mediano" data-registrar="no-trabaje">No trabajé hoy</button>
-          <button class="boton-mediano" data-registrar="ysigasto">¿Y si gasto…?</button>
+        <div class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
+          <button class="chip ingreso" data-registrar="ingreso">Me pagaron</button>
+          <button class="chip gasto" data-registrar="gasto">Gasté</button>
+          <button class="chip deuda" data-registrar="pagoDeuda">Pagué una deuda</button>
+        </div>
+        <p class="hoja-etiqueta">Atajos</p>
+        <div class="hoja-atajos">
+          <button data-registrar="transporte"><span aria-hidden="true">🚆</span>Transporte</button>
+          <button data-registrar="trabaje"><span aria-hidden="true">✔️</span>Trabajé hoy</button>
+          <button data-registrar="no-trabaje"><span aria-hidden="true">🚫</span>No trabajé hoy</button>
+          <button data-registrar="ysigasto"><span aria-hidden="true">🤔</span>¿Y si gasto…?</button>
         </div>
       </div>
       <div id="hoja-mas">
@@ -578,8 +581,8 @@
 
     <section class="tarjeta">
       <h2>Sincronizar entre aparatos</h2>
-      <p class="nota-sobre">Tus datos se guardan en tu repositorio <strong>privado</strong> de GitHub y se combinan entre tus aparatos (gana lo más reciente). La llave se queda solo en este aparato.</p>
       <p id="sy-estado" class="estado"></p>
+      <p class="nota-sobre">Tus datos se guardan en tu repositorio <strong>privado</strong> de GitHub y se combinan entre tus aparatos (gana lo más reciente). La llave se queda solo en este aparato.</p>
       <div class="pl-botones">
         <button id="sy-ahora" class="boton-chico lleno">Sincronizar ahora</button>
         <button id="sy-desconectar" class="boton-chico" hidden>Desconectar este aparato</button>
@@ -645,10 +648,10 @@
         <button id="revisar-primera" class="boton-chico">Revisar lo pegado</button>
       </details>
       <div id="primera-revision" class="revision" hidden></div>
-      <button id="usar-ejemplo" class="boton-grande cancelar">Usar datos de ejemplo</button>
+      <button id="usar-ejemplo" class="boton-chico">Probar con datos de ejemplo</button>
     </section>
-    <section class="tarjeta">
-      <h2>¿Ya usas Mi dinero en otro aparato?</h2>
+    <details class="tarjeta primera-sync">
+      <summary><h2>¿Ya usas Mi dinero en otro aparato?</h2></summary>
       <p class="nota-sobre">Conéctate a tu repositorio privado de GitHub con tu llave y tus datos bajan solos.</p>
       <div class="campo"><label for="sp-repo">Repositorio de datos</label>
         <input id="sp-repo" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="usuario/mi-dinero-datos"></div>
@@ -663,7 +666,8 @@
         </select></div>
       <p id="sp-error" class="error" role="alert"></p>
       <button id="sp-conectar" class="boton-grande guardar">Conectar y sincronizar</button>
-    </section>
+    </details>
+    <p class="privacidad">🔒 Tus datos se quedan en este dispositivo.</p>
   </main>
 
   <!-- Pantalla: ¿Se puede comprar? (modo Solo ver) -->

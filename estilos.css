@@ -1048,7 +1048,7 @@ button.enlace { min-height: 44px; }
 
 /* TABLERO — Etapa 5: Plan con sobres en tarjetas y botón que dice cuánto aparta */
 .tarjeta.p-sobres { background: none; border: 0; box-shadow: none; padding: 0; }
-.tarjeta.p-sobres > h2 { display: none; }
+.tarjeta.p-sobres > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* se oculta a la vista, no a los lectores de pantalla */
 .p-sobre { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 16px; padding: 14px; }
 .p-sobre .deuda-nombre { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); }
 .p-sobre .deuda-cabeza { align-items: baseline; }
@@ -1061,3 +1061,27 @@ button.enlace { min-height: 44px; }
 .df-seccion > summary h2 { margin: 0; }
 .df-seccion[open] > summary { margin-bottom: 8px; }
 .df-confirmar { font-size: .75rem; }
+
+/* TABLERO — Primera vez: un camino claro y la sincronización plegada */
+.primera-sync > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 44px; cursor: pointer; }
+.primera-sync > summary::-webkit-details-marker { display: none; }
+.primera-sync > summary::after { content: "▸"; color: var(--suave); }
+.primera-sync[open] > summary::after { transform: rotate(90deg); }
+.primera-sync > summary h2 { margin: 0; font-size: 1.05rem; }
+.primera-sync[open] > summary { margin-bottom: 8px; }
+.privacidad { text-align: center; color: var(--suave); font-size: .9rem; margin: 14px 0 0; }
+
+/* TABLERO — Respaldo: el estado de la sincronización primero, con su color */
+.sy-estado { padding: 10px 12px; border-radius: 12px; border-left: 4px solid var(--aviso); background: #2d2411; color: #ffe2a8; font-weight: 700; margin: 0 0 10px; }
+.sy-estado.al-dia { border-left-color: var(--ok); background: #11302a; color: #cfeee6; }
+.sy-estado.con-error { border-left-color: var(--error); background: #2e1f1c; color: #ffd0ca; }
+
+/* TABLERO — Registrar (+): tipos arriba y atajos del día a día en tarjetas */
+.hoja-tipos { display: flex; gap: 8px; margin: 8px 0 4px; }
+.hoja-tipos .chip { flex: 1 1 auto; padding: 0 6px; font-size: .9rem; white-space: nowrap; }
+.hoja-tipos .chip.ingreso, .hoja-tipos .chip.gasto, .hoja-tipos .chip.deuda { min-height: 56px; }
+.hoja-etiqueta { margin: 14px 0 8px; font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--suave); }
+.hoja-atajos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.hoja-atajos button { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 14px; background: #1c262d; color: var(--texto); font: inherit; font-size: .95rem; font-weight: 700; text-align: left; cursor: pointer; touch-action: manipulation; }
+.hoja-atajos button span { font-size: 1.4rem; }
+.hoja-atajos button:active { transform: scale(.97); }

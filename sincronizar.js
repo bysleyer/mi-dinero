@@ -232,6 +232,8 @@ const Sync = {
     const t = this.textoEstado();
     if ($("sync-estado")) { $("sync-estado").textContent = t; $("sync-estado").hidden = !t; }
     if ($("sy-estado")) $("sy-estado").textContent = t || "Este aparato no está conectado.";
+    // El estado va primero y con color: ámbar si falta conectar, verde si está sincronizado, rojo si falló
+    if ($("sy-estado")) $("sy-estado").className = "estado sy-estado " + (!this.activo() ? "pendiente" : this.config().error ? "con-error" : "al-dia");
     if ($("sy-desconectar")) $("sy-desconectar").hidden = !this.activo();
   },
 
