@@ -210,7 +210,10 @@ const ReglasPago = {
 const Prioridad = {
   FIJO: "renta",
   DEFECTO_N1: ["prestamo", "transporte", "comida"],
-  DEFECTO_N2: ["luz", "internet", "telefono"],
+  // Nivel 2 por defecto: las facturas de mis datos (luz, internet, teléfono...)
+  get DEFECTO_N2() {
+    return typeof Vencimientos !== "undefined" && Datos.actual ? Vencimientos.facturasDeDatos().map(g => g.id) : ["luz", "internet", "telefono"];
+  },
   NOMBRES: { renta: "Renta", prestamo: "Préstamo semanal", transporte: "Transporte", comida: "Comida",
              luz: "Luz", internet: "Internet", telefono: "Teléfono" },
   // Lo que pasa si bajas algo importante al nivel 2 (se muestra como aviso, no se prohíbe)
@@ -227,6 +230,7 @@ const Prioridad = {
   niveles() {
     let crudo = "";
     try { crudo = (localStorage.getItem(Almacen.prefijo + "prioridad") || "") + "|" + (localStorage.getItem(Almacen.prefijo + "pagosPropios") || ""); } catch (e) { /* sin almacenamiento */ }
+    crudo += "|" + this.DEFECTO_N2.join(","); // también cambia si mis datos traen otra factura
     if (this._cache && this._cache.crudo === crudo) return this._cache.n;
     const n = this.calcularNiveles();
     this._cache = { crudo, n };

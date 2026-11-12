@@ -149,7 +149,8 @@ const Plan = {
     const aDeudas = sobrante > 0 ? sobrante - aColchon : 0;
     const puedePagarAmigo = this.puedePagarAmigo(plan.sobres.colchon);
     const semanalRenta = this.montoDe(lineas, "renta");
-    const semanalServicios = ["telefono", "luz", "internet"]
+    // Servicios: las facturas de mis datos y los pagos fijos que agregué (lo mismo que va en el sobre de servicios)
+    const semanalServicios = [...Vencimientos.facturasDeDatos().map(g => g.id), ...lineas.filter(l => l.id.startsWith("pf-")).map(l => l.id)]
       .reduce((s, id) => s + this.montoDe(lineas, id), 0);
     return { plan, bruto, neto, lineas, total, sobrante, meta, aColchon, aDeudas,
              semanalRenta, semanalServicios, usaReal, real, vista, puedePagarAmigo, planeados, totalPlaneados };
@@ -253,7 +254,7 @@ const Plan = {
     const sig = Proyeccion.rentaMeses(hoyClave, Jornadas.sumarDias(hoyClave, 62)).find(c => c.pendiente > 0.005);
     const mes = f => Jornadas.aFecha(f).toLocaleDateString("es", { month: "long" });
     const facturas = Vencimientos.entre(hoyClave, Jornadas.sumarDias(hoyClave, 29))
-      .filter(i => ["luz", "telefono", "internet"].includes(i.id) || i.propio)
+      .filter(i => Vencimientos.esFactura(i))
       .map(i => ({ nombre: i.nombre, fecha: i.fecha, monto: redondear(i.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0)) }))
       .filter(f => f.monto > 0.005);
     return {

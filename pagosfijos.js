@@ -14,13 +14,12 @@
  * Un pago pausado o cancelado no cuenta en ninguna cuenta (Libre, Mi futuro, avisos).
  */
 const PagosFijos = {
-  // Los que vienen de mis datos (siempre son esenciales)
-  PROPIOS_DE_DATOS: [
-    { id: "renta", seccion: "renta", categoria: "Otros" },
-    { id: "luz", seccion: "luz", categoria: "Luz" },
-    { id: "internet", seccion: "internet", categoria: "Internet" },
-    { id: "telefono", seccion: "telefono", categoria: "Teléfono" }
-  ],
+  // Los que vienen de mis datos (siempre son esenciales): la renta y las facturas mensuales (Vencimientos.facturasDeDatos).
+  // Cada uno se edita con sus cifras de "Datos fijos" (la sección con su mismo id).
+  get PROPIOS_DE_DATOS() {
+    return [{ id: "renta", seccion: "renta", categoria: "Otros" },
+            ...Vencimientos.facturasDeDatos().map(g => ({ id: g.id, seccion: g.id, categoria: (Vencimientos.DE_DATOS[g.id] || {}).categoria || "Otros" }))];
+  },
   GRUPOS: { esencial: "Esenciales", suscripcion: "Suscripciones" },
   editando: null, // { id, propio: bool }
 
@@ -42,7 +41,7 @@ const PagosFijos = {
       const g = Datos.actual.gastosFijos.find(x => x.id === def.id);
       if (!g) return null;
       return { ...def, nombre: g.id === "renta" ? "Renta" : g.nombre, monto: Vencimientos.montoEn(g, hoy()), venceDia: g.venceDia,
-               variable: g.id === "luz" ? g.variable !== false : !!g.variable, grupo: "esencial", deDatos: true, estado: "activo" };
+               variable: Recibos.varia(g), grupo: "esencial", deDatos: true, estado: "activo" };
     }).filter(Boolean);
   },
 
@@ -160,7 +159,7 @@ const PagosFijos = {
 
   htmlRecibo() {
     const { pagoId, mes } = this.recibo;
-    const luz = pagoId === "luz" ? Datos.actual.gastosFijos.find(g => g.id === "luz") : null;
+    const luz = Datos.actual.gastosFijos.find(g => g.id === pagoId && g.partes); // con plan de pagos (la luz)
     const cuota = luz && luz.partes && luz.deudaPlan && Datos.saldoDeuda(luz.deudaPlan) > 0 ? luz.partes.cuotaPlan : 0;
     const [a, m] = mes.split("-").map(Number);
     const meses = [-1, 0, 1].map(k => Resumen.aClave(new Date(a, m - 1 + k, 1)).slice(0, 7));
@@ -181,7 +180,7 @@ const PagosFijos = {
     const txt = $("f-monto").value.trim();
     const monto = redondear(Number(txt));
     if (txt === "" || !(monto > 0)) return error("Escribe el monto del recibo (mayor que 0).");
-    const luz = pagoId === "luz" ? Datos.actual.gastosFijos.find(g => g.id === "luz") : null;
+    const luz = Datos.actual.gastosFijos.find(g => g.id === pagoId && g.partes); // con plan de pagos (la luz)
     const cuota = luz && luz.partes && luz.deudaPlan && Datos.saldoDeuda(luz.deudaPlan) > 0 ? luz.partes.cuotaPlan : 0;
     if (cuota && monto < cuota) return error(`El recibo incluye la cuota del plan (${dinero(cuota)}): tiene que ser al menos eso.`);
     const mes = $("f-rc-mes").value;

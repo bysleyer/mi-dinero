@@ -57,6 +57,39 @@ const Vencimientos = {
     return set;
   },
 
+  // Facturas mensuales de mis datos (fuera de la renta): su letra en el calendario y la categoría con que se registran.
+  // Las que no estén aquí también funcionan (sin letra, categoría "Otros").
+  DE_DATOS: { luz: { letra: "L", categoria: "Luz" }, internet: { letra: "I", categoria: "Internet" }, telefono: { letra: "T", categoria: "Teléfono" } },
+
+  // Las facturas mensuales de mis datos con día de vencimiento (luz, internet, teléfono...), en el orden de DE_DATOS
+  facturasDeDatos(datos = Datos.actual) {
+    const conocidas = Object.keys(this.DE_DATOS);
+    return datos.gastosFijos.filter(g => g.frecuencia === "mensual" && !g.propio && g.id !== "renta" && g.venceDia)
+      .sort((a, b) => (conocidas.indexOf(a.id) + 1 || 99) - (conocidas.indexOf(b.id) + 1 || 99));
+  },
+
+  // ¿Es una factura mensual (de mis datos o de Pagos fijos)? Va en el sobre de servicios
+  esFactura(item) {
+    return !!item.propio || this.facturasDeDatos().some(g => g.id === item.id);
+  },
+
+  // Las partes de una factura en una fecha: el monto que vale ese día (o el recibo si varía) y, si hay plan de pagos, su cuota aparte
+  partesFactura(g, def, fecha) {
+    const accion = { tipo: "gasto", categoria: def.categoria };
+    const varia = Recibos.varia(g);
+    const base = this.montoEn(g, fecha);
+    const r = varia && fecha ? Recibos.monto(g.id, base, fecha.slice(0, 7)) : { monto: base, estimado: false };
+    const marca = varia ? { estimado: r.estimado, variable: true, pagoId: g.id } : {};
+    if (!g.partes) return [{ nombre: g.nombre, monto: r.monto, ...marca, accion }];
+    // Con plan de pagos (la luz): el consumo (sin recibos, el de tus datos; con recibos, el recibo menos la cuota) y la cuota del plan
+    const saldoPlan = g.deudaPlan ? Datos.saldoDeuda(g.deudaPlan) : 0;
+    const consumo = r.recibo || r.promedio ? Math.max(0, redondear(r.monto - (g.partes.cuotaPlan || 0))) : g.partes.consumo;
+    const p = [{ nombre: `${g.nombre} – consumo`, monto: consumo, ...marca, accion }];
+    const cuota = Math.min(g.partes.cuotaPlan, Math.max(0, saldoPlan));
+    if (cuota > 0) p.push({ nombre: `${g.nombre} – cuota del plan`, monto: cuota, accion: { tipo: "pagoDeuda", deudaId: g.deudaPlan } });
+    return p;
+  },
+
   // Definiciones mensuales: qué vence, qué día y cómo se registra el pago
   mensuales() {
     const lista = [];
@@ -65,40 +98,18 @@ const Vencimientos = {
       id: "renta", letra: "R", nombre: "Renta", dia: renta.venceDia || 1, orden: 1,
       partes: () => [{ nombre: "Renta", monto: renta.monto, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_RENTA } }]
     });
-    const luz = this.gasto("luz");
-    if (luz && luz.venceDia) lista.push({
-      id: "luz", letra: "L", nombre: luz.nombre, dia: luz.venceDia, orden: 10,
-      partes: fecha => {
-        // Paso 4: el recibo del mes (total, con la cuota del plan incluida) o el estimado
-        const varia = Recibos.varia(luz);
-        const r = varia && fecha ? Recibos.monto("luz", luz.monto, fecha.slice(0, 7)) : { monto: luz.monto, estimado: false };
-        const marca = { estimado: varia && r.estimado, variable: varia, pagoId: "luz" };
-        if (!luz.partes) return [{ nombre: luz.nombre, monto: r.monto, ...marca, accion: { tipo: "gasto", categoria: "Luz" } }];
-        const saldoPlan = luz.deudaPlan ? Datos.saldoDeuda(luz.deudaPlan) : 0;
-        // Sin recibos todavía, el consumo es el de tus datos (igual que antes); con recibos, lo que queda sin la cuota del plan
-        const consumo = r.recibo || r.promedio ? Math.max(0, redondear(r.monto - (luz.partes.cuotaPlan || 0))) : luz.partes.consumo;
-        const p = [{ nombre: `${luz.nombre} – consumo`, monto: consumo, ...marca, accion: { tipo: "gasto", categoria: "Luz" } }];
-        const cuota = Math.min(luz.partes.cuotaPlan, Math.max(0, saldoPlan));
-        if (cuota > 0) p.push({ nombre: `${luz.nombre} – cuota del plan`, monto: cuota, accion: { tipo: "pagoDeuda", deudaId: luz.deudaPlan } });
-        return p;
-      }
-    });
-    const internet = this.gasto("internet");
-    if (internet && internet.venceDia) lista.push({
-      id: "internet", letra: "I", nombre: internet.nombre, dia: internet.venceDia, orden: 10,
-      partes: fecha => [{ nombre: internet.nombre, monto: this.montoEn(internet, fecha), accion: { tipo: "gasto", categoria: "Internet" } }]
-    });
-    const tel = this.gasto("telefono");
-    if (tel && tel.venceDia) lista.push({
-      id: "telefono", letra: "T", nombre: tel.nombre, dia: tel.venceDia, orden: 10,
-      partes: fecha => [{ nombre: tel.nombre, monto: this.montoEn(tel, fecha), accion: { tipo: "gasto", categoria: "Teléfono" } }]
+    // Paso 5: las facturas de mis datos (luz, internet, teléfono y cualquier otro pago mensual) salen de una
+    // sola lista y se calculan igual: el monto vigente ese día, el recibo si varía, y la cuota del plan si hay.
+    this.facturasDeDatos().forEach(g => {
+      const def = this.DE_DATOS[g.id] || { letra: "", categoria: "Otros" };
+      lista.push({ id: g.id, letra: def.letra, nombre: g.nombre, dia: g.venceDia, orden: 10, partes: fecha => this.partesFactura(g, def, fecha) });
     });
     return lista;
   },
 
   // Lo que se puede mover (la renta del mes, en la cuenta) y los pagos fijos que agregué yo
-  MOVIBLES_BASE: ["luz", "telefono", "internet", "prestamo", "renta", "deudaInternet"],
-  get MOVIBLES() { return [...this.MOVIBLES_BASE, ...Almacen.leerPagosPropios().map(p => p.id)]; },
+  MOVIBLES_BASE: ["prestamo", "renta", "deudaInternet"],
+  get MOVIBLES() { return [...this.facturasDeDatos().map(g => g.id), ...this.MOVIBLES_BASE, ...Almacen.leerPagosPropios().map(p => p.id)]; },
 
   // Pagos movidos guardados (+ uno que "Mover este pago" solo está probando, sin guardarlo)
   _simular: null,

@@ -70,6 +70,9 @@ const Escenarios = {
     if (id === "telefono") return `Cargo por atraso (${this.textoRecargo(rec.telefono)})`;
     if (id === "internet") return `${this.textoRecargo(rec.internetPorFactura).replace(/^r/, "R")} por factura vencida`;
     if (id === "deudaInternet") return "Deuda atrasada: se puede aplazar";
+    // Pagos fijos que agregué: una suscripción se pausa; un esencial se habla con la empresa
+    const propio = Almacen.leerPagosPropios().find(p => p.id === id);
+    if (propio) return propio.grupo === "suscripcion" ? "Suscripción: la puedes pausar este mes (Pagos fijos)" : "Llama antes de la fecha y pide más días";
     return "";
   },
 
