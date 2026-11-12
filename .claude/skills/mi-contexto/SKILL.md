@@ -57,11 +57,14 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
 - **Antes de cambiar algo**: revisa con qué choca, explica las situaciones y espera "dale".
 - Un "dale" después de hablar de varias cosas significa hacer **todo** lo hablado. Si algo no se puede o cambia cómo
   funciona la app, dilo claro (sí/no y por qué) antes de hacerlo.
+- Para revisar el diseño se pueden usar agentes (uno por área), cada uno con captura real + concepto por problema;
+  revisa tú cada concepto y pídeles rehacer lo que no muestre lo que dicen.
 - En diseño: mostrar imágenes de concepto y, al aplicar, **comparar lado a lado maqueta y app real** hasta que coincidan.
   Sé honesto con qué skills usaste; con impeccable, lee `reference/craft-floor.md` antes de cada cambio de interfaz.
 - Después de cada cambio en la app: probar (Playwright en Node ya instalado; nunca reinstalarlo; las pruebas de toda la app
   están en `mi-dinero-datos/pruebas/`, y también hay que correr `consejero/analizar.js`), subir la versión
-  (`VERSION_APP` en `app.js` y `CACHE` en `sw.js`, mismo número), commit, push a `main`, verificar GitHub Pages
+  (`VERSION_APP` en `app.js` y `CACHE` en `sw.js`, mismo número), comparar que los números no cambiaron (salvo que se pidiera),
+  dejar antes una rama `respaldo/vNN`, commit, push a `main`, verificar GitHub Pages
   (`https://api.github.com/repos/bysleyer/mi-dinero/actions/runs?per_page=1`) y contar qué se probó.
   Si Pages da `startup_failure`, es GitHub: reintentar con un commit vacío.
 - Nunca borrar historial ni `push --force` sin explicar y esperar confirmación.
@@ -76,8 +79,12 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
 - Una sola cuenta día por día: `Proyeccion.calcular` (`proyeccion.js`, 92 días). Lo guardado: `almacen.js` (prefijo `midinero:`).
 - Módulos: `app.js`, `plan.js`, `futuro.js`, `planeados.js`, `pagos.js`, `mover.js`, `cubrir.js`, `avisos.js`,
   `sincronizar.js` (sync con el repo privado), `nav.js` (barra abajo en teléfono, menú lateral en computador),
-  `consejero.js` (vigilante y pantalla del consejero), `arranque.js` (evita el salto al abrir).
+  `consejero.js` (vigilante y pantalla del consejero), `arranque.js` (evita el salto al abrir),
+  `pagosfijos.js` (Más → Pagos fijos: esenciales, suscripciones, orden y "Llegó el recibo"). En `campos.js` viven
+  `ReglasPago` (pagos fijos propios con versiones por fecha, pausas y cancelación) y `Prioridad` (orden editable: renta fija
+  primero, nivel 1/2 se cruzan, suscripciones al final); en `pagos.js`, `Recibos` (recibo del mes o promedio de los últimos 3).
 - `consejero/analizar.js`: corre la app sin pantalla con `datos.json` y devuelve los números en JSON (lo usa el consejero).
 - Reglas fijas del usuario que la app respeta: el tren y el taxi para ir a trabajar no se tocan; horas extra solo
   "si hay"; la app no asume pagos; las deudas atrasadas no llevan recargos inventados; las sugerencias de mover solo
-  mueven el teléfono.
+  mueven lo que permite moverse; la renta va siempre primero en el orden; una suscripción se puede pausar antes de tocar
+  lo esencial; el consejero solo sugiere (nunca pausa ni cambia el orden).
