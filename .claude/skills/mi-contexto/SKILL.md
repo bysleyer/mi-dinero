@@ -55,7 +55,12 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
 ## Cómo trabajamos (resumen; el detalle está en CONTEXTO.md)
 - Siempre en **español**, simple, con opciones y tu recomendación.
 - **Antes de cambiar algo**: revisa con qué choca, explica las situaciones y espera "dale".
-- Después de cada cambio en la app: probar (Playwright en Node ya instalado; nunca reinstalarlo), subir la versión
+- Un "dale" después de hablar de varias cosas significa hacer **todo** lo hablado. Si algo no se puede o cambia cómo
+  funciona la app, dilo claro (sí/no y por qué) antes de hacerlo.
+- En diseño: mostrar imágenes de concepto y, al aplicar, **comparar lado a lado maqueta y app real** hasta que coincidan.
+  Sé honesto con qué skills usaste; con impeccable, lee `reference/craft-floor.md` antes de cada cambio de interfaz.
+- Después de cada cambio en la app: probar (Playwright en Node ya instalado; nunca reinstalarlo; las pruebas de toda la app
+  están en `mi-dinero-datos/pruebas/`, y también hay que correr `consejero/analizar.js`), subir la versión
   (`VERSION_APP` en `app.js` y `CACHE` en `sw.js`, mismo número), commit, push a `main`, verificar GitHub Pages
   (`https://api.github.com/repos/bysleyer/mi-dinero/actions/runs?per_page=1`) y contar qué se probó.
   Si Pages da `startup_failure`, es GitHub: reintentar con un commit vacío.
@@ -65,6 +70,9 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
 
 ## Cómo está hecha la app (resumen)
 - HTML, CSS y JavaScript sin frameworks; PWA (`sw.js`). Publicada en GitHub Pages desde `main`.
+- Diseño "Tablero" (modo oscuro, letra base 16 px, barra flotante abajo). Los estilos nuevos van en capas al final de
+  `estilos.css`; los conceptos y la herramienta de comparación están en `mi-dinero-datos/propuestas/`.
+  Antes de un cambio grande de diseño, deja una rama `respaldo/...` con la versión publicada.
 - Una sola cuenta día por día: `Proyeccion.calcular` (`proyeccion.js`, 92 días). Lo guardado: `almacen.js` (prefijo `midinero:`).
 - Módulos: `app.js`, `plan.js`, `futuro.js`, `planeados.js`, `pagos.js`, `mover.js`, `cubrir.js`, `avisos.js`,
   `sincronizar.js` (sync con el repo privado), `nav.js` (barra abajo en teléfono, menú lateral en computador),
