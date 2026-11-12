@@ -131,11 +131,10 @@ const Deudas = {
     return `
       <li>
         <div class="deuda-cabeza">
-          <span class="deuda-nombre">${escapar(d.nombre)}</span>
-          <span class="deuda-saldo ${pagada ? "pagada" : ""}">${pagada ? "Pagada" : dinero(saldo)}</span>
+          <span class="deuda-nombre">${/^Prioridad /.test(etiqueta) ? etiqueta.replace("Prioridad ", "") + " · " : ""}${escapar(d.nombre)}</span>
+          <span class="deuda-saldo ${pagada ? "pagada" : ""}">${pagada ? "Pagada" : dineroCorto(saldo)}</span>
         </div>
-        <p class="deuda-sub"><span class="etiqueta">${etiqueta}</span>
-          Original ${dinero(d.monto)} · pagado ${Math.round(avance * 100)}%</p>
+        <p class="deuda-sub">${/^Prioridad /.test(etiqueta) ? "" : `<span class="etiqueta">${etiqueta}</span> `}Original ${dineroCorto(d.monto)} · pagado ${Math.round(avance * 100)}%</p>
         <div class="barra"><div class="barra-relleno" style="--p:${avance}"></div></div>
         ${d.id === Plan.ID_DEUDA_RENTA ? Datos.cargosRenta().map(c =>
           `<p class="deuda-sub">Cargo de renta ${fechaCorta(c.fecha)}: +${dinero(c.monto)}</p>`).join("") +
@@ -161,9 +160,7 @@ const Deudas = {
     const c = Datos.actual.contactos.administradora;
     const tel = c.telefono.replace(/\D/g, "");
     caja.innerHTML = `
-      <strong>⚠ Atención: renta pendiente</strong>
-      El día ${dia} ${cuando} y la renta tiene saldo de ${dinero(saldoRenta)}.
-      Manda tus comprobantes de pago a la administradora y pide un acuerdo de pago por escrito.
+      <strong>Renta pendiente.</strong> El día ${dia} (${cuando.replace("es ", "")}) puede haber acción legal: quedan ${dineroCorto(saldoRenta)}. Pide un acuerdo por escrito.
       <details class="contacto-caja"><summary>Contactar a la administración</summary>
       <p class="contacto">${escapar(c.nombre)}<br>
         <a href="mailto:${escapar(c.correo)}">${escapar(c.correo)}</a><br>

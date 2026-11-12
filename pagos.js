@@ -287,6 +287,14 @@ const Vencimientos = {
     return dias === -1 ? "venció ayer" : `venció hace ${-dias} días`;
   },
 
+  // Fecha corta para la fila: "Venció hace 2 días", "Vence mañana" o "Vie 13 nov"
+  cuandoCorto(fecha, dias) {
+    if (dias <= 1) { const t = this.textoCuando(dias); return t.charAt(0).toUpperCase() + t.slice(1); }
+    // Formato propio (pagos.js carga antes que futuro.js): "Vie 13 nov"
+    const c = Jornadas.aFecha(fecha).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "").replace(",", "");
+    return c.charAt(0).toUpperCase() + c.slice(1);
+  },
+
   // ---------- Tarjeta "Próximos pagos" ----------
   mostrar() {
     const hoyClave = hoy();
@@ -315,10 +323,10 @@ const Vencimientos = {
             <li class="pago-fila ${dias <= 3 ? "amarillo" : ""}">
               <div class="mov-info">
                 <div class="mov-tipo">${escapar(item.nombre)} <span class="marca-planeado">planeado</span></div>
-                <div class="mov-detalle">${Jornadas.textoDia(item.fecha)} · ${this.textoCuando(dias).replace("vence", "toca")}</div>
+                <div class="mov-detalle">${this.cuandoCorto(item.fecha, dias).replace("Vence", "Toca")}</div>
               </div>
               <div class="pago-lado">
-                <span class="mov-monto">${dinero(p.monto)}</span>
+                <span class="mov-monto">${dineroCorto(p.monto)}</span>
                 <button class="boton-chico lleno" data-pagar-venc="${escapar(p.clave)}">Ya lo compré</button>
               </div>
             </li>`;
@@ -335,11 +343,11 @@ const Vencimientos = {
             <li class="pago-fila ${color}">
               <div class="mov-info">
                 <div class="mov-tipo">${simbolo ? `<span aria-hidden="true">${simbolo}</span> ` : ""}${escapar(p.nombre)}</div>
-                <div class="mov-detalle">${sinFecha ? "Sin fecha · lo puedes pagar más adelante" : `${Jornadas.textoDia(item.fecha)} · ${this.textoCuando(dias)}`}</div>
+                <div class="mov-detalle">${sinFecha ? "Sin fecha · lo puedes pagar más adelante" : this.cuandoCorto(item.fecha, dias)}</div>
                 ${movido}
               </div>
               <div class="pago-lado">
-                <span class="mov-monto">${dinero(p.monto)}</span>
+                <span class="mov-monto">${dineroCorto(p.monto)}</span>
                 ${boton}
               </div>
             </li>`;

@@ -110,6 +110,15 @@ const Avisos = {
     </div>`;
   },
 
+  // Fila compacta para la campana: el texto, su acción principal y un botón de visto bueno ("Entendido")
+  fila(a, conEntendido = true) {
+    const [txt, acc] = (a.acciones || [])[0] || [];
+    const ok = `<button class="aviso-ok" data-av-entendido="${escapar(a.id)}" data-av-firma="${escapar(a.firma || "")}" aria-label="Entendido" title="Entendido"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>`;
+    return `<div class="aviso-fila ${a.clase || ""}"><p>${escapar(a.texto)}</p><div class="aviso-fila-botones">` +
+      (acc ? `<button class="boton-chico" data-av-accion="${acc}" ${a.clave ? `data-av-clave="${escapar(a.clave)}"` : ""} aria-label="${escapar(txt)}">${/^Ver\b/.test(txt) ? "Ver" : escapar(txt.replace(/^Ir a /, ""))}</button>` : "") +
+      (conEntendido ? ok : "") + `</div></div>`;
+  },
+
   mostrar() {
     if (!document.body.classList.contains("con-nav") || !$("avisos-afuera")) return;
     const { afuera, campana } = this.calcular();
@@ -141,8 +150,8 @@ const Avisos = {
     const nuevos = lista.filter(a => v[a.id] !== (a.firma || ""));
     const vistos = lista.filter(a => v[a.id] === (a.firma || ""));
     const urgentes = this._afuera || [];
-    $("avisos-lista").innerHTML = (urgentes.length ? `<p class="avisos-titulo">Urgente · ${urgentes.length}</p>` + urgentes.map(a => this.html(a, false)).join("") : "") + (nuevos.length ? `<p class="avisos-titulo">Nuevos · ${nuevos.length}</p>` + nuevos.map(a => this.html(a, true)).join("") : `<p class="vacio">No hay avisos nuevos.</p>`) +
-      (vistos.length ? `<details class="avisos-vistos"><summary>Ya los viste (${vistos.length})</summary>${vistos.map(a => this.html(a, false)).join("")}</details>` : "");
+    $("avisos-lista").innerHTML = (urgentes.length ? `<p class="avisos-titulo">Urgente · ${urgentes.length}</p>` + urgentes.map(a => this.html(a, false)).join("") : "") + (nuevos.length ? `<p class="avisos-titulo">Nuevos · ${nuevos.length}</p><div class="avisos-grupo">` + nuevos.map(a => this.fila(a, true)).join("") + `</div>` : `<p class="vacio">No hay avisos nuevos.</p>`) +
+      (vistos.length ? `<details class="avisos-vistos"><summary>Ya los viste (${vistos.length})</summary><div class="avisos-grupo">${vistos.map(a => this.fila(a, false)).join("")}</div></details>` : "");
   },
 
   abrirCampana() {

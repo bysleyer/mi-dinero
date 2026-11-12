@@ -239,10 +239,10 @@ const Planeados = {
           const fechas = g.elegido && g.elegido.length
             ? g.elegido.map(p => `${dinero(p.monto)} el ${this.textoDia(p.fecha)}`).join(" y ") : "";
           return `
-            <li class="pl-item">
+            <li class="pl-item ${e.clase}" tabindex="0" role="button" aria-expanded="false">
               <div class="deuda-cabeza">
                 <span class="deuda-nombre">${escapar(g.nombre)}</span>
-                <span class="deuda-nombre">${dinero(g.monto)}</span>
+                <span class="deuda-nombre pl-monto">${dineroCorto(g.monto)}</span>
               </div>
               <p class="deuda-sub">Necesito tenerlo para el ${this.textoDia(g.fechaLimite)} · ${g.tipo === "espera" ? "Puede esperar" : "Lo necesito"}</p>
               <p class="pl-estado ${e.clase}">${e.texto}${fechas && e.clase === "elegido" ? `: ${fechas}` : ""}</p>

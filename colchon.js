@@ -9,10 +9,14 @@ const ColchonUI = {
   html() {
     const c = Proyeccion.colchon();
     const protegido = Proyeccion.protegerColchon();
+    const meta = Plan.metaColchon();
     return `
       <div class="colchon-linea">
-        <span>Colchón: <strong>${dinero(c)}</strong> de ${dinero(Plan.metaColchon())} ${protegido ? "(protegido: no se cuenta)" : "(puedes usarlo)"}</span>
-        <label class="colchon-interruptor"><input type="checkbox" data-proteger-colchon ${protegido ? "checked" : ""}> Proteger el colchón</label>
+        <p class="mini-titulo">Colchón</p>
+        <div class="mini-fila"><strong>${dineroCorto(c)} de ${dineroCorto(meta)}</strong>
+          <label class="colchon-interruptor"><input type="checkbox" data-proteger-colchon ${protegido ? "checked" : ""}> Proteger</label></div>
+        <div class="barra mini-barra"><div class="barra-relleno" style="--p:${meta > 0 ? Math.min(1, c / meta) : 0}"></div></div>
+        ${protegido ? `<p class="mini-nota">Protegido: no se cuenta en Mi futuro.</p>` : ""}
       </div>`;
   },
 
@@ -38,11 +42,14 @@ const RentaUI = {
     }
     const atrasada = Proyeccion.rentaAtrasada();
     const cuando = r ? `para el ${Futuro.dia(r.fecha)}${r.vence ? ` (vence el ${Futuro.diaCorto(r.vence)})` : ""}` : "";
+    const tarjeta = (clase, estado) => `<div class="renta-linea ${clase}"><p class="mini-titulo">${escapar(r.nombre)}</p>
+      <div class="mini-fila"><span><strong>${dineroCorto(r.monto)}</strong><small>${estado}</small></span>${this.boton(r)}</div></div>`;
+    const dia = r ? Futuro.diaCorto(r.fecha).toLowerCase() : "";
     const linea = !r ? "" : r.falta > 0.005
-      ? `<p class="renta-linea falta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>Faltan ${dinero(r.falta)}</strong>${this.boton(r)}</p>`
+      ? tarjeta("falta", `Faltan ${dinero(r.falta)} · ${dia}`)
       : r.faltaDia > 0.005
-      ? `<p class="renta-linea parcial"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>✓ Queda cubierta, pero ese día faltan ${dinero(r.faltaDia)} para ${escapar(Proyeccion.lista(r.cortosDia))}</strong>${this.boton(r)}</p>`
-      : `<p class="renta-linea cubierta"><span>${escapar(r.nombre)}: ${dinero(r.monto)} ${cuando}</span><strong>✓ Queda cubierta</strong>${this.boton(r)}</p>`;
+      ? tarjeta("parcial", `✓ Queda cubierta, pero ese día faltan ${dinero(r.faltaDia)} para ${escapar(Proyeccion.lista(r.cortosDia))} · ${dia}`)
+      : tarjeta("cubierta", `✓ Queda cubierta · ${dia}`);
     const atr = atrasada > 0.005
       ? `<p class="renta-atrasada">Renta atrasada (aparte, no es la de este mes): <strong>${dinero(atrasada)}</strong>. Se paga con lo que sobra.</p>` : "";
     return linea + atr;

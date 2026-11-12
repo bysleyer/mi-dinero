@@ -170,20 +170,22 @@ Object.assign(Consejero, {
     if (!$("pantalla-consejero") || $("pantalla-consejero").hidden) return;
     const c = this.leer();
     $("cj-estado").textContent = c
-      ? `Última revisión: ${this.cuando(c.actualizado)}${c.tipo === "noche" ? " (a fondo)" : ""}`
+      ? `Revisión · ${this.cuando(c.actualizado)}${c.tipo === "noche" ? " (a fondo)" : ""}`
       : "Todavía no hay revisión.";
     // Informe
     const inf = c && c.informe;
     $("cj-informe").innerHTML = inf
       ? `${inf.titulo ? `<h3>${escapar(inf.titulo)}</h3>` : ""}${inf.resumen ? `<p>${escapar(inf.resumen)}</p>` : ""}
-         <ul class="cj-puntos">${(inf.puntos || []).map(p => `<li><span aria-hidden="true">${this.ICONOS[p.tipo] || "•"}</span> ${escapar(p.texto)}</li>`).join("")}</ul>
+         ${(inf.puntos || []).length ? `<details class="cj-mas"><summary>Ver todo el informe (${inf.puntos.length})</summary><ul class="cj-puntos">${inf.puntos.map(p => `<li><span aria-hidden="true">${this.ICONOS[p.tipo] || "•"}</span> ${escapar(p.texto)}</li>`).join("")}</ul></details>` : ""}
          ${c.actualizadoInforme ? `<p class="opcional">Informe del ${this.cuando(c.actualizadoInforme)}</p>` : ""}`
       : `<p class="ayuda">Aquí aparece el informe de cada noche.</p>`;
     // Próximo paso, día de libertad y prioridades
     const pasos = [];
-    if (c && c.proximoPaso) pasos.push(`<p><strong>👉 ${escapar(c.proximoPaso)}</strong></p>`);
-    if (c && c.diaLibertad && c.diaLibertad.fecha) pasos.push(`<p>🕊️ <strong>Tu día de libertad: ${escapar(Futuro.diaCorto ? Futuro.diaCorto(c.diaLibertad.fecha) : c.diaLibertad.fecha)}</strong>${c.diaLibertad.texto ? `<br><span class="opcional">${escapar(c.diaLibertad.texto)}</span>` : ""}</p>`);
-    if (c && c.prioridades && c.prioridades.length) pasos.push(`<p class="opcional">Prioridades:</p><ol class="cj-prioridades">${c.prioridades.map(p => `<li>${escapar(p)}</li>`).join("")}</ol>`);
+    // El paso de hoy solo se muestra si no hay lista de prioridades (la lista ya lo trae, como en el concepto)
+    if (c && c.proximoPaso && !(c.prioridades && c.prioridades.length)) pasos.push(`<p class="cj-paso-hoy"><strong>${escapar(c.proximoPaso)}</strong></p>`);
+    /* día de libertad: va al final */
+    if (c && c.prioridades && c.prioridades.length) pasos.push(`<ol class="cj-prioridades">${c.prioridades.map((p, i) => `<li><span class="cj-num" aria-hidden="true">${i + 1}</span><span>${escapar(p)}</span></li>`).join("")}</ol>`);
+    if (c && c.diaLibertad && c.diaLibertad.fecha) pasos.push(`<details class="cj-mas cj-libertad"><summary>Tu día de libertad: ${escapar(Futuro.diaCorto ? Futuro.diaCorto(c.diaLibertad.fecha) : c.diaLibertad.fecha)}</summary><p>${escapar(c.diaLibertad.texto || "")}</p></details>`);
     $("cj-pasos").innerHTML = pasos.join("") || `<p class="ayuda">Todavía no hay plan.</p>`;
     $("cj-pasos-caja").hidden = !pasos.length;
     // Reglas de la semana (lo que llevas)
@@ -201,6 +203,16 @@ Object.assign(Consejero, {
         <div class="cj-barra"><span style="transform:scaleX(${Math.min(1, pct)})"></span></div>
         ${r.porque ? `<p class="opcional">${escapar(r.porque)}</p>` : ""}</li>`;
     }).join("") : `<li class="ayuda">Todavía no hay reglas. Las pone tu consejero en su primera revisión.</li>`;
+    // Metas de la semana (en "Hoy"): lo mismo que las reglas, en corto
+    $("cj-metas").innerHTML = reglas.length ? reglas.map(r => {
+      const l = Vigilante.llevas(r);
+      const pasado = (r.maxVeces != null && l.veces > r.maxVeces) || (r.maxMonto != null && l.monto > r.maxMonto + 0.005);
+      const cerca = !pasado && ((r.maxVeces != null && l.veces >= r.maxVeces) || (r.maxMonto != null && l.monto >= r.maxMonto * 0.8));
+      const valor = r.maxVeces != null && r.maxVeces > 0 ? `${l.veces} de ${r.maxVeces}` : r.maxMonto != null ? `${dinero(l.monto)} de ${dinero(r.maxMonto)}` : `${l.veces} de ${r.maxVeces}`;
+      const pct = r.maxMonto ? l.monto / r.maxMonto : r.maxVeces ? l.veces / r.maxVeces : (l.veces > 0 ? 1 : 0);
+      return `<li class="${pasado ? "negativo" : cerca ? "cerca" : ""}"><div class="cj-regla"><span>${escapar(r.nombre.replace(/\s*\(.*\)\s*$/, ""))}</span><strong>${valor}</strong></div>
+        <div class="cj-barra"><span style="transform:scaleX(${Math.min(1, pct)})"></span></div></li>`;
+    }).join("") : `<li class="ayuda">Todavía no hay metas.</li>`;
     // Fuera del plan esta semana
     const lunes = Plan.claveSemana();
     const fuera = Almacen.leerMovimientos().filter(m => m.razonFueraPlan && m.fecha >= lunes);

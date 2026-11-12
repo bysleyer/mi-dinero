@@ -36,7 +36,24 @@ const Nav = {
     this.marcar();
   },
 
+  // Líneas pequeñas sobre los títulos (fecha, semana, mes) — van con lo que se está viendo
+  cejas() {
+    const f = hoy(), d = Jornadas.aFecha(f);
+    const corto = x => x.toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "").replace(",", "");
+    if ($("ceja-inicio")) $("ceja-inicio").textContent = corto(d);
+    const lunes = Jornadas.aFecha(Plan.claveSemana()), domingo = Jornadas.aFecha(Jornadas.sumarDias(Plan.claveSemana(), 6));
+    const dm = x => x.toLocaleDateString("es", { day: "numeric", month: "short" }).replace(/\./g, "");
+    if ($("ceja-plan")) $("ceja-plan").textContent = `Semana del ${dm(lunes)}`;
+    if ($("ceja-resumen")) $("ceja-resumen").textContent = `Del ${lunes.getDate()} al ${dm(domingo)}`;
+    if ($("ceja-calendario")) $("ceja-calendario").textContent = ($("cal-titulo") && $("cal-titulo").textContent) || d.toLocaleDateString("es", { month: "long", year: "numeric" });
+    if ($("ceja-planeados") && typeof Almacen !== "undefined" && Almacen.leerPlaneados) {
+      const n = Almacen.leerPlaneados().filter(g => !g.comprado && !g.borrado).length;
+      $("ceja-planeados").textContent = n ? `${n} ${n === 1 ? "pendiente" : "pendientes"}` : "Nada pendiente";
+    }
+  },
+
   marcar() {
+    try { this.cejas(); } catch (e) { /* las cejas son solo texto: nunca deben romper la navegación */ }
     const s = this.MARCA[this.visible()] || "inicio";
     document.querySelectorAll("[data-nav]").forEach(b => b.classList.toggle("activo", b.dataset.nav === s));
     $("nav-mas").classList.toggle("activo", this.EN_MAS.includes(s));
@@ -127,7 +144,7 @@ const Inicio = {
         `${gastado > 0 ? ` · gastaste ${dinero(gastado)}` : ""}${entro > 0 ? ` · entró ${dinero(entro)}` : ""}.`;
     caja.hidden = false;
     caja.innerHTML = `<h2>Hoy</h2><p class="hoy-texto">${texto}</p>
-      <button id="inicio-hoy-registrar" class="boton-chico lleno">${delDia.length ? "Registrar otro" : "Registrar"}</button>`;
+      <button id="inicio-hoy-registrar" class="boton-grande guardar">${delDia.length ? "Registrar otro" : "Registrar un gasto"}</button>`;
   },
 
   // "Ver todos": con más de 3 pagos próximos se ven 3 y el resto se abre con el botón
@@ -159,8 +176,31 @@ const Inicio = {
     new MutationObserver(() => this.ajustarPagos()).observe($("proximos-pagos"), { childList: true });
     $("pagos-ver-todos").addEventListener("click", () => { this._pagosTodos = !this._pagosTodos; this.ajustarPagos(); });
     $("inicio-hoy").addEventListener("click", e => { if (e.target.closest("#inicio-hoy-registrar")) Nav.abrirHoja("registrar"); });
+    // Cada pago es una fila limpia: al tocarla aparecen "Ya lo pagué" y "Mover"
+    const abrirFila = e => {
+      if (e.target.closest("button")) return;
+      const li = e.target.closest("li.pago-fila");
+      if (!li || !li.querySelector(".pago-lado button")) return;
+      li.classList.toggle("abierta");
+      li.setAttribute("aria-expanded", li.classList.contains("abierta"));
+    };
+    $("proximos-pagos").addEventListener("click", abrirFila);
+    $("proximos-pagos").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("li.pago-fila")) { e.preventDefault(); abrirFila(e); } });
+    new MutationObserver(() => $("proximos-pagos").querySelectorAll("li.pago-fila").forEach(li => {
+      if (li.querySelector(".pago-lado button") && !li.hasAttribute("tabindex")) { li.tabIndex = 0; li.setAttribute("role", "button"); li.setAttribute("aria-expanded", "false"); }
+    })).observe($("proximos-pagos"), { childList: true });
     this.ajustarPagos();
     $("pl-ysigasto").addEventListener("click", () => Planeados.abrirTemporal(null, hoy(), Nav.visible()));
+    // Gastos planeados: fila limpia; al tocarla aparecen sus acciones (como los pagos)
+    const abrirPlaneado = e => {
+      if (e.target.closest("button")) return;
+      const li = e.target.closest("li.pl-item");
+      if (!li) return;
+      li.classList.toggle("abierta");
+      li.setAttribute("aria-expanded", li.classList.contains("abierta"));
+    };
+    $("pl-lista").addEventListener("click", abrirPlaneado);
+    $("pl-lista").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("li.pl-item")) { e.preventDefault(); abrirPlaneado(e); } });
     $("inicio-semana").addEventListener("click", e => {
       if (e.target.closest("[data-nav-ir]")) Nav.ir(e.target.closest("[data-nav-ir]").dataset.navIr);
     });
@@ -192,6 +232,7 @@ const Pestanas = {
 };
 
 if (Datos.actual && !(typeof Sync !== "undefined" && Sync.soloVer())) {
+  if ($("cal-titulo")) new MutationObserver(() => { try { Nav.cejas(); } catch (e) {} }).observe($("cal-titulo"), { childList: true, characterData: true, subtree: true });
   Nav.iniciar();
   Pestanas.iniciar();
   Inicio.iniciar();

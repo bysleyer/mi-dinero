@@ -235,6 +235,7 @@ const Sync = {
     // El estado va primero y con color: ámbar si falta conectar, verde si está sincronizado, rojo si falló
     if ($("sy-estado")) $("sy-estado").className = "estado sy-estado " + (!this.activo() ? "pendiente" : this.config().error ? "con-error" : "al-dia");
     if ($("sy-desconectar")) $("sy-desconectar").hidden = !this.activo();
+    if ($("pantalla-respaldo")) $("pantalla-respaldo").classList.toggle("sin-sync", !this.activo());
   },
 
   async conectar(prefijo) {

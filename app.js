@@ -9,6 +9,8 @@
 // ---------- Utilidades ----------
 const dinero = n =>
   "$" + Number(n).toLocaleString("es-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Igual que dinero(), pero sin ".00" cuando no hay centavos ($60 en vez de $60.00), como en el concepto
+const dineroCorto = n => { const t = dinero(n); return t.endsWith(".00") ? t.slice(0, -3) : t; };
 
 const redondear = n => Math.round(n * 100) / 100;
 
@@ -200,7 +202,7 @@ const CATEGORIAS = ["Comida", "Transporte", "Teléfono", "Luz", "Internet", "Hij
 const campoMonto = () => `
   <div class="campo campo-monto">
     <label for="f-monto">Monto</label>
-    <input id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+    <div class="monto-caja"><span class="monto-signo" aria-hidden="true">$</span><input id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
   </div>`;
 
 const campoFecha = () => `
@@ -444,6 +446,8 @@ function abrirFormulario(tipo, valores = {}) {
   formularioExtra = valores.extra || null;
   const f = Formularios[tipo];
   $("form-titulo").textContent = f.titulo;
+  $("formulario").dataset.tipo = tipo;
+  $("form-titulo").dataset.ceja = { gasto: "Nuevo gasto", ingreso: "Nuevo ingreso", pagoDeuda: "Pago de deuda", transporte: "Nuevo gasto", jornada: "Tu jornada", corregirDinero: "Tu dinero", ajuste: "Mis deudas", planDeuda: "Mis deudas" }[tipo] || "Registrar";
   $("form-campos").innerHTML = f.campos();
   if (valores.deudaId && $("f-deuda")) $("f-deuda").value = valores.deudaId;
   if (valores.categoria && $("f-categoria")) {
@@ -466,7 +470,7 @@ function abrirFormulario(tipo, valores = {}) {
 }
 
 // Cambiar entre Gasté · Me pagaron · Pagué una deuda sin volver atrás (conserva el monto que ya escribiste)
-const TIPOS_DINERO = [["gasto", "Gasté"], ["ingreso", "Me pagaron"], ["pagoDeuda", "Pagué una deuda"]];
+const TIPOS_DINERO = [["gasto", "Gasté"], ["ingreso", "Me pagaron"], ["pagoDeuda", "Deuda"]];
 function ponerSelectorDeTipo(tipo) {
   if (!TIPOS_DINERO.some(t => t[0] === tipo)) return;
   $("form-campos").insertAdjacentHTML("afterbegin",

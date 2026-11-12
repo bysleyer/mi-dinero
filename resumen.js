@@ -112,14 +112,17 @@ const Resumen = {
 
     $("r-categorias").innerHTML = c.porCategoria.map(cat => {
       const parte = c.totalGastado > 0 ? cat.total / c.totalGastado : 0;
+      const semanal = this.presupuestoSemanal(cat.nombre);
+      const tope = semanal == null ? null : redondear(semanal * c.rango.factor);
+      const estado = tope == null ? "" : cat.total > tope + 0.005 ? "rojo" : cat.total > tope * 0.8 ? "amarillo" : "verde";
       return `
-        <li>
+        <li class="cat ${estado}">
           <div class="deuda-cabeza">
             <span class="deuda-nombre">${cat.nombre}</span>
-            <span class="deuda-saldo neutro">${dinero(cat.total)}</span>
+            <span class="deuda-saldo neutro">${dineroCorto(cat.total)}${tope != null ? ` <small>de ${dineroCorto(tope)}</small>` : ""}</span>
           </div>
-          <div class="barra fina"><div class="barra-relleno" style="--p:${parte}"></div></div>
-          ${this.lineaPresupuesto(cat.nombre, cat.total, c.rango.factor)}
+          <div class="barra fina ${estado}"><div class="barra-relleno" style="--p:${tope ? Math.min(1, cat.total / tope) : parte}"></div></div>
+          ${tope != null && cat.total > tope + 0.005 ? `<p class="presupuesto rojo">Te pasaste por ${dinero(cat.total - tope)}</p>` : ""}
         </li>`;
     }).join("");
 

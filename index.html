@@ -22,11 +22,11 @@
   <!-- Menú: barra abajo (teléfono) o a la izquierda (computador) -->
   <nav id="nav" class="nav" aria-label="Menú" hidden>
     <div class="nav-marca">Mi dinero</div>
-    <button class="nav-item" data-nav="inicio"><span class="nav-ico" aria-hidden="true">🏠<span id="nav-inicio-num" class="badge" hidden></span></span><span class="nav-txt">Inicio</span></button>
+    <button class="nav-item" data-nav="inicio"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span id="nav-inicio-num" class="badge" hidden></span></span><span class="nav-txt">Inicio</span></button>
     <button id="nav-avisos" class="nav-item solo-pc"><span class="nav-ico" aria-hidden="true">🔔</span><span class="nav-txt">Avisos <span id="nav-avisos-num" class="badge-txt" hidden></span></span></button>
-    <button class="nav-item" data-nav="futuro"><span class="nav-ico" aria-hidden="true">📈</span><span class="nav-txt">Mi futuro</span></button>
-    <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar"><span class="nav-ico" aria-hidden="true">＋</span><span class="nav-txt">Registrar</span></button>
-    <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true">📋</span><span class="nav-txt">Plan</span></button>
+    <button class="nav-item" data-nav="futuro"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5"/><path d="M9 5h10v10"/></svg></span><span class="nav-txt"><span class="nav-largo">Mi futuro</span><span class="nav-corto">Futuro</span></span></button>
+    <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span class="nav-txt">Registrar</span></button>
+    <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span><span class="nav-txt">Plan</span></button>
     <button class="nav-item solo-pc" data-nav="consejero"><span class="nav-ico" aria-hidden="true">🧑‍💼</span><span class="nav-txt">Tu consejero</span></button>
     <button class="nav-item solo-pc" data-nav="deudas"><span class="nav-ico" aria-hidden="true">💳</span><span class="nav-txt">Mis deudas</span></button>
     <button class="nav-item solo-pc" data-nav="planeados"><span class="nav-ico" aria-hidden="true">🛍️</span><span class="nav-txt">Gastos planeados</span></button>
@@ -34,7 +34,7 @@
     <button class="nav-item solo-pc" data-nav="resumen"><span class="nav-ico" aria-hidden="true">📊</span><span class="nav-txt">A dónde va · ¿Cuadra?</span></button>
     <button class="nav-item solo-pc" data-nav="datosfijos"><span class="nav-ico" aria-hidden="true">⚙️</span><span class="nav-txt">Datos fijos</span></button>
     <button class="nav-item solo-pc" data-nav="respaldo"><span class="nav-ico" aria-hidden="true">☁️</span><span class="nav-txt">Respaldo</span></button>
-    <button id="nav-mas" class="nav-item solo-tel"><span class="nav-ico" aria-hidden="true">☰</span><span class="nav-txt">Más</span></button>
+    <button id="nav-mas" class="nav-item solo-tel"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span><span class="nav-txt">Más</span></button>
   </nav>
 
   <div id="hoja" class="hoja" hidden>
@@ -43,7 +43,7 @@
         <h2>Registrar</h2>
         <div class="campo campo-monto hoja-monto">
           <label for="hoja-monto">Monto</label>
-          <input id="hoja-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+          <div class="monto-caja"><span class="monto-signo" aria-hidden="true">$</span><input id="hoja-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
         </div>
         <div class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
           <button class="chip" data-tipo-hoja="gasto" aria-pressed="true">Gasté</button>
@@ -72,7 +72,7 @@
         </div>
       </div>
       <div id="hoja-avisos">
-        <h2>🔔 Avisos</h2>
+        <h2>Avisos</h2>
         <div id="avisos-lista"></div>
       </div>
       <button id="hoja-cerrar" class="boton-chico">Cerrar</button>
@@ -81,7 +81,7 @@
 
   <main id="pantalla-inicio" class="contenedor">
     <div class="cabeza-inicio">
-      <h1>Mi dinero</h1>
+      <div class="titulo-pantalla"><p id="ceja-inicio" class="ceja"></p><h1>Mi dinero</h1></div>
       <button id="campana" class="campana" aria-label="Avisos" hidden>🔔<span id="campana-num" class="badge" hidden></span></button>
       <button id="dinero-tengo" class="dinero-tengo" aria-label="Dinero que tengo. Toca para corregirlo"></button>
     </div>
@@ -96,7 +96,7 @@
     <div id="avisos-afuera" class="avisos-afuera" hidden></div>
     <!-- Lo que viene, lo de hoy y el consejero (con el menú); sin menú se ven los botones de siempre -->
     <section class="tarjeta" id="inicio-pagos">
-      <h2>Próximos pagos <span class="opcional">(14 días)</span></h2>
+      <h2>Lo que viene · 14 días</h2>
       <ul id="proximos-pagos" class="movimientos"></ul>
       <button id="pagos-ver-todos" class="enlace" hidden>Ver todos ›</button>
     </section>
@@ -157,6 +157,7 @@
   <!-- Pantalla: Calendario (Bloque 8) -->
   <main id="pantalla-calendario" class="contenedor" hidden>
     <button id="volver-calendario" class="volver volver-principal">← Volver</button>
+    <p id="ceja-calendario" class="ceja"></p>
     <h1>Calendario</h1>
 
     <section class="tarjeta cal-tarjeta">
@@ -166,6 +167,7 @@
         <button id="cal-siguiente" class="cal-flecha" aria-label="Mes siguiente">›</button>
       </div>
       <button id="cal-hoy" class="boton-chico cal-hoy">Hoy</button>
+      <div class="cal-chips" aria-hidden="true"><span><i class="cc-trab"></i>Trabajé</span><span><i class="cc-cobro">$</i>Cobro</span><span><i class="cc-vence">L</i>Vence</span></div>
       <div class="cal-dias cal-nombres" aria-hidden="true">
         <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
       </div>
@@ -201,6 +203,7 @@
   <!-- Pantalla: Mi futuro (Bloque 14) - solo muestra -->
   <main id="pantalla-futuro" class="contenedor" hidden>
     <button id="volver-futuro" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Próximo mes</p>
     <h1>Mi futuro</h1>
 
     <p id="fu-frase" class="fu-frase"></p>
@@ -216,7 +219,7 @@
     </div>
 
     <section class="tarjeta" data-sec="grafica">
-      <h2>Saldo de los próximos 30 días</h2>
+      <h2>Tu dinero día por día</h2>
       <div id="fu-grafica" class="fu-grafica"></div>
       <div id="fu-leyenda" class="fu-leyenda"></div>
     </section>
@@ -266,13 +269,14 @@
   <!-- Pantalla: Gastos planeados (Bloque 15) -->
   <main id="pantalla-planeados" class="contenedor" hidden>
     <button id="volver-planeados" class="volver volver-principal">← Volver</button>
+    <p id="ceja-planeados" class="ceja"></p>
     <h1>Gastos planeados</h1>
-    <button id="pl-agregar" class="boton-grande deuda">Agregar gasto planeado</button>
+    <button id="pl-agregar" class="boton-grande deuda">+ Agregar gasto planeado</button>
     <section class="tarjeta">
       <ul id="pl-lista" class="lista-deudas"></ul>
     </section>
     <section class="tarjeta pl-simular">
-      <p class="ayuda">¿Quieres saber si te alcanza antes de comprar algo?</p>
+      <p class="ayuda">¿Quieres saber si te alcanza? Prueba</p>
       <button id="pl-ysigasto" class="boton-chico">¿Y si gasto…?</button>
     </section>
   </main>
@@ -327,13 +331,14 @@
   <!-- Pantalla: Tu consejero (consejero.js) -->
   <main id="pantalla-consejero" class="contenedor" hidden>
     <button id="volver-consejero" class="volver">← Volver</button>
-    <h1>Tu consejero</h1>
-    <p id="cj-estado" class="opcional"></p>
+    <p id="cj-estado" class="ceja"></p>
+    <h1>Consejero</h1>
     <div class="pestanas" data-pestanas role="group" aria-label="Partes de tu consejero">
       <button data-pestana="hoy">Hoy</button><button data-pestana="reglas">Reglas</button><button data-pestana="notas">Notas</button>
     </div>
-    <section class="tarjeta" data-sec="hoy"><h2>Informe</h2><div id="cj-informe"></div></section>
+    <section class="tarjeta" data-sec="hoy"><h2>Lo más importante</h2><div id="cj-informe"></div></section>
     <section id="cj-pasos-caja" class="tarjeta" data-sec="hoy"><h2>Tu plan</h2><div id="cj-pasos"></div></section>
+    <section class="tarjeta" data-sec="hoy"><h2>Metas de la semana</h2><ul id="cj-metas" class="cj-lista cj-metas"></ul></section>
     <section class="tarjeta" data-sec="reglas"><h2>Tus reglas</h2><ul id="cj-reglas" class="movimientos cj-lista"></ul></section>
     <section class="tarjeta" data-sec="notas"><h2>Comentarios</h2><ul id="cj-comentarios" class="movimientos cj-lista"></ul></section>
     <section class="tarjeta" data-sec="hoy"><h2>Fuera del plan esta semana</h2><ul id="cj-fuera" class="movimientos cj-lista"></ul></section>
@@ -458,6 +463,7 @@
   <!-- Pantalla: Datos fijos (Bloque 17) -->
   <main id="pantalla-datosfijos" class="contenedor" hidden>
     <button id="volver-datosfijos" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Tus cifras</p>
     <h1>Datos fijos</h1>
     <p class="estado">Tus cifras. Los cambios se guardan en este teléfono, no cambian tu archivo mis-datos.json,
       y lo que ya pasó no se recalcula.</p>
@@ -588,11 +594,12 @@
   <!-- Pantalla: Respaldo (Bloque 6) -->
   <main id="pantalla-respaldo" class="contenedor" hidden>
     <button id="volver-respaldo" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Tus datos</p>
     <h1>Respaldo</h1>
 
+    <p id="sy-estado" class="estado"></p>
     <section class="tarjeta">
       <h2>Sincronizar entre aparatos</h2>
-      <p id="sy-estado" class="estado"></p>
       <p class="nota-sobre">Tus datos se guardan en tu repositorio <strong>privado</strong> de GitHub y se combinan entre tus aparatos (gana lo más reciente). La llave se queda solo en este aparato.</p>
       <div class="pl-botones">
         <button id="sy-ahora" class="boton-chico lleno">Sincronizar ahora</button>
@@ -617,17 +624,19 @@
     </section>
 
     <section class="tarjeta">
-      <h2>Descargar respaldo</h2>
+      <h2>Respaldo en archivo</h2>
       <p class="nota-sobre">Guarda en un archivo todo lo de este dispositivo: movimientos, saldos, ajustes, sobres, colchón y cifras.</p>
       <p id="respaldo-ultimo" class="estado"></p>
-      <button id="descargar-respaldo" class="boton-grande ingreso">Descargar respaldo</button>
+      <button id="descargar-respaldo" class="boton-chico boton-ancho">Descargar respaldo</button>
+    </section>
+
+    <details class="tarjeta mas-opciones">
+      <summary>Más opciones</summary>
+      <h3>Copiar respaldo</h3>
       <button id="copiar-respaldo" class="boton-chico copiar">Copiar respaldo (para iPhone)</button>
       <p id="respaldo-copia-estado" class="nota-sobre"></p>
       <textarea id="respaldo-copia" class="texto-respaldo" aria-label="Texto del respaldo para copiar" rows="4" readonly hidden></textarea>
-    </section>
-
-    <section class="tarjeta">
-      <h2>Cargar respaldo</h2>
+      <h3>Cargar respaldo</h3>
       <p id="respaldo-origen" class="nota-sobre"></p>
       <p class="nota-sobre">Elige un respaldo (mi-dinero-AAAA-MM-DD.json) o tu archivo mis-datos.json. Antes de cargar te muestro qué trae.</p>
       <label class="boton-grande deuda boton-archivo">
@@ -640,15 +649,16 @@
         <button id="revisar-pegado" class="boton-chico">Revisar lo pegado</button>
       </details>
       <div id="respaldo-revision" class="revision" hidden></div>
-    </section>
+    </details>
+
   </main>
 
   <!-- Pantalla: Primera vez (Bloque 6) -->
   <main id="pantalla-primera" class="contenedor" hidden>
     <h1>Mi dinero</h1>
+    <p class="subtitulo-pantalla">Tus cuentas día por día, solo en este teléfono.</p>
     <section class="tarjeta">
-      <h2>Primera vez: cargar mis datos</h2>
-      <p class="nota-sobre">Elige tu archivo <strong>mis-datos.json</strong> (o un respaldo que hayas descargado). Tus datos se quedan solo en este dispositivo.</p>
+      <h2>Paso 1 · Carga tus datos</h2>
       <label class="boton-grande deuda boton-archivo">
         Elegir mis-datos.json
         <input id="cargar-primera" type="file" hidden>
@@ -659,11 +669,11 @@
         <button id="revisar-primera" class="boton-chico">Revisar lo pegado</button>
       </details>
       <div id="primera-revision" class="revision" hidden></div>
-      <button id="usar-ejemplo" class="boton-chico">Probar con datos de ejemplo</button>
     </section>
     <details class="tarjeta primera-sync">
-      <summary><h2>¿Ya usas Mi dinero en otro aparato?</h2></summary>
-      <p class="nota-sobre">Conéctate a tu repositorio privado de GitHub con tu llave y tus datos bajan solos.</p>
+      <summary><h2>¿Ya usas Mi dinero en otro aparato?</h2>
+        <span class="nota-sobre">Conéctate a tu repositorio privado y tus datos bajan solos.</span>
+        <span class="boton-grande cancelar boton-falso">Conectar</span></summary>
       <div class="campo"><label for="sp-repo">Repositorio de datos</label>
         <input id="sp-repo" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="usuario/mi-dinero-datos"></div>
       <div class="campo"><label for="sp-token">Llave (token) de GitHub</label>
@@ -678,6 +688,7 @@
       <p id="sp-error" class="error" role="alert"></p>
       <button id="sp-conectar" class="boton-grande guardar">Conectar y sincronizar</button>
     </details>
+    <button id="usar-ejemplo" class="boton-chico">Probar con datos de ejemplo</button>
     <p class="privacidad">🔒 Tus datos se quedan en este dispositivo.</p>
   </main>
 
@@ -704,7 +715,8 @@
   <!-- Pantalla: Plan de la semana -->
   <main id="pantalla-plan" class="contenedor" hidden>
     <button id="volver" class="volver volver-principal">← Volver</button>
-    <h1>Plan de la semana</h1>
+    <p id="ceja-plan" class="ceja"></p>
+    <h1>Plan</h1>
     <div class="pestanas" data-pestanas role="group" aria-label="Partes del plan">
       <button data-pestana="sobres">Sobres</button><button data-pestana="semana">Esta semana</button><button data-pestana="colchon">Colchón</button>
     </div>
@@ -717,7 +729,7 @@
     </section>
 
     <section class="tarjeta" data-sec="semana">
-      <h2>1. Ingreso esperado</h2>
+      <h2>Ingreso esperado</h2>
       <p id="p-ingreso-origen" class="origen-ingreso"></p>
       <p id="p-cuenta" class="estado esc-cuenta"></p>
       <div class="campo">
@@ -741,13 +753,13 @@
     </section>
 
     <section class="tarjeta" data-sec="semana">
-      <h2>2. Esta semana</h2>
+      <h2>Esta semana</h2>
       <p id="p-semana-rango" class="estado"></p>
       <div id="p-semana"></div>
     </section>
 
     <section class="tarjeta" data-sec="colchon">
-      <h2>3. Colchón para semanas malas</h2>
+      <h2>Colchón para semanas malas</h2>
       <ul class="resumen">
         <li><span>Meta del colchón</span><span id="p-meta"></span></li>
       </ul>
@@ -764,7 +776,7 @@
     </section>
 
     <section class="tarjeta" data-sec="semana">
-      <h2>4. Si quieres usar lo libre (tú decides)</h2>
+      <h2>Si quieres usar lo libre (tú decides)</h2>
       <div id="p-sugerencia"></div>
       <p id="p-amigo" class="mensaje-sobrante positivo" hidden>Ya puedes pagarle a tu amigo</p>
     </section>
@@ -779,15 +791,16 @@
 
   <!-- Pantalla: Mis deudas (Bloque 4) -->
   <main id="pantalla-deudas" class="contenedor" hidden>
-    <div id="alerta-15" class="alerta" hidden></div>
     <button id="volver-deudas" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Prioridad por orden</p>
     <h1>Mis deudas</h1>
+    <div id="alerta-15" class="alerta" hidden></div>
     <div class="pestanas" data-pestanas role="group" aria-label="Partes de mis deudas">
       <button data-pestana="deudas">Deudas</button><button data-pestana="pagos">Pagos</button><button data-pestana="termino">Cuándo termino</button>
     </div>
 
     <section class="tarjeta" data-sec="deudas">
-      <h2>1. Lista de deudas (en orden de prioridad)</h2>
+      <h2>Lista de deudas (en orden de prioridad)</h2>
       <ul id="d-lista" class="lista-deudas"></ul>
     </section>
 
@@ -797,12 +810,12 @@
     </section>
 
     <section class="tarjeta" data-sec="pagos">
-      <h2>2. Qué pagar esta semana</h2>
+      <h2>Qué pagar esta semana</h2>
       <div id="d-pagar"></div>
     </section>
 
     <section class="tarjeta" data-sec="termino">
-      <h2>3. Proyección</h2>
+      <h2>Proyección</h2>
       <div class="campo">
         <label for="d-extra">¿Y si pago $___ extra por semana?</label>
         <input id="d-extra" type="number" inputmode="decimal" step="1" min="0" placeholder="0">
@@ -818,7 +831,8 @@
   <!-- Pantalla: A dónde se va mi dinero (Bloque 5) -->
   <main id="pantalla-resumen" class="contenedor" hidden>
     <button id="volver-resumen" class="volver volver-principal">← Volver</button>
-    <h1>A dónde se va mi dinero</h1>
+    <p id="ceja-resumen" class="ceja"></p>
+    <h1>A dónde va</h1>
 
     <div class="selector" role="group" aria-label="Período">
       <button data-periodo="semana">Esta semana</button>
@@ -828,13 +842,13 @@
     <p id="r-rango" class="estado"></p>
 
     <section class="tarjeta">
-      <h2>1. Gastos por categoría</h2>
+      <h2>Gastos por categoría</h2>
       <ul id="r-categorias" class="lista-deudas"></ul>
       <ul id="r-totales" class="resumen"></ul>
     </section>
 
     <section class="tarjeta">
-      <h2>2. ¿Cuadra mi dinero? <span class="opcional">(opcional)</span></h2>
+      <h2>¿Cuadra mi dinero? <span class="opcional">(opcional)</span></h2>
       <p id="r-ultimo" class="nota-sobre"></p>
       <button id="r-ver" class="enlace">Ver de dónde sale</button>
       <div id="r-detalle" hidden></div>

@@ -75,7 +75,7 @@ const Futuro = {
     // Escenarios
     $("fu-escenarios").innerHTML = this.ESCENARIOS.map(e => `
       <button class="${e.id === est.escenario ? "activo" : ""}" data-fu-escenario="${e.id}" aria-pressed="${e.id === est.escenario}">
-        ${e.titulo}<small>${dinero(montos[e.id])}</small>
+        ${e.titulo} <small>${dineroCorto(montos[e.id])}</small>
       </button>`).join("");
 
     // Frase de un vistazo
@@ -84,9 +84,9 @@ const Futuro = {
     fechas.forEach(f => { if (pr.porDia[f].saldoFin < pr.porDia[bajo].saldoFin) bajo = f; });
     const saldoBajo = pr.porDia[bajo].saldoFin;
     $("fu-frase").className = "fu-frase " + (saldoBajo < 0 ? "negativo" : "positivo");
-    $("fu-frase").textContent = saldoBajo < 0
-      ? `Tu día más apretado es el ${this.dia(bajo)}: te faltan ${dinero(-saldoBajo)}.`
-      : `En el próximo mes no te quedas sin dinero. Tu punto más bajo es ${dinero(saldoBajo)} el ${this.dia(bajo)}.`;
+    $("fu-frase").innerHTML = saldoBajo < 0
+      ? `<strong>Te faltan ${dinero(-saldoBajo)} el ${escapar(this.dia(bajo))}.</strong><span>Es tu día más apretado del mes.</span>`
+      : `<strong>No te quedas sin dinero este mes.</strong><span>Punto más bajo: <b>${dinero(saldoBajo)}</b> el ${escapar(this.dia(bajo))}.</span>`;
     $("fu-cuenta").textContent = Proyeccion.textoCuenta(pr);
     // Bloque 16: colchón usable y arrastre
     $("fu-colchon").innerHTML = ColchonUI.html() + RentaUI.html(pr);
@@ -118,7 +118,7 @@ const Futuro = {
 
   // ---------- Gráfica de líneas (30 días) ----------
   dibujarGrafica(prs, elegido) {
-    const W = 340, H = 210, M = { izq: 44, der: 76, arr: 12, aba: 34 };
+    const W = 340, H = 130, M = { izq: 6, der: 6, arr: 14, aba: 22 };
     const fechas = this.fechas(prs[elegido]);
     const n = fechas.length;
     const todos = this.ESCENARIOS.flatMap(e => fechas.map(f => prs[e.id].porDia[f].saldoFin));
@@ -169,13 +169,19 @@ const Futuro = {
       `<rect x="${x(i) - ancho / 2}" y="${M.arr}" width="${ancho}" height="${H - M.arr - M.aba}" class="fu-toque" data-fu-dia="${f}"><title>${this.diaCorto(f)}: ${this.plata(pr.porDia[f].saldoFin)}</title></rect>`).join("");
 
     const bajoCero = Math.min(...fechas.map(f => pr.porDia[f].saldoFin)) < 0;
+    // El punto más bajo, marcado como en el concepto
+    let ib = 0; fechas.forEach((f, i) => { if (pr.porDia[f].saldoFin < pr.porDia[fechas[ib]].saldoFin) ib = i; });
+    const vb = pr.porDia[fechas[ib]].saldoFin, xb = x(ib), yb = y(vb);
+    const etq = `${vb < 0 ? "−" : ""}$${Math.abs(Math.round(vb)).toLocaleString("en-US")} · ${this.diaCorto(fechas[ib]).toLowerCase()}`;
+    const punto = `<circle cx="${xb}" cy="${yb}" r="6" class="fu-punto${vb < 0.005 ? " rojo" : ""}"/>` +
+      `<text x="${xb + (xb > W - 120 ? -10 : 10)}" y="${yb < 30 ? yb + 18 : yb - 8}" class="fu-punto-txt" text-anchor="${xb > W - 120 ? "end" : "start"}">${etq}</text>`;
     $("fu-grafica").innerHTML = `
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saldo proyectado de los próximos ${n} días">
         <defs>
           <clipPath id="fu-arriba"><rect x="0" y="0" width="${W}" height="${Math.max(0, y0)}"/></clipPath>
           <clipPath id="fu-abajo"><rect x="0" y="${y0}" width="${W}" height="${Math.max(0, H - y0)}"/></clipPath>
         </defs>
-        ${ejeY}${otros}${principal}${marcasDia}${ejeX}${etiquetas}${toques}
+        <line x1="${M.izq}" x2="${W - M.der}" y1="${y0}" y2="${y0}" class="fu-cero"/>${principal}${punto}${toques}
       </svg>`;
     $("fu-leyenda").innerHTML = `
       <span><i class="fu-muestra elegido"></i>${this.ESCENARIOS.find(e => e.id === elegido).titulo}</span>

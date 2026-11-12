@@ -401,22 +401,26 @@ const Plan = {
 
     // Sobres: lo guardado y la meta de cada uno
     const so = this.sobresMetas();
-    const tarjeta = (titulo, guardado, meta, detalle) => {
+    const ap = this.cuantoApartar(sem, so);
+    const corto = f => f ? Futuro.diaCorto(f).toLowerCase() : "";
+    const tarjeta = (titulo, guardado, meta, derecha, nota) => {
       const av = meta > 0 ? Math.min(1, guardado / meta) : 1;
       return `<div class="p-sobre">
-        <div class="deuda-cabeza"><span class="deuda-nombre">${titulo}</span><span>${guardado >= meta - 0.005 && meta > 0 ? "✓ " : ""}${dinero(guardado)} de ${dinero(meta)}</span></div>
+        <div class="sobre-cabeza"><span class="sobre-nombre">${titulo}</span><span class="sobre-meta">${derecha}</span></div>
+        <div class="sobre-cifras"><strong>${guardado >= meta - 0.005 && meta > 0 ? "✓ " : ""}${dineroCorto(guardado)}</strong><span>de ${dineroCorto(meta)}</span></div>
         <div class="barra"><div class="barra-relleno" style="--p:${av}"></div></div>
-        ${detalle ? `<p class="estado">${detalle}</p>` : ""}
+        ${nota ? `<p class="estado">${nota}</p>` : ""}
       </div>`;
     };
+    const quedan = (meta, guardado) => Math.max(0, meta - guardado);
     $("p-sobres").innerHTML =
-      tarjeta("Renta", so.renta.guardado, so.renta.meta, so.renta.cuando ? `${escapar(so.renta.nombre)}: meta el ${Futuro.dia(so.renta.cuando)} (vence el ${Futuro.diaCorto(so.renta.vence)}).` : "No hay renta pendiente.") +
-      tarjeta("Servicios", so.servicios.guardado, so.servicios.meta, so.servicios.facturas.length
-        ? "Próximos 30 días: " + so.servicios.facturas.map(f => `${escapar(f.nombre)} ${dinero(f.monto)} (${Futuro.diaCorto(f.fecha)})`).join(", ") + "." : "No hay facturas en los próximos 30 días.") +
-      tarjeta("Colchón", so.colchon.guardado, so.colchon.meta, "");
-    const ap = this.cuantoApartar(sem, so);
+      tarjeta("Renta", so.renta.guardado, so.renta.meta, so.renta.cuando ? `meta ${corto(so.renta.cuando)}` : "",
+        so.renta.cuando ? `Quedan ${dineroCorto(quedan(so.renta.meta, so.renta.guardado))}${ap.renta > 0.005 ? ` · ${dineroCorto(ap.renta)} esta semana` : ""}` : "No hay renta pendiente.") +
+      tarjeta("Servicios", so.servicios.guardado, so.servicios.meta, "próx. 30 días",
+        so.servicios.facturas.length ? so.servicios.facturas.map(f => `${escapar(f.nombre)} ${dineroCorto(f.monto)}`).join(" · ") : "No hay facturas en los próximos 30 días.") +
+      tarjeta("Colchón", so.colchon.guardado, so.colchon.meta, "", "");
     $("apartar").disabled = !!c.vista || ap.renta + ap.servicios <= 0.005;
-    $("apartar").textContent = ap.renta + ap.servicios > 0.005 ? `Apartar lo de esta semana · ${dinero(ap.renta + ap.servicios)}` : "Apartar lo de esta semana";
+    $("apartar").textContent = ap.renta + ap.servicios > 0.005 ? `Apartar lo de esta semana · ${dineroCorto(ap.renta + ap.servicios)}` : "Apartar lo de esta semana";
     $("apartar-texto").textContent = c.vista ? "Quita la vista previa para apartar."
       : ap.renta + ap.servicios > 0.005 ? `Esta semana apartarías: renta ${dinero(ap.renta)} y servicios ${dinero(ap.servicios)} (lo que la cuenta dice que hay que guardar).`
       : "Tus sobres ya tienen lo que hay que guardar esta semana.";
