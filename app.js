@@ -91,13 +91,17 @@ const Datos = {
     const cambios = Almacen.leerCambiosDatos()
       .filter(c => !c.deshecho && c.desde <= fecha && CAMPOS_DATOS.some(x => x.id === c.campo && !x.destino))
       .sort((a, b) => a.creado.localeCompare(b.creado));
-    const clave = cambios.map(c => c.id).join(",") + "|" + Almacen.leerDeudasPropias().map(d => d.id).join(",");
+    const propios = Almacen.leerPagosPropios().filter(p => ReglasPago.activo(p, fecha)).map(p => ReglasPago.comoGasto(p, fecha));
+    const clave = cambios.map(c => c.id).join(",") + "|" + Almacen.leerDeudasPropias().map(d => d.id).join(",") +
+      "|" + propios.map(g => `${g.id}:${g.monto}:${g.venceDia}`).join(",");
     if (!this._cache[clave]) {
       const d = JSON.parse(JSON.stringify(this.base));
       cambios.forEach(c => CAMPOS_DATOS.find(x => x.id === c.campo).escribir(d, c.valor));
       this.calcularTransporte(d);
       // Deudas que agregué yo (ej.: un préstamo sin intereses)
       d.deudasAtrasadas = [...(d.deudasAtrasadas || []), ...Almacen.leerDeudasPropias()];
+      // Pagos fijos que agregué yo (esenciales y suscripciones activos ese día)
+      d.gastosFijos = [...(d.gastosFijos || []), ...propios];
       this._cache[clave] = d;
     }
     return this._cache[clave];

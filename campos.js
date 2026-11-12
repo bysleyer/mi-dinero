@@ -163,3 +163,38 @@ function validarCampo(c, crudo) {
   if (c.entero && !Number.isInteger(n)) return { error: `${c.etiqueta}: tiene que ser un número entero.` };
   return { valor: c.tipo === "proporcion" ? n : redondear(n) };
 }
+
+/*
+ * PAGOS PROPIOS (Más → Pagos fijos): reglas de un pago que agregué yo en una fecha.
+ * Están aquí (y no en pagosfijos.js) porque Datos.enFecha las usa al arrancar la app.
+ */
+const ReglasPago = {
+  version(p, fecha) {
+    const vs = (p.versiones || []).filter(v => v.desde <= fecha).sort((a, b) => a.desde.localeCompare(b.desde));
+    return vs.length ? vs[vs.length - 1] : null;
+  },
+  pausado(p, fecha) { return (p.pausas || []).some(x => fecha >= x.desde && (!x.hasta || fecha < x.hasta)); },
+  cancelado(p, fecha) { return !!p.canceladoDesde && fecha >= p.canceladoDesde; },
+  activo(p, fecha) { return !!this.version(p, fecha) && !this.pausado(p, fecha) && !this.cancelado(p, fecha); },
+
+  // Como un gasto fijo más (la forma que usan Plan, Cubrir y Vencimientos)
+  comoGasto(p, fecha) {
+    const v = this.version(p, fecha);
+    return { id: p.id, nombre: p.nombre, monto: v.monto, frecuencia: "mensual", venceDia: v.venceDia,
+             grupo: p.grupo, variable: !!p.variable, categoria: p.categoria || "Otros", propio: true, permite_mover: true };
+  },
+
+  // Vencimiento en un mes (el día y el monto que valen ese día), o null si ese día no cuenta
+  vencimientoEnMes(p, año, mes) {
+    const clave = d => { const n = x => String(x).padStart(2, "0"); return `${d.getFullYear()}-${n(d.getMonth() + 1)}-${n(d.getDate())}`; };
+    const delMes = dia => clave(new Date(año, mes, Math.min(dia, new Date(año, mes + 1, 0).getDate())));
+    const v0 = this.version(p, clave(new Date(año, mes + 1, 0)));
+    if (!v0) return null;
+    let fecha = delMes(v0.venceDia);
+    const v = this.version(p, fecha);
+    if (!v) return null;
+    if (v.venceDia !== v0.venceDia) fecha = delMes(v.venceDia);
+    if (!this.activo(p, fecha)) return null;
+    return { fecha, monto: v.monto };
+  }
+};

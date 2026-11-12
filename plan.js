@@ -183,7 +183,9 @@ const Plan = {
   CATEGORIAS_SERVICIOS: ["Teléfono", "Luz", "Internet"],
 
   cuantoDescontarDeServicios(mov) {
-    if (mov.tipo !== "gasto" || !this.CATEGORIAS_SERVICIOS.includes(mov.categoria)) return 0;
+    // También los pagos fijos que agregué yo, pagados con "Ya lo pagué" (su vencimiento empieza con "pf-")
+    const propio = typeof mov.vencimiento === "string" && mov.vencimiento.startsWith("pf-");
+    if (mov.tipo !== "gasto" || !(this.CATEGORIAS_SERVICIOS.includes(mov.categoria) || propio)) return 0;
     return redondear(Math.min(mov.monto, Almacen.leerPlan().sobres.servicios));
   },
 
@@ -251,7 +253,7 @@ const Plan = {
     const sig = Proyeccion.rentaMeses(hoyClave, Jornadas.sumarDias(hoyClave, 62)).find(c => c.pendiente > 0.005);
     const mes = f => Jornadas.aFecha(f).toLocaleDateString("es", { month: "long" });
     const facturas = Vencimientos.entre(hoyClave, Jornadas.sumarDias(hoyClave, 29))
-      .filter(i => ["luz", "telefono", "internet"].includes(i.id))
+      .filter(i => ["luz", "telefono", "internet"].includes(i.id) || i.propio)
       .map(i => ({ nombre: i.nombre, fecha: i.fecha, monto: redondear(i.partes.filter(p => !p.pagado).reduce((s, p) => s + p.monto, 0)) }))
       .filter(f => f.monto > 0.005);
     return {

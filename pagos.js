@@ -1,6 +1,6 @@
 /*
  * PAGOS PROGRAMADOS (Bloque 9)
- * Calcula los vencimientos (renta, día 15, luz, internet, teléfono, préstamo semanal)
+ * Calcula los vencimientos (renta, día 15, luz, internet, teléfono, préstamo semanal y los pagos fijos que agregué)
  * a partir de mis datos, y muestra la tarjeta "Próximos pagos".
  * "Ya lo pagué" usa el mismo formulario del Bloque 2; el movimiento guarda
  * qué vencimiento pagó (campo "vencimiento"), así la app sabe que ya está pagado.
@@ -67,7 +67,9 @@ const Vencimientos = {
     return lista;
   },
 
-  MOVIBLES: ["luz", "telefono", "internet", "prestamo", "renta", "deudaInternet"], // lo que se puede mover (la renta del mes, en la cuenta)
+  // Lo que se puede mover (la renta del mes, en la cuenta) y los pagos fijos que agregué yo
+  MOVIBLES_BASE: ["luz", "telefono", "internet", "prestamo", "renta", "deudaInternet"],
+  get MOVIBLES() { return [...this.MOVIBLES_BASE, ...Almacen.leerPagosPropios().map(p => p.id)]; },
 
   // Pagos movidos guardados (+ uno que "Mover este pago" solo está probando, sin guardarlo)
   _simular: null,
@@ -216,6 +218,15 @@ const Vencimientos = {
           });
           agregar({ id: def.id, letra: def.letra, nombre: delDia.nombre, orden: def.orden, partes: delDia.partes }, fecha);
         }
+      });
+
+      // Pagos fijos que agregué yo (Más → Pagos fijos): esenciales primero, suscripciones después
+      Almacen.leerPagosPropios().forEach(p => {
+        const v = ReglasPago.vencimientoEnMes(p, primero.getFullYear(), primero.getMonth());
+        if (!v || v.fecha < desde || v.fecha > hasta) return;
+        agregar({ id: p.id, letra: p.grupo === "suscripcion" ? "S" : "E", nombre: p.nombre, orden: p.grupo === "suscripcion" ? 11 : 10,
+          propio: true, grupo: p.grupo, variable: !!p.variable,
+          partes: [{ nombre: p.nombre, monto: v.monto, accion: { tipo: "gasto", categoria: p.categoria || "Otros" } }] }, v.fecha);
       });
 
       // Día 15: alerta (solo si queda saldo de renta)

@@ -24,45 +24,16 @@ const PagosFijos = {
   GRUPOS: { esencial: "Esenciales", suscripcion: "Suscripciones" },
   editando: null, // { id, propio: bool }
 
-  // ---------- Reglas de un pago propio en una fecha ----------
-  version(p, fecha) {
-    const vs = (p.versiones || []).filter(v => v.desde <= fecha).sort((a, b) => a.desde.localeCompare(b.desde));
-    return vs.length ? vs[vs.length - 1] : null;
-  },
-  pausado(p, fecha) {
-    return (p.pausas || []).some(x => fecha >= x.desde && (!x.hasta || fecha < x.hasta));
-  },
-  cancelado(p, fecha) {
-    return !!p.canceladoDesde && fecha >= p.canceladoDesde;
-  },
-  activo(p, fecha) {
-    return !!this.version(p, fecha) && !this.pausado(p, fecha) && !this.cancelado(p, fecha);
-  },
+  // ---------- Reglas (campos.js: ReglasPago) ----------
+  version: (p, f) => ReglasPago.version(p, f),
+  pausado: (p, f) => ReglasPago.pausado(p, f),
+  cancelado: (p, f) => ReglasPago.cancelado(p, f),
+  activo: (p, f) => ReglasPago.activo(p, f),
   estado(p, fecha = hoy()) {
     if (this.cancelado(p, fecha)) return "cancelado";
     if (this.pausado(p, fecha)) return "pausado";
     if (!this.version(p, fecha)) return "empieza";
     return "activo";
-  },
-
-  // El pago propio como un gasto fijo más (la forma que usan Plan y Vencimientos)
-  comoGasto(p, fecha) {
-    const v = this.version(p, fecha);
-    return { id: p.id, nombre: p.nombre, monto: v.monto, frecuencia: "mensual", venceDia: v.venceDia,
-             grupo: p.grupo, variable: !!p.variable, categoria: p.categoria || "Otros", propio: true, permite_mover: true };
-  },
-
-  // Vencimiento de un pago propio en un mes (el día y el monto que valen ese día), o null
-  vencimientoEnMes(p, año, mes) {
-    const ultimo = Resumen.aClave(new Date(año, mes + 1, 0));
-    const v0 = this.version(p, ultimo);
-    if (!v0) return null;
-    let fecha = Vencimientos.fechaDelMes(año, mes, v0.venceDia);
-    const v = this.version(p, fecha);
-    if (!v) return null;
-    if (v.venceDia !== v0.venceDia) fecha = Vencimientos.fechaDelMes(año, mes, v.venceDia);
-    if (!this.activo(p, fecha)) return null;
-    return { fecha, monto: v.monto };
   },
 
   // ---------- Lo que se muestra ----------
