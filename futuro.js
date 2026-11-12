@@ -137,7 +137,7 @@ const Futuro = {
 
     // Eje X: cada 7 días
     const ejeX = fechas.map((f, i) => i % 7 === 0 || (i === n - 1 && (n - 1) % 7 > 3)
-      ? `<text x="${x(i)}" y="${H - 8}" class="fu-eje" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}">${Jornadas.aFecha(f).getDate()} ${Jornadas.aFecha(f).toLocaleDateString("es", { month: "short" }).replace(".", "")}</text>` : "").join("");
+      ? `<text x="${x(i)}" y="${H - 8}" class="fu-eje" text-anchor="${i === n - 1 ? "end" : "middle"}">${Jornadas.aFecha(f).getDate()} ${Jornadas.aFecha(f).toLocaleDateString("es", { month: "short" }).replace(".", "")}</text>` : "").join("");
 
     // Días de cobro ($) y vencimientos (letra) sobre el eje X
     const pr = prs[elegido];

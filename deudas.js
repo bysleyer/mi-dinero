@@ -164,9 +164,10 @@ const Deudas = {
       <strong>⚠ Atención: renta pendiente</strong>
       El día ${dia} ${cuando} y la renta tiene saldo de ${dinero(saldoRenta)}.
       Manda tus comprobantes de pago a la administradora y pide un acuerdo de pago por escrito.
+      <details class="contacto-caja"><summary>Contactar a la administración</summary>
       <p class="contacto">${escapar(c.nombre)}<br>
         <a href="mailto:${escapar(c.correo)}">${escapar(c.correo)}</a><br>
-        <a href="tel:${tel},${escapar(c.extension)}">${escapar(c.telefono)} ext. ${escapar(c.extension)}</a></p>`;
+        <a href="tel:${tel},${escapar(c.extension)}">${escapar(c.telefono)} ext. ${escapar(c.extension)}</a></p></details>`;
     caja.hidden = false;
   },
 
