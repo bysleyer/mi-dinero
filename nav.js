@@ -148,6 +148,7 @@ const Inicio = {
     $("pagos-ver-todos").addEventListener("click", () => { this._pagosTodos = !this._pagosTodos; this.ajustarPagos(); });
     $("inicio-hoy").addEventListener("click", e => { if (e.target.closest("#inicio-hoy-registrar")) Nav.abrirHoja("registrar"); });
     this.ajustarPagos();
+    $("pl-ysigasto").addEventListener("click", () => Planeados.abrirTemporal(null, hoy(), Nav.visible()));
     $("inicio-semana").addEventListener("click", e => {
       if (e.target.closest("[data-nav-ir]")) Nav.ir(e.target.closest("[data-nav-ir]").dataset.navIr);
     });

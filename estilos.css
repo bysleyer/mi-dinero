@@ -1085,3 +1085,4 @@ button.enlace { min-height: 44px; }
 .hoja-atajos button { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 14px; background: #1c262d; color: var(--texto); font: inherit; font-size: .95rem; font-weight: 700; text-align: left; cursor: pointer; touch-action: manipulation; }
 .hoja-atajos button span { font-size: 1.4rem; }
 .hoja-atajos button:active { transform: scale(.97); }
+.pl-simular { text-align: center; } .pl-simular .ayuda { margin: 0 0 4px; }
