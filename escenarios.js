@@ -47,6 +47,8 @@ const Escenarios = {
       esperado: g.esperado ?? redondear(Proyeccion.chequeEsperado(cobro).monto),
       esperadoAuto: g.esperado == null,
       mas: g.mas ?? this.porDefecto().mas,
+      menosAuto: g.menos == null,
+      masAuto: g.mas == null,
       porcentajeColchon: g.porcentajeColchon ?? this.reglas().semanaBuena.porcentajeColchon
     };
   },
@@ -241,7 +243,7 @@ const Escenarios = {
 
     $("e-resultados").innerHTML = resultados.map(({ id, titulo, monto, r }) => `
       <section class="tarjeta escenario" data-escenario="${id}">
-        <h2>${titulo}: ${dinero(monto)}${id === "esperado" && c.esperadoAuto ? ' <span class="opcional">(estimado)</span>' : ""}</h2>
+        <h2>${titulo}: ${dinero(monto)}${(id === "esperado" && c.esperadoAuto) || (id === "menos" && c.menosAuto) || (id === "mas" && c.masAuto) ? ' <span class="opcional">(estimado)</span>' : ""}</h2>
         <p class="estado esc-cuenta">${escapar(r.cuenta)}</p>
         ${RentaUI.html(r.pr)}
         <ul class="escenario-lista">

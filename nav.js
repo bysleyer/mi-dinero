@@ -47,7 +47,7 @@ const Nav = {
     if ($("ceja-resumen")) $("ceja-resumen").textContent = `Del ${lunes.getDate()} al ${dm(domingo)}`;
     if ($("ceja-calendario")) $("ceja-calendario").textContent = ($("cal-titulo") && $("cal-titulo").textContent) || d.toLocaleDateString("es", { month: "long", year: "numeric" });
     if ($("ceja-planeados") && typeof Almacen !== "undefined" && Almacen.leerPlaneados) {
-      const n = Almacen.leerPlaneados().filter(g => !g.comprado && !g.borrado).length;
+      const n = Almacen.leerPlaneados().filter(g => !g.borrado && !(typeof Planeados !== "undefined" && Planeados.comprado(g))).length;
       $("ceja-planeados").textContent = n ? `${n} ${n === 1 ? "pendiente" : "pendientes"}` : "Nada pendiente";
     }
   },

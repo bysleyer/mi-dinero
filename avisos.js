@@ -65,6 +65,17 @@ const Avisos = {
         return l.length ? `${cuando}: ${l.map(v => `${v.nombre} ${dinero(v.monto)}`).join(", ")}` : "";
       }).filter(Boolean).join("; ") + ".", acciones: [["Ver próximos pagos", "pagos"]] });
 
+    // 3a) Lo que venció hace poco y sigue sin pagarse: la cuenta lo cuenta como pago de hoy (Proyeccion)
+    const vencidos = Vencimientos.entre(Jornadas.sumarDias(hoyClave, -Vencimientos.DIAS_ATRAS), Jornadas.sumarDias(hoyClave, -1))
+      .filter(i => !i.alerta && !i.inmediato && !i.planeado && !["renta", "recargo", "plandeuda"].includes(i.id))
+      .map(i => ({ nombre: i.nombre.replace(/\s*\(.*\)\s*$/, "").trim(), dias: -Vencimientos.diasHasta(i.fecha),
+                   monto: redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0)), clave: i.claveMov }))
+      .filter(v => v.monto > 0.005);
+    if (vencidos.length) afuera.push({ id: "vencidos", clase: "rojo", firma: vencidos.map(v => `${v.clave}|${v.monto}`).join(","),
+      texto: "Venció y no está pagado: " + vencidos.map(v => `${v.nombre} ${dinero(v.monto)} (hace ${v.dias} ${v.dias === 1 ? "día" : "días"})`).join(", ") +
+        ". La cuenta ya lo cuenta como pago de hoy. Págalo, o muévelo si ya acordaste otra fecha.",
+      acciones: [["Ver próximos pagos", "pagos"], ["Mover", "mover"]] });
+
     // 3b) Pagos fijos que agregué (esenciales y suscripciones): si en su fecha no alcanza, qué hacer a tiempo
     const ids = Almacen.leerPagosPropios().map(p => p.id);
     if (ids.length) {

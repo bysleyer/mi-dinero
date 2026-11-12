@@ -152,7 +152,12 @@ const Proyeccion = {
     }
 
     // Vencimientos sin pagar (con las fechas movidas)
-    Vencimientos.entre(hoyClave, fin).forEach(item => {
+    // Lo que venció hace poco (hasta DIAS_ATRAS días) y sigue sin pagarse NO desaparece: se cuenta como pago de hoy,
+    // marcado "vencido" (antes se olvidaba al día siguiente y la cuenta quedaba con ese dinero de más).
+    const atras = Jornadas.sumarDias(hoyClave, -Vencimientos.DIAS_ATRAS);
+    Vencimientos.entre(atras, fin).forEach(item => {
+      const vencido = item.fecha < hoyClave;
+      if (vencido && (item.planeado || item.inmediato || item.id === "recargo")) return; // lo planeado y lo atrasado sin fecha no se arrastran
       if (item.alerta || [].concat(excluir || []).includes(item.claveMov)) return; // excluir: una clave o varias
       if (item.id === "renta") return; // la renta se cuenta aparte (rentaLineas)
       if (item.inmediato && !item.movido) return; // deuda atrasada sin fecha (internet atrasado): no se asume que la pagas
@@ -162,8 +167,9 @@ const Proyeccion = {
       if (pendiente <= 0) return;
       // Orden dentro del día: el de Más → Pagos fijos → Orden (renta, nivel 1, nivel 2, suscripciones)
       const orden = (!item.inmediato && !item.planeado && Prioridad.orden(item.id)) || (item.inmediato ? 5 : item.planeado ? 15 : 10);
-      lineas.push({ fecha: item.fecha, orden, tipo: "pago", id: item.id, letra: item.letra,
-        nombre: item.planeado ? `${item.nombre} (planeado)` : item.nombre,
+      lineas.push({ fecha: vencido ? hoyClave : item.fecha, orden, tipo: "pago", id: item.id, letra: item.letra,
+        vencidoDesde: vencido ? item.fecha : null,
+        nombre: item.planeado ? `${item.nombre} (planeado)` : vencido ? `${item.nombre} (vencido)` : item.nombre,
         detalle: pendientes.length > 1 ? pendientes.map(p => dinero(p.monto)).join(" + ") : "",
         monto: -pendiente, movido: item.movido || null, claveMov: item.claveMov, inmediato: !!item.inmediato, deudaId: item.deudaId || null,
         planeado: !!item.planeado });

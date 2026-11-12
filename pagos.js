@@ -316,9 +316,9 @@ const Vencimientos = {
           continue;
         }
         if (saltos.some(x => f > x.desde && f <= x.hasta)) continue; // semana corrida: sin pago
-        if (resta <= 0) break;
+        if (resta <= 0.005) break;
         const monto = Math.min(gp.monto, resta);
-        resta -= monto;
+        resta = redondear(resta - monto);
         if (f >= desde) agregar({ id: "prestamo", letra: "", nombre: gp.nombre, orden: 20,
           partes: [{ nombre: gp.nombre, monto, clave, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_PRESTAMO } }] }, f);
       }
