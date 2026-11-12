@@ -228,6 +228,19 @@ const Vencimientos = {
     return { ...m, partes: partes.filter(pt => pt.monto > 0.005) };
   },
 
+  // Un pago ya vencido que se registró como gasto normal (sin tocar "Ya lo pagué") cuenta como pagado si hay un gasto de
+  // la MISMA categoría (o un pago a la misma deuda) en los 7 días antes del vencimiento o después, de monto parecido (50 %–150 %).
+  // La categoría "Otros" no se empareja (daría falsos positivos). Contarlo de más es el error seguro.
+  pagadoSinClave(p, fecha) {
+    const a = p.accion || {};
+    if (a.tipo === "gasto" && (!a.categoria || a.categoria === "Otros")) return false;
+    if (a.tipo !== "gasto" && a.tipo !== "pagoDeuda") return false;
+    const desde = Jornadas.sumarDias(fecha, -7), hasta = hoy();
+    return Almacen.leerMovimientos().some(m => !m.vencimiento && !m.planeadoId && m.fecha >= desde && m.fecha <= hasta &&
+      (a.tipo === "gasto" ? m.tipo === "gasto" && m.categoria === a.categoria : m.tipo === "pagoDeuda" && m.deudaId === a.deudaId) &&
+      m.monto >= p.monto * 0.5 && m.monto <= p.monto * 1.5);
+  },
+
   // Vencimientos según las fechas normales (sin mover)
   entreBase(desde, hasta) {
     const hoyClave = hoy();
@@ -237,7 +250,7 @@ const Vencimientos = {
       item.fecha = fecha;
       item.partes = item.partes.map((p, i) => {
         const clave = p.clave || `${item.id}-${i}@${fecha}`;
-        return { ...p, clave, pagado: !p.sinClave && pagados.has(clave) };
+        return { ...p, clave, pagado: !p.sinClave && (pagados.has(clave) || (fecha < hoyClave && this.pagadoSinClave(p, fecha))) };
       });
       items.push(item);
     };

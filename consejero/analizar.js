@@ -80,8 +80,14 @@ const { chromium } = require("playwright");
       // Día de libertad = la última de las dos fechas (renta atrasada y préstamo del amigo) que calcula la app.
       // Cambia a saltos (unos pocos dólares pueden moverlo semanas): se calcula SIEMPRE con los datos de hoy.
       diaLibertad: (() => {
-        const f = [deudas && deudas.rentaCero, deudas && deudas.amigoCero].filter(x => x && x !== "ya").sort().slice(-1)[0] || null;
-        return { fecha: f, rentaCero: deudas && deudas.rentaCero, amigoCero: deudas && deudas.amigoCero, calculadoEl: hoyClave, dineroHoy: red(Dinero.actual()) };
+        if (!deudas || deudas.error) return null;
+        const nunca = (deudas.hayRenta && !deudas.rentaCero) || (deudas.hayAmigo && !deudas.amigoCero);
+        const fs = [deudas.hayRenta && deudas.rentaCero, deudas.hayAmigo && deudas.amigoCero].filter(x => x && x !== "ya").sort();
+        // sensibilidad: cuánto se mueve la fecha con $50 más o menos hoy (para que el consejero lo diga)
+        const sens = monto => { try { const d = Proyeccion.planDeudas({ ajustes: [{ fecha: hoyClave, monto }] }); return { rentaCero: d.rentaCero, amigoCero: d.amigoCero }; } catch (e) { return null; } };
+        return { fecha: nunca ? null : (fs.slice(-1)[0] || "ya"), masDeDias: nunca ? deudas.dias : null,
+                 rentaCero: deudas.rentaCero, amigoCero: deudas.amigoCero, calculadoEl: hoyClave, dineroHoy: red(Dinero.actual()),
+                 sensibilidad: { con50Menos: sens(50), con50Mas: sens(-50) } };
       })(),
       cubrir, deudas, avisos,
       diasConPagos: dias,

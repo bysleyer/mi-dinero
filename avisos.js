@@ -69,18 +69,19 @@ const Avisos = {
     const vencidos = Vencimientos.entre(Jornadas.sumarDias(hoyClave, -Vencimientos.DIAS_ATRAS), Jornadas.sumarDias(hoyClave, -1))
       .filter(i => !i.alerta && !i.inmediato && !i.planeado && !["renta", "recargo", "plandeuda"].includes(i.id))
       .map(i => ({ nombre: i.nombre.replace(/\s*\(.*\)\s*$/, "").trim(), dias: -Vencimientos.diasHasta(i.fecha),
-                   monto: redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0)), clave: i.claveMov }))
+                   monto: redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0)), clave: i.claveMov, id: i.id }))
       .filter(v => v.monto > 0.005);
     if (vencidos.length) afuera.push({ id: "vencidos", clase: "rojo", firma: vencidos.map(v => `${v.clave}|${v.monto}`).join(","),
       texto: "Venció y no está pagado: " + vencidos.map(v => `${v.nombre} ${dinero(v.monto)} (hace ${v.dias} ${v.dias === 1 ? "día" : "días"})`).join(", ") +
         ". La cuenta ya lo cuenta como pago de hoy. Págalo, o muévelo si ya acordaste otra fecha.",
-      acciones: [["Ver próximos pagos", "pagos"], ["Mover", "mover"]] });
+      clave: vencidos.length === 1 ? vencidos[0].clave : null,
+      acciones: [["Ver próximos pagos", "pagos"], ...(vencidos.length === 1 && Vencimientos.MOVIBLES.includes(vencidos[0].id) ? [["Mover", "mover"]] : [])] });
 
     // 3b) Pagos fijos que agregué (esenciales y suscripciones): si en su fecha no alcanza, qué hacer a tiempo
     const ids = Almacen.leerPagosPropios().map(p => p.id);
     if (ids.length) {
       Vencimientos.entre(hoyClave, Jornadas.sumarDias(hoyClave, 30)).filter(i => ids.includes(i.id) && i.partes.some(p => !p.pagado)).forEach(i => {
-        if (!Mover.noAlcanza(i)) return;
+        if (i.movido || !Mover.noAlcanza(i)) return; // los movidos ya tienen su propio aviso
         const pend = redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0));
         const dias = Vencimientos.diasHasta(i.fecha);
         const sub = Almacen.leerPagosPropios().find(p => p.id === i.id).grupo === "suscripcion";

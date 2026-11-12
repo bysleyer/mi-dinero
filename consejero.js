@@ -60,7 +60,7 @@ const Vigilante = {
         const q = this.normal(p).trim();
         if (!q) return false;
         const junto = q.replace(/\s+/g, "");
-        return [q, junto].some(x => new RegExp("(^|[^a-z0-9])" + esc(x) + "(s|es)?([^a-z0-9]|$)").test(n));
+        return [q, junto].some(x => new RegExp("(^|[^a-z])" + esc(x) + "(s|es)?([^a-z]|$)").test(n));
       });
     }
     return true;
