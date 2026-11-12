@@ -31,6 +31,13 @@ const Futuro = {
 
   // ---------- Textos ----------
   dia(f) { return Jornadas.textoDia(f).toLowerCase(); },
+  // Cifra corta para las casillas chicas: sin centavos (1,470) y con "k" desde 10 mil (12.5k). El valor exacto está en el detalle del día.
+  cifraCorta(v) {
+    if (v >= 100000) return `${Math.round(v / 1000)}k`;
+    if (v >= 10000) return `${(v / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+    return Math.round(v).toLocaleString("en-US");
+  },
+
   diaCorto(f) {
     return Jornadas.aFecha(f).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
   },
@@ -207,7 +214,7 @@ const Futuro = {
         <span class="dia-num">${num}${libre ? "<small>◇</small>" : ""}</span>
         ${cobro ? `<span class="marca-cobro">$</span>` : ""}
         ${vence ? `<span class="marca-vence">${vence}</span>` : ""}
-        <span class="fu-saldo">${s < 0 ? "−" : ""}${Math.abs(s).toFixed(2)}</span>
+        <span class="fu-saldo">${s < 0 ? "−" : ""}${Futuro.cifraCorta(Math.abs(s))}</span>
       </button>`;
     }).join("");
   },

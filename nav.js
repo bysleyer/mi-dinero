@@ -97,11 +97,26 @@ const Inicio = {
         <span class="kpi-etq">Libre esta semana</span><strong>${dinero(sem.libre)}</strong></button>
       <button class="kpi kpi-guardar" data-nav-ir="plan" aria-label="Guárdalo para más adelante: ${dinero(sem.guardar)}. Ver el plan">
         <span class="kpi-etq">Para después</span><strong>${dinero(sem.guardar)}</strong></button>`;
+    this.ajustarCifras();
     if (typeof Avisos !== "undefined") Avisos.mostrar();
     if (typeof Consejero !== "undefined") Consejero.tarjetaInicio();
   },
 
+  // Cifras grandes (ej.: $1,135,797.46) se achican hasta caber en su cuadro, en vez de cortarse o pisar al vecino
+  ajustarCifras() {
+    document.querySelectorAll(".kpis .dinero-cifra, .kpis .kpi strong").forEach(el => {
+      el.style.fontSize = "";
+      const caja = el.closest(".kpi, .dinero-tengo");
+      if (!caja) return;
+      let px = parseFloat(getComputedStyle(el).fontSize);
+      const libre = () => caja.clientWidth - 20; // 10px de relleno por lado
+      while (el.scrollWidth > libre() && px > 11) { px -= 0.5; el.style.fontSize = px + "px"; }
+    });
+  },
+
   iniciar() {
+    // "Tengo" cambia desde app.js: cuando cambie su texto, se vuelve a ajustar
+    new MutationObserver(() => this.ajustarCifras()).observe($("inicio-semana"), { childList: true, subtree: true, characterData: true });
     $("inicio-semana").addEventListener("click", e => {
       if (e.target.closest("[data-nav-ir]")) Nav.ir(e.target.closest("[data-nav-ir]").dataset.navIr);
     });

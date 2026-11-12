@@ -959,7 +959,7 @@ html.cargando body { visibility: hidden; }
 }
 .kpis .dinero-tengo.positivo { border-color: #2c5a4f; }
 .kpis .dinero-tengo.negativo { border-color: #5a3a35; }
-.kpis .dinero-etiqueta, .kpi-etq { font-size: .72rem; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .3px; line-height: 1.2; }
+.kpis .dinero-etiqueta, .kpi-etq { font-size: .75rem; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .3px; line-height: 1.2; }
 .kpis .dinero-cifra, .kpi strong { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .kpi-libre strong { color: var(--ok); }
 .kpi-guardar strong { color: var(--aviso); }
@@ -985,3 +985,29 @@ html.cargando body { visibility: hidden; }
 
 .chips-tipo { flex-wrap: nowrap; }
 .chips-tipo .chip { flex: 1 1 auto; padding: 0 6px; font-size: .88rem; white-space: nowrap; }
+
+/* =========================================================
+   TABLERO — Etapa 1: toques de 44 px, texto legible, foco visible
+   ========================================================= */
+.pago-lado .boton-chico, .esc-lado .boton-chico, .pago-lado .boton-chico + .boton-chico { min-height: 44px; }
+.jornadas summary, .pegar summary, .fu-detalle summary, .colchon-interruptor { min-height: 44px; display: flex; align-items: center; }
+.colchon-interruptor { display: inline-flex; }
+.pestanas button { min-height: 44px; }
+.alerta a, .contacto a { display: inline-block; padding: 12px 0; }
+.mov-detalle { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Texto: nada por debajo de 12 px (11 en las casillas muy chicas) */
+.nav-item, .dinero-etiqueta, .kpi-etq { font-size: .75rem; }
+.dia-horas, .marca-cobro { font-size: .75rem; }
+.marca-vence, .mv-vence, .mv-sugerida, .pc-cabe { font-size: .7rem; }
+.fu-saldo { font-size: .75rem; letter-spacing: 0; }
+.fu-eje, .fu-etiqueta, .fu-vence { font-size: 11px; }
+.cal-tarjeta { padding: 12px 6px; }
+.cal-dias { gap: 3px; }
+.cal-nombres span { font-size: .75rem; }
+/* Foco del teclado visible en todo */
+button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, .dia:focus-visible, .chip:focus-visible {
+  outline: 3px solid #8fe3d0; outline-offset: 2px;
+}
+.marca-renta { font-size: .7rem; }
+button.enlace { min-height: 44px; }
+#pantalla-futuro .tarjeta[data-sec="calendario"] { padding: 12px 6px; }
