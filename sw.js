@@ -29,6 +29,7 @@ const ARCHIVOS = [
   "./futuro.js",
   "./colchon.js",
   "./datosfijos.js",
+  "./pagosfijos.js",
   "./prestamo.js",
   "./acuerdo.js",
   "./sincronizar.js",

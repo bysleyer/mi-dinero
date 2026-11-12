@@ -7,14 +7,14 @@
 const DatosFijos = {
   SECCIONES: [
     { id: "ingresos", titulo: "Ingresos" },
-    { id: "renta", titulo: "Renta" },
-    { id: "luz", titulo: "Luz" },
-    { id: "internet", titulo: "Internet" },
-    { id: "telefono", titulo: "Teléfono" },
     { id: "prestamos", titulo: "Préstamos" },
     { id: "colchon", titulo: "Colchón" },
     { id: "comida", titulo: "Comida y transporte" }
   ],
+
+  // Renta, luz, internet y teléfono se cambian en Más → Pagos fijos (con las mismas cifras de aquí)
+  EN_PAGOS_FIJOS: { renta: "Renta", luz: "Luz", internet: "Internet", telefono: "Teléfono" },
+  tituloSeccion(id) { return (this.SECCIONES.find(s => s.id === id) || {}).titulo || this.EN_PAGOS_FIJOS[id] || id; },
 
   campo(id) { return CAMPOS_DATOS.find(c => c.id === id); },
 
@@ -164,7 +164,7 @@ const DatosFijos = {
       : lista.map(x => {
           const c = this.campo(x.campo);
           if (!c) return "";
-          const seccion = this.SECCIONES.find(s => s.id === c.seccion).titulo;
+          const seccion = this.tituloSeccion(c.seccion);
           return `
             <li class="${x.deshecho ? "df-deshecho" : ""}">
               <div class="mov-info">
@@ -270,6 +270,7 @@ const DatosFijos = {
     $("abrir-datosfijos").addEventListener("click", () => this.abrir());
     $("volver-datosfijos").addEventListener("click", () => this.cerrar());
     $("pantalla-datosfijos").addEventListener("click", e => {
+      if (e.target.closest("[data-nav]") && typeof Nav !== "undefined") return Nav.ir(e.target.closest("[data-nav]").dataset.nav);
       const g = e.target.closest("[data-df-guardar]"); if (g) this.guardar(g.dataset.dfGuardar);
       const o = e.target.closest("[data-df-original]"); if (o) this.volverOriginal(o.dataset.dfOriginal);
       const d = e.target.closest("[data-df-deshacer]"); if (d) this.deshacer(d.dataset.dfDeshacer);

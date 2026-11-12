@@ -21,6 +21,7 @@
  *   consejero      lo último que dejó tu consejero (consejero.json del repositorio de datos; no se sincroniza de vuelta)
  *   notasConsejero tus notas para el consejero: { id, texto, creado, modificado }
  *   cambiosDatos   "Datos fijos": { id, campo, valor, anterior, desde, creado, deshecho }
+ *   pagosPropios   pagos fijos que agrego yo (pagosfijos.js): esenciales y suscripciones con sus fechas
  *   planeados      gastos planeados: { id, nombre, monto, fechaLimite, categoria, nota, tipo,
  *                  enPartes, partes, elegido: [{ fecha, monto }] | null }
  */
@@ -320,6 +321,29 @@ const Almacen = {
       d.id === id ? { ...d, borrado: true, modificado: this.ahora() } : d));
   },
 
+  // ---------- Pagos fijos que agrego yo (Más → Pagos fijos: esenciales y suscripciones) ----------
+  leerTodosLosPagosPropios() {
+    return this.leer("pagosPropios") || [];
+  },
+
+  leerPagosPropios() {
+    return this.leerTodosLosPagosPropios().filter(p => !p.borrado);
+  },
+
+  guardarPagoPropio(pago) {
+    const lista = this.leerTodosLosPagosPropios();
+    const momento = this.ahora();
+    const i = pago.id ? lista.findIndex(p => p.id === pago.id) : -1;
+    if (i >= 0) lista[i] = { ...lista[i], ...pago, modificado: momento };
+    else lista.push({ ...pago, id: `pf-${this.nuevoId()}`, creado: momento, modificado: momento });
+    return this.guardar("pagosPropios", lista);
+  },
+
+  borrarPagoPropio(id) {
+    return this.guardar("pagosPropios", this.leerTodosLosPagosPropios().map(p =>
+      p.id === id ? { ...p, borrado: true, modificado: this.ahora() } : p));
+  },
+
   // Bloque 19: parámetros del simulador "Si aceptan el acuerdo de renta" (solo simulación)
   leerAcuerdoSimulado() {
     return this.leer("acuerdoSimulado");
@@ -454,6 +478,7 @@ const Almacen = {
       acuerdoSimulado: this.leer("acuerdoSimulado"),
       planesDeuda: this.leerTodosLosPlanesDeuda(),
       deudasPropias: this.leerTodasLasDeudasPropias(),
+      pagosPropios: this.leerTodosLosPagosPropios(),
       notasConsejero: this.leer("notasConsejero") || [],
       rentaCargosDesde: this.leer("rentaCargosDesde"),
       acuerdoRenta: this.leer("acuerdoRenta") || []
@@ -479,6 +504,7 @@ const Almacen = {
     this.guardar("cambiosDatos", respaldo.cambiosDatos || []);
     this.guardar("simulaciones", respaldo.simulaciones || []);
     this.guardar("deudasPropias", respaldo.deudasPropias || []);
+    this.guardar("pagosPropios", respaldo.pagosPropios || []);
     this.guardar("notasConsejero", respaldo.notasConsejero || []);
     // Respaldo viejo con acuerdo de renta: se pasa a "Planear pagos" al leerlo
     if (respaldo.planesDeuda) this.guardar("planesDeuda", respaldo.planesDeuda);

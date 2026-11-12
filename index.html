@@ -29,6 +29,7 @@
     <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span><span class="nav-txt">Plan</span></button>
     <button class="nav-item solo-pc" data-nav="consejero"><span class="nav-ico" aria-hidden="true">🧑‍💼</span><span class="nav-txt">Tu consejero</span></button>
     <button class="nav-item solo-pc" data-nav="deudas"><span class="nav-ico" aria-hidden="true">💳</span><span class="nav-txt">Mis deudas</span></button>
+    <button class="nav-item solo-pc" data-nav="pagosfijos"><span class="nav-ico" aria-hidden="true">🧾</span><span class="nav-txt">Pagos fijos</span></button>
     <button class="nav-item solo-pc" data-nav="planeados"><span class="nav-ico" aria-hidden="true">🛍️</span><span class="nav-txt">Gastos planeados</span></button>
     <button class="nav-item solo-pc" data-nav="calendario"><span class="nav-ico" aria-hidden="true">📅</span><span class="nav-txt">Calendario</span></button>
     <button class="nav-item solo-pc" data-nav="resumen"><span class="nav-ico" aria-hidden="true">📊</span><span class="nav-txt">A dónde va · ¿Cuadra?</span></button>
@@ -68,6 +69,7 @@
         <div class="hoja-lista hoja-tiles">
           <button data-nav="consejero"><span class="tile-ico" aria-hidden="true">🧑‍💼</span><b>Tu consejero</b><small>Informe y reglas</small></button>
           <button data-nav="deudas"><span class="tile-ico" aria-hidden="true">💳</span><b>Mis deudas</b><small>Qué debes y cuándo termina</small></button>
+          <button data-nav="pagosfijos"><span class="tile-ico" aria-hidden="true">🧾</span><b>Pagos fijos</b><small>Esenciales y suscripciones</small></button>
           <button data-nav="planeados"><span class="tile-ico" aria-hidden="true">🛍️</span><b>Gastos planeados</b><small>Lo que quieres comprar</small></button>
           <button data-nav="calendario"><span class="tile-ico" aria-hidden="true">📅</span><b>Calendario</b><small>Días, pagos y cheques</small></button>
           <button data-nav="resumen"><span class="tile-ico" aria-hidden="true">📊</span><b>A dónde va</b><small>Gastos por categoría y ¿Cuadra?</small></button>
@@ -120,6 +122,7 @@
       </div>
       <button id="abrir-calendario" class="boton-mediano">Calendario</button>
       <button id="abrir-futuro" class="boton-grande futuro">Mi futuro</button>
+      <button id="abrir-pagosfijos" class="boton-mediano">Pagos fijos</button>
       <button id="abrir-planeados" class="boton-mediano">Gastos planeados</button>
       <button id="abrir-plan" class="boton-mediano">Plan de la semana</button>
       <button id="abrir-deudas" class="boton-mediano">Mis deudas</button>
@@ -271,6 +274,18 @@
   </main>
 
   <!-- Pantalla: Gastos planeados (Bloque 15) -->
+  <!-- Pantalla: Pagos fijos (pagosfijos.js) -->
+  <main id="pantalla-pagosfijos" class="contenedor" hidden>
+    <button id="volver-pagosfijos" class="volver volver-principal">← Volver</button>
+    <p id="ceja-pagosfijos" class="ceja"></p>
+    <h1>Pagos fijos</h1>
+    <div class="pestanas" data-pestanas role="group" aria-label="Tipo de pago">
+      <button data-pestana="esenciales">Esenciales</button><button data-pestana="suscripciones">Suscripciones</button>
+    </div>
+    <section id="pf-esenciales" class="tarjeta pf-grupo" data-sec="esenciales"></section>
+    <section id="pf-suscripciones" class="tarjeta pf-grupo" data-sec="suscripciones"></section>
+  </main>
+
   <main id="pantalla-planeados" class="contenedor" hidden>
     <button id="volver-planeados" class="volver volver-principal">← Volver</button>
     <p id="ceja-planeados" class="ceja"></p>
@@ -472,6 +487,10 @@
     <p class="estado">Tus cifras. Los cambios se guardan en este teléfono, no cambian tu archivo mis-datos.json,
       y lo que ya pasó no se recalcula.</p>
     <section id="df-efecto" class="tarjeta df-efecto" hidden></section>
+    <button class="df-a-pagos" data-nav="pagosfijos">
+      <span><b>Renta, luz, internet y teléfono</b><small>Ahora se cambian en Pagos fijos</small></span>
+      <svg class="pf-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
     <div id="df-secciones"></div>
     <section class="tarjeta">
       <h2>Historial de cambios</h2>
@@ -905,7 +924,7 @@
     </div>
   </div>
 
-  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, cubrir, avisos, consejero -->
+  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, cubrir, avisos, consejero -->
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
   <script src="campos.js"></script>
@@ -924,6 +943,7 @@
   <script src="futuro.js"></script>
   <script src="colchon.js"></script>
   <script src="datosfijos.js"></script>
+  <script src="pagosfijos.js"></script>
   <script src="prestamo.js"></script>
   <script src="acuerdo.js"></script>
   <script src="respaldo.js"></script>

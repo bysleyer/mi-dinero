@@ -7,7 +7,7 @@ const Nav = {
   // Sección del menú → botón que abre esa pantalla
   SECCIONES: {
     futuro: "abrir-futuro", plan: "abrir-plan", deudas: "abrir-deudas", planeados: "abrir-planeados",
-    calendario: "abrir-calendario", resumen: "abrir-resumen", datosfijos: "abrir-datosfijos", respaldo: "abrir-respaldo",
+    calendario: "abrir-calendario", resumen: "abrir-resumen", datosfijos: "abrir-datosfijos", pagosfijos: "abrir-pagosfijos", respaldo: "abrir-respaldo",
     consejero: "abrir-consejero"
   },
   // Pantalla visible → sección marcada en el menú
@@ -15,10 +15,10 @@ const Nav = {
     "pantalla-inicio": "inicio", "pantalla-futuro": "futuro", "pantalla-alcanza": "futuro", "pantalla-escenarios": "futuro",
     "pantalla-prestamo": "futuro", "pantalla-acuerdo": "futuro", "pantalla-mover": "futuro", "pantalla-plan": "plan",
     "pantalla-deudas": "deudas", "pantalla-planeados": "planeados", "pantalla-cuando": "planeados",
-    "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-datosfijos": "datosfijos", "pantalla-respaldo": "respaldo",
+    "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-datosfijos": "datosfijos", "pantalla-pagosfijos": "pagosfijos", "pantalla-respaldo": "respaldo",
     "pantalla-cubrir": "inicio", "pantalla-consejero": "consejero"
   },
-  EN_MAS: ["consejero", "deudas", "planeados", "calendario", "resumen", "datosfijos", "respaldo"],
+  EN_MAS: ["consejero", "deudas", "pagosfijos", "planeados", "calendario", "resumen", "datosfijos", "respaldo"],
 
   visible() {
     const m = [...document.querySelectorAll("main.contenedor")].find(x => !x.hidden);
