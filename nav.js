@@ -73,7 +73,7 @@ const Nav = {
       if (que === "trabaje") $("trabaje-hoy").click();
       else if (que === "no-trabaje") $("no-trabaje-hoy").click();
       else if (que === "ysigasto") Planeados.abrirTemporal(null, hoy(), this.visible());
-      else abrirFormulario(que);
+      else abrirFormulario(que, ["gasto", "ingreso", "pagoDeuda"].includes(que) ? { selector: true } : {});
     });
     // Se marca la sección cada vez que cambia la pantalla visible
     const obs = new MutationObserver(() => this.marcar());
@@ -89,13 +89,14 @@ const Inicio = {
     if (!caja || !document.body.classList.contains("con-nav") || $("pantalla-inicio").hidden) return;
     const sem = Plan.semanaReal();
     caja.hidden = false;
-    caja.innerHTML = `
-      <h2>Esta semana</h2>
-      <button class="inicio-libre" data-nav-ir="plan">
-        <span><span class="inicio-etq">Libre para lo que quieras</span><strong>${dinero(sem.libre)}</strong></span>
-        <span><span class="inicio-etq">Guárdalo para más adelante</span><strong>${dinero(sem.guardar)}</strong></span>
-        <span class="inicio-ver">Ver el plan ›</span>
-      </button>`;
+    // "Tengo" es el primero de los tres cuadros (es el mismo botón de siempre: se mueve aquí, conserva su id y su toque)
+    const kpis = caja.querySelector(".kpis"), tengo = $("dinero-tengo");
+    if (tengo && tengo.parentElement !== kpis) kpis.prepend(tengo);
+    $("kpi-semana").innerHTML = `
+      <button class="kpi kpi-libre" data-nav-ir="plan" aria-label="Libre para lo que quieras: ${dinero(sem.libre)}. Ver el plan">
+        <span class="kpi-etq">Libre esta semana</span><strong>${dinero(sem.libre)}</strong></button>
+      <button class="kpi kpi-guardar" data-nav-ir="plan" aria-label="Guárdalo para más adelante: ${dinero(sem.guardar)}. Ver el plan">
+        <span class="kpi-etq">Para después</span><strong>${dinero(sem.guardar)}</strong></button>`;
     if (typeof Avisos !== "undefined") Avisos.mostrar();
     if (typeof Consejero !== "undefined") Consejero.tarjetaInicio();
   },

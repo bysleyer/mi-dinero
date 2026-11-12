@@ -33,7 +33,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 42, fecha: "12 nov 2026" };
+const VERSION_APP = { numero: 43, fecha: "12 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -198,7 +198,7 @@ const Datos = {
 const CATEGORIAS = ["Comida", "Transporte", "Teléfono", "Luz", "Internet", "Hijos", "Otros"];
 
 const campoMonto = () => `
-  <div class="campo">
+  <div class="campo campo-monto">
     <label for="f-monto">Monto</label>
     <input id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
   </div>`;
@@ -213,13 +213,14 @@ const Formularios = {
   ingreso: {
     titulo: "Me pagaron",
     campos: () => `
+      ` + campoMonto() + `
       <div class="campo">
         <label for="f-tipo-ingreso">Tipo</label>
         <select id="f-tipo-ingreso">
           <option value="cheque">Cheque</option>
           <option value="otro">Otro ingreso</option>
         </select>
-      </div>` + campoMonto() + campoFecha() + `
+      </div>` + campoFecha() + `
       <div class="campo" id="campo-horas">
         <label for="f-horas">Horas trabajadas <span class="opcional">(opcional)</span></label>
         <input id="f-horas" type="number" inputmode="decimal" step="0.5" min="0">
@@ -302,6 +303,7 @@ const Formularios = {
     campos: () => `
       <p class="ayuda">Aquí va lo que debes de <strong>meses anteriores</strong>.
         Las facturas de este mes (teléfono, luz, internet) van en "Gasté".</p>
+      ` + campoMonto() + `
       <div class="campo">
         <label for="f-deuda">¿A cuál deuda?</label>
         <select id="f-deuda">
@@ -321,7 +323,7 @@ const Formularios = {
           }).join("")}
           <option value="atrasada">Renta atrasada (lo que ya debías)</option>
         </select>
-      </div>` + campoMonto() + campoFecha(),
+      </div>` + campoFecha(),
     // La renta: hay que saber si es la del mes que viene o lo atrasado (con "Ya lo pagué" ya se sabe)
     alCambiar() {
       $("campo-renta-para").hidden = $("f-deuda").value !== Plan.ID_DEUDA_RENTA || !!(formularioExtra && formularioExtra.vencimiento);
@@ -455,10 +457,32 @@ function abrirFormulario(tipo, valores = {}) {
   if (valores.monto != null) $("f-monto").value = redondear(valores.monto).toFixed(2);
   if (valores.fecha && $("f-fecha")) $("f-fecha").value = valores.fecha;
   if (valores.horas != null && $("f-horas")) $("f-horas").value = valores.horas;
+  if (valores.selector) ponerSelectorDeTipo(tipo);
+  if (tipo === "gasto") ponerChipsDeCategoria();
   if (f.alCambiar) f.alCambiar();
   $("form-error").textContent = "";
   $("ventana").hidden = false;
   document.body.style.overflow = "hidden";
+}
+
+// Cambiar entre Gasté · Me pagaron · Pagué una deuda sin volver atrás (conserva el monto que ya escribiste)
+const TIPOS_DINERO = [["gasto", "Gasté"], ["ingreso", "Me pagaron"], ["pagoDeuda", "Pagué una deuda"]];
+function ponerSelectorDeTipo(tipo) {
+  if (!TIPOS_DINERO.some(t => t[0] === tipo)) return;
+  $("form-campos").insertAdjacentHTML("afterbegin",
+    `<div class="chips chips-tipo" role="group" aria-label="Qué vas a registrar">${TIPOS_DINERO.map(([id, txt]) =>
+      `<button type="button" class="chip" data-tipo-form="${id}" aria-pressed="${id === tipo}">${txt}</button>`).join("")}</div>`);
+}
+
+// Categorías de un gasto como chips (la lista de siempre queda escondida y es la que se guarda)
+function ponerChipsDeCategoria() {
+  const sel = $("f-categoria");
+  if (!sel || (sel.value && !CATEGORIAS.includes(sel.value))) return; // categoría especial (ej.: Navidad): se queda la lista
+  const campo = sel.closest(".campo");
+  campo.hidden = true;
+  campo.insertAdjacentHTML("afterend",
+    `<div class="chips chips-categoria" role="group" aria-label="Categoría">${CATEGORIAS.map(c =>
+      `<button type="button" class="chip" data-categoria="${c}" aria-pressed="${sel.value === c}">${c}</button>`).join("")}</div>`);
 }
 
 function cerrarFormulario() {
@@ -821,6 +845,17 @@ try {
   $("rapido-transporte").addEventListener("click", () => abrirFormulario("transporte"));
   $("dinero-tengo").addEventListener("click", () => abrirFormulario("corregirDinero", { monto: Dinero.actual() }));
   $("form-campos").addEventListener("click", e => {
+    const t = e.target.closest("[data-tipo-form]");
+    if (t && t.dataset.tipoForm !== formularioAbierto) {
+      const m = $("f-monto") ? $("f-monto").value.trim() : "";
+      return abrirFormulario(t.dataset.tipoForm, { selector: true, monto: m !== "" && Number(m) >= 0 ? Number(m) : undefined });
+    }
+    const c = e.target.closest("[data-categoria]");
+    if (c) {
+      $("f-categoria").value = c.dataset.categoria;
+      $("f-categoria").dispatchEvent(new Event("change", { bubbles: true }));
+      document.querySelectorAll("[data-categoria]").forEach(x => x.setAttribute("aria-pressed", x === c));
+    }
     const b = e.target.closest("[data-llenar-monto]");
     if (b) { $("f-monto").value = Number(b.dataset.llenarMonto).toFixed(2); $("f-monto").focus(); }
     if (e.target.closest("#deshacer-transporte")) Transporte.deshacerUltimo();

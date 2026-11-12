@@ -170,12 +170,12 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .pago-bloque .resumen li { padding: 6px 0; border: none; }
 .pago-bloque .resumen li.total { border-top: 1px solid var(--borde); padding-top: 8px; }
 .alerta {
-  background: #ff7a6b; color: #171e23; border-radius: 16px; padding: 18px;
+  background: #2e1f1c; color: #ffd0ca; border-radius: 12px; border-left: 4px solid var(--error); padding: 16px 16px 16px 14px;
   margin-bottom: 16px; font-size: 1.05rem;
 }
 .alerta[hidden] { display: none; }
-.alerta strong { display: block; font-size: 1.2rem; margin-bottom: 6px; }
-.alerta a { color: #171e23; font-weight: 700; }
+.alerta strong { display: block; font-size: 1.2rem; margin-bottom: 6px; color: #ffb4ab; }
+.alerta a { color: #ffb4ab; font-weight: 700; }
 .alerta .contacto { margin: 10px 0 0; }
 .subtitulo { margin-top: 20px; }
 .resumen li.actual { background: #11302a; margin: 0 -10px; padding-left: 10px; padding-right: 10px; border-radius: 10px; }
@@ -300,9 +300,9 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 
 /* ---------- Bloque 9: Próximos pagos y ¿Me alcanza? ---------- */
 .pago-fila { padding-left: 8px; padding-right: 6px; border-radius: 10px; }
-.pago-fila.rojo { background: transparent; box-shadow: inset 4px 0 0 var(--error); padding-left: 12px; }
+.pago-fila.rojo { background: transparent; border-radius: 0; border-left: 4px solid var(--error); padding-left: 12px; }
 .pago-fila.rojo .mov-tipo { color: #ffb4ab; }
-.pago-fila.amarillo { background: #2d2411; }
+.pago-fila.amarillo { background: transparent; border-radius: 0; border-left: 4px solid var(--aviso); padding-left: 12px; }
 .pago-fila.amarillo .mov-tipo { color: #f5b84b; }
 .pago-fila.pagado { opacity: .6; }
 .pago-lado { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
@@ -944,3 +944,44 @@ h1 { letter-spacing: -0.02em; line-height: 1.1; }
 
 /* Arranque (arranque.js): en blanco un instante mientras carga, para que no "salte" */
 html.cargando body { visibility: hidden; }
+
+/* =========================================================
+   TABLERO — Inicio: tres cuadros arriba (Tengo · Libre esta semana · Para después)
+   y una franja compacta con lo urgente debajo.
+   ========================================================= */
+.inicio-semana { margin: 10px 0 0; padding: 0; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.kpi-semana { display: contents; } /* los dos cuadros de la semana quedan en la misma fila que "Tengo" */
+.kpis .dinero-tengo, .kpi {
+  min-width: 0; min-height: 84px; padding: 12px 10px; border-radius: 14px; border: 1px solid var(--borde);
+  background: var(--tarjeta); color: var(--texto); font: inherit; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 6px; line-height: 1.15;
+}
+.kpis .dinero-tengo.positivo { border-color: #2c5a4f; }
+.kpis .dinero-tengo.negativo { border-color: #5a3a35; }
+.kpis .dinero-etiqueta, .kpi-etq { font-size: .72rem; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .3px; line-height: 1.2; }
+.kpis .dinero-cifra, .kpi strong { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.kpi-libre strong { color: var(--ok); }
+.kpi-guardar strong { color: var(--aviso); }
+/* Franja de avisos urgentes: compacta, debajo de los tres cuadros */
+.avisos-afuera { margin: 10px 0 12px; gap: 6px; }
+.avisos-afuera .aviso-item { padding: 10px 12px; border-radius: 12px; border-left: 4px solid var(--aviso); }
+.avisos-afuera .aviso-item.rojo { border-left-color: var(--error); }
+.avisos-afuera .aviso-item p { font-size: .9rem; line-height: 1.35; margin: 0 0 6px; }
+.avisos-afuera .aviso-item .boton-chico { min-height: 44px; padding: 6px 14px; font-size: .9rem; }
+@media (max-width: 380px) {
+  .kpis .dinero-cifra, .kpi strong { font-size: 1.1rem; }
+}
+
+/* TABLERO — Registrar: monto grande al principio y chips (tipo y categoría) */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.chip {
+  min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--borde); background: var(--tarjeta);
+  color: var(--suave); font: inherit; font-size: .95rem; font-weight: 700; cursor: pointer; touch-action: manipulation;
+}
+.chip[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); background: #11302a; }
+.chip:active { transform: scale(.97); }
+.campo-monto input { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; min-height: 64px; }
+
+.chips-tipo { flex-wrap: nowrap; }
+.chips-tipo .chip { flex: 1 1 auto; padding: 0 6px; font-size: .88rem; white-space: nowrap; }
