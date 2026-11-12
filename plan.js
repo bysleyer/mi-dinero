@@ -416,6 +416,7 @@ const Plan = {
       tarjeta("Colchón", so.colchon.guardado, so.colchon.meta, "");
     const ap = this.cuantoApartar(sem, so);
     $("apartar").disabled = !!c.vista || ap.renta + ap.servicios <= 0.005;
+    $("apartar").textContent = ap.renta + ap.servicios > 0.005 ? `Apartar lo de esta semana · ${dinero(ap.renta + ap.servicios)}` : "Apartar lo de esta semana";
     $("apartar-texto").textContent = c.vista ? "Quita la vista previa para apartar."
       : ap.renta + ap.servicios > 0.005 ? `Esta semana apartarías: renta ${dinero(ap.renta)} y servicios ${dinero(ap.servicios)} (lo que la cuenta dice que hay que guardar).`
       : "Tus sobres ya tienen lo que hay que guardar esta semana.";

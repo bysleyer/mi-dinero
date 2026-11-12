@@ -315,19 +315,22 @@
     <button id="volver-consejero" class="volver">← Volver</button>
     <h1>Tu consejero</h1>
     <p id="cj-estado" class="opcional"></p>
-    <section class="tarjeta"><h2>Informe</h2><div id="cj-informe"></div></section>
-    <section id="cj-pasos-caja" class="tarjeta"><h2>Tu plan</h2><div id="cj-pasos"></div></section>
-    <section class="tarjeta"><h2>Tus reglas</h2><ul id="cj-reglas" class="movimientos cj-lista"></ul></section>
-    <section class="tarjeta"><h2>Comentarios</h2><ul id="cj-comentarios" class="movimientos cj-lista"></ul></section>
-    <section class="tarjeta"><h2>Fuera del plan esta semana</h2><ul id="cj-fuera" class="movimientos cj-lista"></ul></section>
-    <section class="tarjeta">
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes de tu consejero">
+      <button data-pestana="hoy">Hoy</button><button data-pestana="reglas">Reglas</button><button data-pestana="notas">Notas</button>
+    </div>
+    <section class="tarjeta" data-sec="hoy"><h2>Informe</h2><div id="cj-informe"></div></section>
+    <section id="cj-pasos-caja" class="tarjeta" data-sec="hoy"><h2>Tu plan</h2><div id="cj-pasos"></div></section>
+    <section class="tarjeta" data-sec="reglas"><h2>Tus reglas</h2><ul id="cj-reglas" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta" data-sec="notas"><h2>Comentarios</h2><ul id="cj-comentarios" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta" data-sec="hoy"><h2>Fuera del plan esta semana</h2><ul id="cj-fuera" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta" data-sec="notas">
       <h2>Háblale a tu consejero</h2>
       <p class="ayuda">Cuéntale algo que la app no sabe (un cumpleaños, un cambio de turno, una duda). Lo lee en la próxima revisión y te contesta aquí.</p>
       <div class="campo"><label for="cj-nota" class="oculto">Tu nota</label><textarea id="cj-nota" rows="3" maxlength="400"></textarea></div>
       <button id="cj-enviar" class="boton-mediano">Enviar</button>
       <ul id="cj-notas" class="movimientos cj-lista"></ul>
     </section>
-    <section class="tarjeta">
+    <section class="tarjeta" data-sec="notas">
       <h2>¿Una duda ya?</h2>
       <p class="ayuda">Se abre tu app de Claude con tu situación y tu pregunta ya escritas.</p>
       <div class="campo"><label for="cj-pregunta" class="oculto">Tu pregunta</label><textarea id="cj-pregunta" rows="2" maxlength="300" placeholder="Ej.: ¿me alcanza para unos zapatos de $80?"></textarea></div>

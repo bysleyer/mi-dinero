@@ -73,11 +73,14 @@ const DatosFijos = {
   mostrar() {
     if ($("pantalla-datosfijos").hidden) return;
     const programados = Almacen.leerCambiosDatos().filter(x => !x.deshecho && x.desde > hoy());
-    $("df-secciones").innerHTML = this.SECCIONES.map(s => {
+    // Cada sección se abre y se cierra (la primera empieza abierta); al volver a dibujar se respeta lo que estaba abierto
+    const abiertas = new Set([...document.querySelectorAll("#df-secciones details[open]")].map(e => e.dataset.dfSeccion));
+    const primeraVez = !document.querySelector("#df-secciones details");
+    $("df-secciones").innerHTML = this.SECCIONES.map((s, i) => {
       const campos = CAMPOS_DATOS.filter(c => c.seccion === s.id);
       return `
-        <section class="tarjeta df-seccion" data-df-seccion="${s.id}">
-          <h2>${s.titulo}</h2>
+        <details class="tarjeta df-seccion" data-df-seccion="${s.id}" ${(primeraVez ? i === 0 : abiertas.has(s.id)) ? "open" : ""}>
+          <summary><h2>${s.titulo}</h2></summary>
           ${campos.map(c => {
             const v = this.valorHoy(c);
             const o = this.valorOriginal(c);
@@ -107,7 +110,7 @@ const DatosFijos = {
           </div>
           <p id="df-error-${s.id}" class="error df-error"></p>
           <button class="boton-chico lleno df-guardar" data-df-guardar="${s.id}">Guardar</button>
-        </section>`;
+        </details>`;
     }).join("");
     this.mostrarHistorial();
   },
