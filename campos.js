@@ -198,3 +198,80 @@ const ReglasPago = {
     return { fecha, monto: v.monto };
   }
 };
+
+/*
+ * ORDEN DE PRIORIDAD (Más → Pagos fijos → Orden): qué se cubre primero cuando el dinero no alcanza.
+ *   Nivel 1  no se atrasa: la RENTA siempre primero (fija), y lo que pongas aquí.
+ *   Nivel 2  se puede mover o dividir: luz, internet, teléfono y los esenciales que agregues.
+ *   Nivel 3  suscripciones: siempre al final (solo se cambia el orden entre ellas).
+ * Se guarda en "prioridad" { n1, n2, n3 } (sin la renta). Sin nada guardado, es el orden de siempre.
+ * La cuenta día por día usa este orden dentro de cada día; ¿Y si cobro...? usa los niveles.
+ */
+const Prioridad = {
+  FIJO: "renta",
+  DEFECTO_N1: ["prestamo", "transporte", "comida"],
+  DEFECTO_N2: ["luz", "internet", "telefono"],
+  NOMBRES: { renta: "Renta", prestamo: "Préstamo semanal", transporte: "Transporte", comida: "Comida",
+             luz: "Luz", internet: "Internet", telefono: "Teléfono" },
+  // Lo que pasa si bajas algo importante al nivel 2 (se muestra como aviso, no se prohíbe)
+  AVISOS: {
+    transporte: "El transporte te lleva al trabajo: si no lo pagas, no cobras.",
+    comida: "La comida de la semana no debería quedar sin cubrir.",
+    prestamo: "Si lo vas a mover, avísale antes a quien te prestó."
+  },
+
+  guardado() { return Almacen.leer("prioridad") || {}; },
+
+  // La cuenta pregunta el orden de cada línea: se guarda el resultado mientras no cambie lo guardado
+  _cache: null,
+  niveles() {
+    let crudo = "";
+    try { crudo = (localStorage.getItem(Almacen.prefijo + "prioridad") || "") + "|" + (localStorage.getItem(Almacen.prefijo + "pagosPropios") || ""); } catch (e) { /* sin almacenamiento */ }
+    if (this._cache && this._cache.crudo === crudo) return this._cache.n;
+    const n = this.calcularNiveles();
+    this._cache = { crudo, n };
+    return n;
+  },
+
+  calcularNiveles() {
+    const g = this.guardado();
+    const propios = Almacen.leerPagosPropios();
+    const es = propios.filter(p => p.grupo !== "suscripcion").map(p => p.id);
+    const su = propios.filter(p => p.grupo === "suscripcion").map(p => p.id);
+    const validos = new Set([...this.DEFECTO_N1, ...this.DEFECTO_N2, ...es]);
+    const n1 = (g.n1 || this.DEFECTO_N1).filter(id => validos.has(id));
+    const n2 = (g.n2 || this.DEFECTO_N2).filter(id => validos.has(id) && !n1.includes(id));
+    // Lo que no está en ningún lado (ej.: un esencial nuevo) va al final de su nivel normal
+    [...this.DEFECTO_N1, ...this.DEFECTO_N2, ...es].forEach(id => {
+      if (!n1.includes(id) && !n2.includes(id)) (this.DEFECTO_N1.includes(id) ? n1 : n2).push(id);
+    });
+    const n3 = [...(g.n3 || []).filter(id => su.includes(id)), ...su.filter(id => !(g.n3 || []).includes(id))];
+    return { n1: [this.FIJO, ...n1], n2, n3 };
+  },
+
+  guardar({ n1, n2, n3 }) {
+    return Almacen.guardar("prioridad", { n1: n1.filter(id => id !== this.FIJO), n2, n3 });
+  },
+
+  // Volver al orden de siempre: se guarda vacío (y no se borra) para que la sincronización lo lleve a los otros aparatos
+  porDefecto() { Almacen.guardar("prioridad", {}); },
+  cambiado() { return Object.keys(this.guardado()).length > 0; },
+
+  nivel(id) {
+    const n = this.niveles();
+    return n.n1.includes(id) ? 1 : n.n2.includes(id) ? 2 : n.n3.includes(id) ? 3 : 0;
+  },
+
+  // Orden dentro de un día en la cuenta (cheque 0 · nivel 1: 1 a 4.9 · deudas inmediatas 5 · nivel 2: 10 · nivel 3: 11 · planeados 15).
+  // Con el orden de siempre da lo mismo que antes (renta, préstamo, transporte, comida, luz, internet, teléfono).
+  orden(id) {
+    const n = this.niveles();
+    let i = n.n1.indexOf(id);
+    if (i >= 0) return Math.min(4.9, 1 + i * 0.3);
+    i = n.n2.indexOf(id);
+    if (i >= 0) return 10 + i * 0.01;
+    i = n.n3.indexOf(id);
+    if (i >= 0) return 11 + i * 0.01;
+    return null;
+  }
+};

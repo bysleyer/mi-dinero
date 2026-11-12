@@ -3,7 +3,8 @@
  * Busca qué puedes hacer para cubrir el faltante más cercano, con la misma cuenta de proyeccion.js.
  * Prueba cada opción, la ordena de menos a más costosa y arma la combinación más barata.
  * Solo SUGIERE: nada cambia hasta que tocas un botón.
- * Reglas acordadas: las sugerencias solo mueven el TELÉFONO (permite_mover); el tren y el taxi no se tocan;
+ * Reglas acordadas: las sugerencias solo mueven lo que permite moverse (permite_mover); el tren y el taxi no se tocan;
+ * una suscripción (Pagos fijos) se puede pausar antes de tocar lo esencial;
  * las horas extra se sugieren aparte, "solo si hay horas disponibles".
  */
 const Cubrir = {
@@ -58,6 +59,17 @@ const Cubrir = {
       ops.push({ id: `planeado-${g.id}`, costo: 0, titulo: `Comprar "${g.nombre}" después`, detalle: `Pasarlo al ${Futuro.diaCorto(dest)} o más adelante.`,
         costoTxt: "Sin costo (solo esperar)", accion: "planeado", planeadoId: g.id,
         mod: { excluirPlaneado: [g.id], extras: [{ fecha: dest, monto: -pendiente, nombre: `${g.nombre} (después)` }] } });
+    });
+    // 2b) Pausar una suscripción que se cobra antes de que termine el faltante (lo primero que se deja).
+    // Una sola opción por suscripción: pausarla quita todos sus cobros hasta ese día.
+    Almacen.leerPagosPropios().filter(p => p.grupo === "suscripcion").forEach(p => {
+      const cobros = pr.lineas.filter(l => l.tipo === "pago" && l.id === p.id && l.claveMov && !l.movido && l.fecha <= f.fin);
+      if (!cobros.length) return;
+      const total = redondear(-cobros.reduce((s, l) => s + l.monto, 0));
+      ops.push({ id: `pausar-${p.id}`, costo: 0.5, titulo: `Pausar ${p.nombre}`,
+        detalle: `No se cobra ${cobros.length > 1 ? `en los próximos ${cobros.length} meses` : `el ${Futuro.diaCorto(cobros[0].fecha)}`}; la reanudas cuando quieras en Pagos fijos.`,
+        costoTxt: `Ahorras ${dinero(total)}`, accion: "pausar", pagoId: p.id, fecha: cobros[0].fecha, nombre: p.nombre,
+        mod: { excluir: cobros.map(l => l.claveMov) } });
     });
     // 3) Comida en modo extremo
     const min = Proyeccion.comidaMinima(), comida = Vencimientos.gasto("comida");
@@ -157,7 +169,7 @@ const Cubrir = {
     $("cb-objetivo").innerHTML = `<p class="cb-faltante">${escapar(Proyeccion.textoFaltante(f))}</p>
       <p class="estado">Escenario: ${escapar(esc.titulo)}. Para cubrirlo, el dinero tiene que estar antes de esa fecha.</p>`;
     // En "Te recomiendo" el botón usa la opción tal como quedó en el plan (ej.: el teléfono dividido)
-    const boton = (o, i, delPlan = null) => o.accion ? `<button class="boton-chico lleno" data-cb-op="${i}" ${delPlan ? "data-cb-plan" : ""}>${{ colchon: "Usar", planeado: "Elegir otra fecha", comida: "Aplicar", mover: "Mover" }[o.accion]}</button>` : "";
+    const boton = (o, i, delPlan = null) => o.accion ? `<button class="boton-chico lleno" data-cb-op="${i}" ${delPlan ? "data-cb-plan" : ""}>${{ colchon: "Usar", planeado: "Elegir otra fecha", comida: "Aplicar", mover: "Mover", pausar: "Pausar" }[o.accion]}</button>` : "";
     const filas = p.elegidas.map(o => `<li><div class="mov-info"><div class="mov-tipo">${escapar(o.titulo)}</div>
         <div class="mov-detalle">${escapar(o.detalle)} · ${escapar(o.costoTxt)}</div></div>
         <div class="pago-lado"><span class="mov-monto ok">cubre ${dinero(o.aporta)}</span>${boton(o, p.ops.findIndex(x => x.id === o.id), o)}</div></li>`);
@@ -188,6 +200,18 @@ const Cubrir = {
       Almacen.guardarFuturo({ comidaExtrema: true });
       Pantalla.aviso("Comida en modo extremo (solo en caso extremo)");
       window.dispatchEvent(new Event("movimientos-cambiaron"));
+      this.mostrar();
+    }
+    if (o.accion === "pausar") {
+      const p = Almacen.leerPagosPropios().find(x => x.id === o.pagoId);
+      if (p) {
+        // Desde el día antes del cobro (así ese cobro ya no cuenta) o desde hoy
+        const desde = [hoy(), o.fecha].sort()[0];
+        Almacen.guardarPagoPropio({ ...p, pausas: [...(p.pausas || []).filter(x => x.hasta), { desde, hasta: null }] });
+        Datos.recargar();
+        Pantalla.aviso(`${p.nombre} pausada`);
+        window.dispatchEvent(new Event("movimientos-cambiaron"));
+      }
       this.mostrar();
     }
     if (o.accion === "planeado") { $("pantalla-cubrir").hidden = true; Planeados.abrirCuando(o.planeadoId); }

@@ -21,6 +21,7 @@
  *   consejero      lo último que dejó tu consejero (consejero.json del repositorio de datos; no se sincroniza de vuelta)
  *   notasConsejero tus notas para el consejero: { id, texto, creado, modificado }
  *   cambiosDatos   "Datos fijos": { id, campo, valor, anterior, desde, creado, deshecho }
+ *   prioridad      orden de prioridad editable (campos.js: Prioridad) { n1, n2, n3 } sin la renta
  *   pagosPropios   pagos fijos que agrego yo (pagosfijos.js): esenciales y suscripciones con sus fechas
  *   planeados      gastos planeados: { id, nombre, monto, fechaLimite, categoria, nota, tipo,
  *                  enPartes, partes, elegido: [{ fecha, monto }] | null }
@@ -481,6 +482,7 @@ const Almacen = {
       pagosPropios: this.leerTodosLosPagosPropios(),
       notasConsejero: this.leer("notasConsejero") || [],
       rentaCargosDesde: this.leer("rentaCargosDesde"),
+      prioridad: this.leer("prioridad"),
       acuerdoRenta: this.leer("acuerdoRenta") || []
     };
   },
@@ -511,6 +513,8 @@ const Almacen = {
     else { this.borrar("planesDeuda"); if (respaldo.acuerdoRenta && respaldo.acuerdoRenta.length) this.guardar("acuerdoRenta", respaldo.acuerdoRenta); }
     if (respaldo.acuerdoSimulado) this.guardar("acuerdoSimulado", respaldo.acuerdoSimulado);
     else this.borrar("acuerdoSimulado");
+    if (respaldo.prioridad) this.guardar("prioridad", respaldo.prioridad);
+    else this.borrar("prioridad");
     if (respaldo.rentaCargosDesde) this.guardar("rentaCargosDesde", respaldo.rentaCargosDesde);
     else this.borrar("rentaCargosDesde");
     this.guardar("acuerdoRenta", respaldo.acuerdoRenta || []);

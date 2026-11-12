@@ -144,10 +144,10 @@ const Proyeccion = {
       const { comida, transporte, diasTransporte, minima } = Datos.conFecha(disponible, () => ({
         comida: Vencimientos.gasto("comida"), transporte: Vencimientos.gasto("transporte"),
         diasTransporte: this.horasSemana(lunes).diasConTrabajo, minima: this.comidaMinima() }));
-      if (transporte && diasTransporte > 0) lineas.push({ fecha: disponible, orden: 3, tipo: "semanal", id: "transporte",
+      if (transporte && diasTransporte > 0) lineas.push({ fecha: disponible, orden: Prioridad.orden("transporte") ?? 3, tipo: "semanal", id: "transporte",
         nombre: `Transporte (${dinero(transporte.porDia)} × ${diasTransporte} ${diasTransporte === 1 ? "día" : "días"})`,
         monto: -redondear(transporte.porDia * diasTransporte) });
-      if (comida) lineas.push({ fecha: disponible, orden: 4, tipo: "semanal", id: "comida",
+      if (comida) lineas.push({ fecha: disponible, orden: Prioridad.orden("comida") ?? 4, tipo: "semanal", id: "comida",
         nombre: extrema && minima != null ? "Comida (modo extremo)" : "Comida", monto: -(extrema && minima != null ? minima : comida.monto) });
     }
 
@@ -160,7 +160,8 @@ const Proyeccion = {
       const pendientes = item.partes.filter(p => !p.pagado);
       const pendiente = pendientes.reduce((s, p) => s + p.monto, 0);
       if (pendiente <= 0) return;
-      const orden = item.id === "renta" ? 1 : item.id === "prestamo" ? 2 : item.inmediato ? 5 : item.planeado ? 15 : 10;
+      // Orden dentro del día: el de Más → Pagos fijos → Orden (renta, nivel 1, nivel 2, suscripciones)
+      const orden = (!item.inmediato && !item.planeado && Prioridad.orden(item.id)) || (item.inmediato ? 5 : item.planeado ? 15 : 10);
       lineas.push({ fecha: item.fecha, orden, tipo: "pago", id: item.id, letra: item.letra,
         nombre: item.planeado ? `${item.nombre} (planeado)` : item.nombre,
         detalle: pendientes.length > 1 ? pendientes.map(p => dinero(p.monto)).join(" + ") : "",
@@ -437,7 +438,7 @@ const Proyeccion = {
   // ---------- Bloque 16: arrastre ----------
   // Primer pago de Nivel 1 que no se cubre completo: cuánto falta y hasta qué cheque se arrastra.
   arrastre(pr) {
-    const N1 = ["renta", "prestamo", "comida", "transporte"];
+    const N1 = Prioridad.niveles().n1; // renta y lo que está en el nivel 1
     const l = pr.lineas.find(x => N1.includes(x.id) && x.monto < 0 && x.saldo < -0.005 && pr.porDia[x.fecha]);
     if (!l) return null;
     const monto = -l.monto;

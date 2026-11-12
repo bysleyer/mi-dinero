@@ -76,8 +76,10 @@ const Escenarios = {
   // ---------- Repartir un escenario ----------
   // Usa la MISMA cuenta día por día que "Mover este pago" (proyeccion.js):
   // dinero de arriba + cheques en su fecha (el próximo con el monto del escenario) − vencimientos y gastos semanales.
-  N1: ["renta", "prestamo", "transporte", "comida"],
-  N2: ["luz", "telefono", "internet"],
+  // Niveles de Más → Pagos fijos → Orden (las suscripciones son el nivel 3: se mueven o se pausan)
+  get N1() { return Prioridad.niveles().n1; },
+  get N2() { return Prioridad.niveles().n2; },
+  get N3() { return Prioridad.niveles().n3; },
 
   repartir(ingreso, _dineroHoy, porcentajeColchon) {
     const r = this.reglas();
@@ -95,7 +97,8 @@ const Escenarios = {
       pr.porDia[f].lineas.forEach(l => {
         if (l.tipo === "cheque") { saldo = redondear(saldo + l.monto); chequesHasta += l.monto; return; }
         const monto = -l.monto;
-        const nivel = this.N1.includes(l.id) ? 1 : (this.N2.includes(l.id) || l.inmediato) ? 2 : 0;
+        const N1 = this.N1, N2 = this.N2, N3 = this.N3;
+        const nivel = N1.includes(l.id) ? 1 : (N2.includes(l.id) || l.inmediato) ? 2 : N3.includes(l.id) ? 3 : 0;
         if (!nivel) { saldo = redondear(saldo + l.monto); return; }
         let paga = 0, estado, costo = "", clase, conCheque = null;
 
@@ -227,8 +230,8 @@ const Escenarios = {
         <p class="estado esc-cuenta">${escapar(r.cuenta)}</p>
         ${RentaUI.html(r.pr)}
         <ul class="escenario-lista">
-          ${[1, 2].map(n => `
-            <li class="nivel-titulo">Nivel ${n}${n === 1 ? " · no se atrasa" : " · se divide o se mueve"}</li>
+          ${[1, 2, 3].filter(n => n < 3 || r.filas.some(f => f.nivel === 3)).map(n => `
+            <li class="nivel-titulo">Nivel ${n}${n === 1 ? " · no se atrasa" : n === 2 ? " · se divide o se mueve" : " · suscripciones (se pausan primero)"}</li>
             ${r.filas.filter(f => f.nivel === n).map(f => `
               <li class="esc-fila ${f.clase}">
                 <div class="mov-info">

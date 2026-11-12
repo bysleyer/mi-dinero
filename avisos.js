@@ -65,6 +65,24 @@ const Avisos = {
         return l.length ? `${cuando}: ${l.map(v => `${v.nombre} ${dinero(v.monto)}`).join(", ")}` : "";
       }).filter(Boolean).join("; ") + ".", acciones: [["Ver próximos pagos", "pagos"]] });
 
+    // 3b) Pagos fijos que agregué (esenciales y suscripciones): si en su fecha no alcanza, qué hacer a tiempo
+    const ids = Almacen.leerPagosPropios().map(p => p.id);
+    if (ids.length) {
+      Vencimientos.entre(hoyClave, Jornadas.sumarDias(hoyClave, 30)).filter(i => ids.includes(i.id) && i.partes.some(p => !p.pagado)).forEach(i => {
+        if (!Mover.noAlcanza(i)) return;
+        const pend = redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0));
+        const dias = Vencimientos.diasHasta(i.fecha);
+        const sub = Almacen.leerPagosPropios().find(p => p.id === i.id).grupo === "suscripcion";
+        const cheques = pr.cheques.filter(c => c >= hoyClave && c <= i.fecha).length;
+        const guarda = cheques > 1 ? ` Aparta ${dinero(redondear(pend / cheques))} de cada uno de tus próximos ${cheques} cheques,` : "";
+        const a = { id: `pf-falta-${i.claveMov}`, firma: `${pend}|${i.fecha}`, clase: dias <= 3 ? "rojo" : "amarillo",
+          texto: `${i.nombre} (${dinero(pend)}) vence el ${dia(i.fecha)} y ese día no alcanza.${guarda}${guarda ? " o" : ""} muévelo o divídelo${sub ? ", o pausa la suscripción" : ""}.`
+            .replace("alcanza. muévelo", "alcanza. Muévelo"),
+          acciones: [["Mover o dividir", "mover"], ...(sub ? [["Pausar", "pausar"]] : [])], clave: i.claveMov };
+        (dias <= 3 ? afuera : campana).push(a);
+      });
+    }
+
     // 4) Acción legal del día 15 (ya dice cuánto es la renta atrasada)
     if (atr > 0.005 && faltan <= 7) {
       const a = { id: "dia15", firma: `${faltan}|${atr}`, clase: "amarillo",
@@ -166,6 +184,7 @@ const Avisos = {
     if (acc === "futuro") return Nav.ir("futuro");
     if (acc === "deudas") return Nav.ir("deudas");
     if (acc === "planeados") return Nav.ir("planeados");
+    if (acc === "pausar" && clave) { Nav.ir("pagosfijos"); return PagosFijos.abrirEditor(clave.split("@")[0]); }
     if (acc === "respaldo") return Nav.ir("respaldo");
     if (acc === "registrar") return Nav.abrirHoja("registrar");
     if (acc === "pagos") { Nav.ir("inicio"); $("proximos-pagos").scrollIntoView({ block: "start" }); return; }

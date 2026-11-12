@@ -84,7 +84,17 @@ const { chromium } = require("playwright");
       movimientos: movs.map(m => ({ id: m.id, tipo: m.tipo, fecha: m.fecha, monto: m.monto, categoria: m.categoria, nota: m.nota,
                                    tipoIngreso: m.tipoIngreso, deudaId: m.deudaId, razonFueraPlan: m.razonFueraPlan, creado: m.creado })),
       jornadas: Almacen.leerJornadas(),
-      notasConsejero: Almacen.leer("notasConsejero") || []
+      notasConsejero: Almacen.leer("notasConsejero") || [],
+      // Más → Pagos fijos: esenciales y suscripciones (el consejero puede SUGERIR pausar una; nunca la pausa él)
+      pagosFijos: (() => {
+        try {
+          const fila = x => ({ id: x.id, nombre: x.nombre, monto: x.monto, venceDia: x.venceDia, variable: !!x.variable, estado: x.estado, grupo: x.grupo });
+          const es = PagosFijos.lista("esencial").map(fila), su = PagosFijos.lista("suscripcion").map(fila);
+          return { esenciales: es, suscripciones: su, totalEsenciales: PagosFijos.total(es), totalSuscripciones: PagosFijos.total(su),
+                   suscripcionesActivas: su.filter(x => x.estado === "activo").length };
+        } catch (e) { return { error: e.message }; }
+      })(),
+      prioridad: (() => { try { return { ...Prioridad.niveles(), cambiada: Prioridad.cambiado() }; } catch (e) { return { error: e.message }; } })()
     };
   });
   r.errores = errores;

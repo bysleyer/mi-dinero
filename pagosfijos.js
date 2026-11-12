@@ -121,6 +121,87 @@ const PagosFijos = {
         : `<p class="vacio pf-vacio">Todavía no tienes suscripciones. Agrega Netflix, Spotify o lo que pagues cada mes para que cuente en tus números.</p>`}
       ${ahorro > 0 ? `<p class="pf-ahorro">Pausadas o canceladas: <strong>ahorras ${dineroCorto(ahorro)} al mes</strong>.</p>` : ""}
       <button class="boton-chico pf-agregar" data-pf-agregar="suscripcion">+ Agregar suscripción</button>`;
+    this.mostrarOrden();
+  },
+
+  // ---------- Orden de prioridad (campos.js: Prioridad) ----------
+  nombreDe(id) {
+    if (Prioridad.NOMBRES[id]) {
+      const g = Datos.actual.gastosFijos.find(x => x.id === (id === "prestamo" ? Plan.ID_GASTO_PRESTAMO : id));
+      return id === "renta" || !g ? Prioridad.NOMBRES[id] : g.nombre;
+    }
+    const p = Almacen.leerPagosPropios().find(x => x.id === id);
+    return p ? p.nombre : id;
+  },
+
+  filaOrden(id, nivel, i, total, n) {
+    const fija = id === Prioridad.FIJO;
+    const p = Almacen.leerPagosPropios().find(x => x.id === id);
+    const apagado = p && this.estado(p) !== "activo";
+    // Subir/bajar: entre el nivel 1 y el 2 se puede cruzar; la renta no se mueve; las suscripciones solo entre ellas
+    const puedeSubir = !fija && !(nivel === 1 && i === 1) && !(nivel === 3 && i === 0);
+    const puedeBajar = !fija && !(nivel >= 2 && i === total - 1); // el último del nivel 1 baja al nivel 2
+    const aviso = nivel === 2 && Prioridad.AVISOS[id] ? `<span class="pf-orden-aviso">${escapar(Prioridad.AVISOS[id])}</span>` : "";
+    const flecha = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d === "arriba" ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"}"/></svg>`;
+    return `
+      <li class="pf-orden-fila ${apagado ? "apagado" : ""}">
+        <span class="pf-orden-num" aria-hidden="true">${n}</span>
+        <span class="pf-info">
+          <span class="pf-nombre">${escapar(this.nombreDe(id))}${apagado ? ' <span class="pf-marca">Pausada</span>' : ""}</span>
+          ${fija ? `<span class="pf-sub">Siempre primero</span>` : aviso}
+        </span>
+        ${fija ? `<svg class="pf-candado" viewBox="0 0 24 24" aria-label="No se mueve" role="img"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>` : `
+        <span class="pf-orden-botones">
+          <button class="pf-orden-boton" data-pf-subir="${escapar(id)}" ${puedeSubir ? "" : "disabled"} aria-label="Subir ${escapar(this.nombreDe(id))}">${flecha("arriba")}</button>
+          <button class="pf-orden-boton" data-pf-bajar="${escapar(id)}" ${puedeBajar ? "" : "disabled"} aria-label="Bajar ${escapar(this.nombreDe(id))}">${flecha("abajo")}</button>
+        </span>`}
+      </li>`;
+  },
+
+  mostrarOrden() {
+    const n = Prioridad.niveles();
+    let k = 0;
+    const grupo = (titulo, ayuda, lista, nivel) => `
+      <h3 class="pf-orden-titulo">${titulo}</h3>
+      <p class="pf-ayuda">${ayuda}</p>
+      ${lista.length ? `<ol class="pf-lista pf-orden">${lista.map((id, i) => this.filaOrden(id, nivel, i, lista.length, ++k)).join("")}</ol>`
+        : `<p class="vacio pf-vacio">Nada en este nivel.</p>`}`;
+    $("pf-orden").innerHTML = `
+      <div class="pf-cabeza"><h2>Qué se paga primero</h2></div>
+      <p class="pf-ayuda">Cuando el dinero no alcanza, la app cubre en este orden. Sube o baja cada pago; entre el nivel 1 y el 2 puedes pasar de uno a otro.</p>
+      ${grupo("Nivel 1 · No se atrasa", "Se cubre antes que todo lo demás.", n.n1, 1)}
+      ${grupo("Nivel 2 · Se puede mover o dividir", "Si no alcanza, la app te propone moverlo o pagarlo en partes.", n.n2, 2)}
+      ${grupo("Nivel 3 · Suscripciones", "Siempre al final. Si no alcanza, lo primero es pausarlas.", n.n3, 3)}
+      ${Prioridad.cambiado() ? `<button class="boton-chico pf-agregar" data-pf-orden-normal>Volver al orden de siempre</button>` : ""}`;
+  },
+
+  moverOrden(id, dir) {
+    const n = Prioridad.niveles();
+    const l1 = n.n1.slice(1), l2 = n.n2.slice(), l3 = n.n3.slice();
+    const cambiar = (l, i, j) => { [l[i], l[j]] = [l[j], l[i]]; };
+    let i;
+    if ((i = l3.indexOf(id)) >= 0) {
+      const j = i + dir; if (j < 0 || j >= l3.length) return; cambiar(l3, i, j);
+    } else if ((i = l1.indexOf(id)) >= 0) {
+      if (dir > 0 && i === l1.length - 1) { l1.splice(i, 1); l2.unshift(id); } // pasa al nivel 2
+      else { const j = i + dir; if (j < 0) return; cambiar(l1, i, j); }
+    } else if ((i = l2.indexOf(id)) >= 0) {
+      if (dir < 0 && i === 0) { l2.splice(i, 1); l1.push(id); } // pasa al nivel 1 (debajo de lo que ya está, nunca sobre la renta)
+      else { const j = i + dir; if (j >= l2.length) return; cambiar(l2, i, j); }
+    } else return;
+    Prioridad.guardar({ n1: l1, n2: l2, n3: l3 });
+    this.despuesDeOrden(id, dir);
+  },
+
+  despuesDeOrden(id, dir) {
+    Datos.recargar();
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
+    Pantalla.actualizar();
+    this.mostrar();
+    // El foco se queda en el mismo botón para seguir moviendo con el teclado o el lector de pantalla
+    const b = document.querySelector(`[data-pf-${dir < 0 ? "subir" : "bajar"}="${CSS.escape(id)}"]`);
+    if (b && !b.disabled) b.focus();
+    Pantalla.aviso(`${this.nombreDe(id)}: nivel ${Prioridad.nivel(id)}`);
   },
 
   // ---------- Formulario ----------
@@ -303,6 +384,12 @@ const PagosFijos = {
     $("pantalla-pagosfijos").addEventListener("click", e => {
       const a = e.target.closest("[data-pf-abrir]"); if (a) return this.abrirEditor(a.dataset.pfAbrir);
       const n = e.target.closest("[data-pf-agregar]"); if (n) return this.abrirEditor(null, n.dataset.pfAgregar);
+      const s = e.target.closest("[data-pf-subir]"); if (s) return this.moverOrden(s.dataset.pfSubir, -1);
+      const bj = e.target.closest("[data-pf-bajar]"); if (bj) return this.moverOrden(bj.dataset.pfBajar, 1);
+      if (e.target.closest("[data-pf-orden-normal]")) {
+        Prioridad.porDefecto(); Datos.recargar(); window.dispatchEvent(new Event("movimientos-cambiaron")); Pantalla.actualizar(); this.mostrar();
+        Pantalla.aviso("Orden de siempre");
+      }
     });
     $("form-campos").addEventListener("click", e => {
       if (formularioAbierto !== "pagoFijo") return;

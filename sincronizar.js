@@ -12,7 +12,7 @@
 const Sync = {
   ARCHIVO: "datos.json",
   LISTAS: ["movimientos", "jornadas", "planeados", "diasLibres", "cambiosDatos", "planesDeuda", "deudasPropias", "pagosPropios", "simulaciones", "notasConsejero"],
-  VALORES: ["datos", "plan", "revision", "lineaTiempo", "escenarios", "dineroInicial", "futuro", "rentaCargosDesde", "acuerdoSimulado"],
+  VALORES: ["datos", "plan", "revision", "lineaTiempo", "escenarios", "dineroInicial", "futuro", "rentaCargosDesde", "acuerdoSimulado", "prioridad"],
   MAPAS: ["pagosMovidos"], // { clave: { ..., modificado, borrado? } }
 
   config() { return Almacen.leerSync(); },
