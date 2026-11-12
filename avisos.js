@@ -135,7 +135,7 @@ const Avisos = {
     const lista = this._campana || [];
     const nuevos = lista.filter(a => v[a.id] !== (a.firma || ""));
     const vistos = lista.filter(a => v[a.id] === (a.firma || ""));
-    $("avisos-lista").innerHTML = (nuevos.length ? nuevos.map(a => this.html(a, true)).join("") : `<p class="vacio">No hay avisos nuevos.</p>`) +
+    $("avisos-lista").innerHTML = (nuevos.length ? `<p class="avisos-titulo">Nuevos · ${nuevos.length}</p>` + nuevos.map(a => this.html(a, true)).join("") : `<p class="vacio">No hay avisos nuevos.</p>`) +
       (vistos.length ? `<details class="avisos-vistos"><summary>Ya los viste (${vistos.length})</summary>${vistos.map(a => this.html(a, false)).join("")}</details>` : "");
   },
 

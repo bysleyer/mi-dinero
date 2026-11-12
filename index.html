@@ -53,14 +53,14 @@
       </div>
       <div id="hoja-mas">
         <h2>Más</h2>
-        <div class="hoja-lista">
-          <button data-nav="consejero">🧑‍💼 Tu consejero</button>
-          <button data-nav="deudas">💳 Mis deudas</button>
-          <button data-nav="planeados">🛍️ Gastos planeados</button>
-          <button data-nav="calendario">📅 Calendario</button>
-          <button data-nav="resumen">📊 A dónde va mi dinero · ¿Cuadra?</button>
-          <button data-nav="datosfijos">⚙️ Datos fijos</button>
-          <button data-nav="respaldo">☁️ Respaldo y sincronizar</button>
+        <div class="hoja-lista hoja-tiles">
+          <button data-nav="consejero"><span class="tile-ico" aria-hidden="true">🧑‍💼</span><b>Tu consejero</b><small>Informe y reglas</small></button>
+          <button data-nav="deudas"><span class="tile-ico" aria-hidden="true">💳</span><b>Mis deudas</b><small>Qué debes y cuándo termina</small></button>
+          <button data-nav="planeados"><span class="tile-ico" aria-hidden="true">🛍️</span><b>Gastos planeados</b><small>Lo que quieres comprar</small></button>
+          <button data-nav="calendario"><span class="tile-ico" aria-hidden="true">📅</span><b>Calendario</b><small>Días, pagos y cheques</small></button>
+          <button data-nav="resumen"><span class="tile-ico" aria-hidden="true">📊</span><b>A dónde va</b><small>Gastos por categoría y ¿Cuadra?</small></button>
+          <button data-nav="datosfijos"><span class="tile-ico" aria-hidden="true">⚙️</span><b>Datos fijos</b><small>Tus cifras</small></button>
+          <button data-nav="respaldo" class="tile-ancho"><span class="tile-ico" aria-hidden="true">☁️</span><span><b>Respaldo y sincronizar</b><small>Guardar y compartir entre aparatos</small></span></button>
         </div>
       </div>
       <div id="hoja-avisos">
@@ -202,7 +202,7 @@
     <div id="fu-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
     <button id="fu-gasto" class="boton-mediano fu-gasto">¿Y si gasto…? (ver qué pasa antes de gastar)</button>
     <div class="pestanas" data-pestanas role="group" aria-label="Partes de Mi futuro">
-      <button data-pestana="calendario">Calendario</button><button data-pestana="grafica">Gráfica</button><button data-pestana="preguntas">Preguntas</button>
+      <button data-pestana="grafica">Gráfica</button><button data-pestana="calendario">Calendario</button><button data-pestana="preguntas">Preguntas</button>
     </div>
 
     <section class="tarjeta" data-sec="grafica">
