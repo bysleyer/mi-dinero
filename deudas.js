@@ -128,23 +128,33 @@ const Deudas = {
     const saldo = Datos.saldoDeuda(d.id);
     const avance = d.monto > 0 ? Math.min(1, Math.max(0, (d.monto - saldo) / d.monto)) : 1;
     const pagada = saldo <= this.CERO;
+    // Renta atrasada: la fecha límite (día 15) y "Ya lo pagué" van primero; sin pagos todavía, sobra la barra en 0 %
+    const esRenta = d.id === Plan.ID_DEUDA_RENTA && !pagada;
+    const diaLegal = esRenta ? Calendario.diaDelMes("accionLegal", 15) : null;
+    const dias = esRenta ? this.diasParaDia(diaLegal) : null;
+    const sinAvance = esRenta && avance < 0.005;
     return `
       <li>
         <div class="deuda-cabeza">
           <span class="deuda-nombre">${/^Prioridad /.test(etiqueta) ? etiqueta.replace("Prioridad ", "") + " · " : ""}${escapar(d.nombre)}</span>
           <span class="deuda-saldo ${pagada ? "pagada" : ""}">${pagada ? "Pagada" : dineroCorto(saldo)}</span>
         </div>
-        <p class="deuda-sub">${/^Prioridad /.test(etiqueta) ? "" : `<span class="etiqueta">${etiqueta}</span> `}Original ${dineroCorto(d.monto)} · pagado ${Math.round(avance * 100)}%</p>
-        <div class="barra"><div class="barra-relleno" style="--p:${avance}"></div></div>
+        ${esRenta ? `<p class="deuda-limite ${dias <= 7 ? "urgente" : ""}">Vence el día ${diaLegal} · ${dias === 0 ? "hoy" : dias === 1 ? "mañana" : `en ${dias} días`}</p>` : ""}
+        ${sinAvance ? "" : `<p class="deuda-sub">${/^Prioridad /.test(etiqueta) ? "" : `<span class="etiqueta">${etiqueta}</span> `}Original ${dineroCorto(d.monto)} · pagado ${Math.round(avance * 100)}%</p>
+        <div class="barra"><div class="barra-relleno" style="--p:${avance}"></div></div>`}
         ${d.id === Plan.ID_DEUDA_RENTA ? Datos.cargosRenta().map(c =>
           `<p class="deuda-sub">Cargo de renta ${fechaCorta(c.fecha)}: +${dinero(c.monto)}</p>`).join("") +
-          `<p class="deuda-sub">Atrasada: <strong>${dinero(Proyeccion.rentaAtrasada())}</strong>` +
-          Proyeccion.rentaMeses().filter(c => c.cargada && c.pendiente > 0.005).map(c =>
-            ` · de este mes: <strong>${dinero(c.pendiente)}</strong> (vence el ${fechaCorta(c.limite)})`).join("") + `</p>` : ""}
+          (() => {
+            const delMes = Proyeccion.rentaMeses().filter(c => c.cargada && c.pendiente > 0.005);
+            if (sinAvance && !delMes.length) return ""; // solo lo atrasado: ya lo dice el monto de arriba
+            return `<p class="deuda-sub">Atrasada: <strong>${dinero(Proyeccion.rentaAtrasada())}</strong>` +
+              delMes.map(c => ` · de este mes: <strong>${dinero(c.pendiente)}</strong> (vence el ${fechaCorta(c.limite)})`).join("") + `</p>`;
+          })() : ""}
         ${this.htmlPlanes(d)}
         <div class="pl-botones">
-          ${d.automatico ? "" : `<button class="boton-chico" data-planear="${d.id}">Planear pagos</button>`}
-          <button class="boton-chico" data-ajustar="${d.id}">Ajustar saldo</button>
+          ${esRenta ? `<button class="boton-grande guardar d-pagar" data-pagar-deuda="${d.id}">Ya lo pagué</button>` : ""}
+          ${d.automatico ? "" : `<button class="boton-chico ${esRenta ? "" : ""}" data-planear="${d.id}">Planear pagos</button>`}
+          <button class="${esRenta ? "enlace d-ajustar" : "boton-chico"}" data-ajustar="${d.id}">Ajustar saldo</button>
           ${d.propia ? `<button class="boton-chico" data-borrar-propia="${d.id}">Borrar deuda</button>` : ""}
         </div>
       </li>`;
@@ -331,6 +341,12 @@ const Deudas = {
     $("pantalla-deudas").addEventListener("click", e => {
       const ajustar = e.target.closest("[data-ajustar]");
       if (ajustar) abrirFormulario("ajuste", { deudaId: ajustar.dataset.ajustar });
+      // "Ya lo pagué" de la renta atrasada: el pago de deuda con lo que se debe (editable) y ya marcado como "atrasada"
+      const pd = e.target.closest("[data-pagar-deuda]");
+      if (pd) {
+        abrirFormulario("pagoDeuda", { deudaId: pd.dataset.pagarDeuda, monto: Math.max(0, Proyeccion.rentaAtrasada()) });
+        if ($("f-renta-para")) { $("f-renta-para").value = "atrasada"; $("f-renta-para").dispatchEvent(new Event("change", { bubbles: true })); }
+      }
       const planear = e.target.closest("[data-planear]");
       if (planear) abrirFormulario("planDeuda", { deudaId: planear.dataset.planear });
       const qp = e.target.closest("[data-quitar-plan]");

@@ -39,7 +39,8 @@
   </nav>
 
   <div id="hoja" class="hoja" hidden>
-    <div class="hoja-caja" role="dialog" aria-modal="true">
+    <div class="hoja-caja" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo-barra">
+      <div class="hoja-barra"><h2 id="hoja-titulo-barra">Registrar</h2><button id="hoja-cerrar" class="boton-chico">Cerrar</button></div>
       <div id="hoja-registrar">
         <h2>Registrar</h2>
         <div class="campo campo-monto hoja-monto">
@@ -51,16 +52,18 @@
           <button class="chip" data-tipo-hoja="ingreso" aria-pressed="false">Me pagaron</button>
           <button class="chip" data-tipo-hoja="pagoDeuda" aria-pressed="false">Deuda</button>
         </div>
+        <div id="hoja-categorias" class="chips hoja-cats" role="group" aria-label="Categoría"></div>
+        <p id="hoja-error" class="error hoja-error" role="alert"></p>
         <div class="campo hoja-nota">
           <label for="hoja-nota">Nota <span class="opcional">(opcional)</span></label>
           <input id="hoja-nota" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" placeholder="Ej.: Uber Eats, súper, taxi">
         </div>
         <p class="hoja-etiqueta">Atajos</p>
         <div class="hoja-atajos">
-          <button data-registrar="transporte"><span aria-hidden="true">🚆</span>Transporte</button>
-          <button data-registrar="trabaje"><span aria-hidden="true">✔️</span>Trabajé hoy</button>
-          <button data-registrar="no-trabaje"><span aria-hidden="true">🚫</span>No trabajé hoy</button>
-          <button data-registrar="ysigasto"><span aria-hidden="true">🤔</span>¿Y si gasto…?</button>
+          <button data-registrar="transporte"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="13" rx="3"/><path d="M6 10h12"/><circle cx="9" cy="13.3" r=".6"/><circle cx="15" cy="13.3" r=".6"/><path d="M9 16.5 7 20.5M15 16.5l2 4"/></svg>Transporte</button>
+          <button data-registrar="trabaje"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.3"/></svg>Trabajé hoy</button>
+          <button data-registrar="no-trabaje"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/></svg>No trabajé hoy</button>
+          <button data-registrar="ysigasto"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.3-.9.8-.9 1.4v.6"/><circle cx="12" cy="16.8" r=".7"/></svg>¿Y si gasto…?</button>
         </div>
         <button id="hoja-continuar" class="boton-grande guardar">Continuar</button>
       </div>
@@ -69,11 +72,11 @@
         <div class="hoja-lista hoja-tiles">
           <button data-nav="consejero"><span class="tile-ico" aria-hidden="true">🧑‍💼</span><b>Tu consejero</b><small>Informe y reglas</small></button>
           <button data-nav="deudas"><span class="tile-ico" aria-hidden="true">💳</span><b>Mis deudas</b><small>Qué debes y cuándo termina</small></button>
-          <button data-nav="pagosfijos"><span class="tile-ico" aria-hidden="true">🧾</span><b>Pagos fijos</b><small>Esenciales y suscripciones</small></button>
-          <button data-nav="planeados"><span class="tile-ico" aria-hidden="true">🛍️</span><b>Gastos planeados</b><small>Lo que quieres comprar</small></button>
+          <button data-nav="pagosfijos"><span class="tile-ico" aria-hidden="true">🧾</span><b>Pagos fijos</b><small>Lo que pagas cada mes</small></button>
+          <button data-nav="planeados"><span class="tile-ico" aria-hidden="true">🛍️</span><b>Gastos planeados</b><small>Compras que quieres hacer</small></button>
           <button data-nav="calendario"><span class="tile-ico" aria-hidden="true">📅</span><b>Calendario</b><small>Días, pagos y cheques</small></button>
           <button data-nav="resumen"><span class="tile-ico" aria-hidden="true">📊</span><b>A dónde va</b><small>Gastos por categoría y ¿Cuadra?</small></button>
-          <button data-nav="datosfijos"><span class="tile-ico" aria-hidden="true">⚙️</span><b>Datos fijos</b><small>Tus cifras</small></button>
+          <button data-nav="datosfijos"><span class="tile-ico" aria-hidden="true">⚙️</span><b>Datos fijos</b><small>Tu sueldo, horas y colchón</small></button>
           <button data-nav="respaldo" class="tile-ancho"><span class="tile-ico" aria-hidden="true">☁️</span><span><b>Respaldo y sincronizar</b><small>Guardar y compartir entre aparatos</small></span></button>
         </div>
       </div>
@@ -81,14 +84,13 @@
         <h2>Avisos</h2>
         <div id="avisos-lista"></div>
       </div>
-      <button id="hoja-cerrar" class="boton-chico">Cerrar</button>
     </div>
   </div>
 
   <main id="pantalla-inicio" class="contenedor">
     <div class="cabeza-inicio">
       <div class="titulo-pantalla"><p id="ceja-inicio" class="ceja"></p><h1>Mi dinero</h1></div>
-      <button id="campana" class="campana" aria-label="Avisos" hidden>🔔<span id="campana-num" class="badge" hidden></span></button>
+      <button id="campana" class="campana" aria-label="Avisos" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><span id="campana-num" class="badge" hidden></span></button>
       <button id="dinero-tengo" class="dinero-tengo" aria-label="Dinero que tengo. Toca para corregirlo"></button>
     </div>
     <p id="estado-carga" class="estado"></p>
@@ -246,7 +248,8 @@
           <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
         </div>
         <div id="fu-calendario" class="cal-dias fu-calendario"></div>
-        <p class="estado">Toca un día para ver lo que pasa. Verde: bien · amarillo: cerca de cero · rojo: bajo cero · azul ◇: día libre. Con las flechas ves hasta 3 meses adelante (después del próximo cheque, todo es estimado).</p>
+        <p class="estado">Toca un día para ver lo que pasa. Verde: bien · amarillo: cerca de cero · rojo: bajo cero · azul ◇: día libre. Con las flechas ves hasta 3 meses adelante (después del próximo cheque, todo es estimado).<br>
+          Letras: <b>$</b> cobro · <b>R</b> renta · <b>T</b> teléfono · <b>I</b> internet · <b>L</b> luz · <b>E</b> otro esencial · <b>S</b> suscripción. El número de cada día es lo que te queda.</p>
       </div>
       <div id="fu-semana" hidden>
         <div class="cal-cabeza">
@@ -382,16 +385,16 @@
     <button id="volver-cubrir" class="volver">← Volver</button>
     <h1>¿Cómo lo cubro?</h1>
     <div id="cb-objetivo"></div>
-    <section class="tarjeta">
+    <section id="cb-plan-caja" class="tarjeta">
       <h2>Te recomiendo</h2>
       <div id="cb-plan"></div>
     </section>
     <section id="cb-otra" class="tarjeta" hidden></section>
-    <section class="tarjeta">
+    <section id="cb-todas-caja" class="tarjeta">
       <h2>Todas las opciones</h2>
       <ul id="cb-todas" class="movimientos cb-lista"></ul>
     </section>
-    <p class="estado">Solo sugiere: nada cambia hasta que toques un botón. Las sugerencias solo mueven el teléfono; el tren y el taxi no se tocan.</p>
+    <p class="estado">Solo sugiere: nada cambia hasta que toques un botón. El tren y el taxi no se tocan.</p>
   </main>
 
   <!-- Pantalla: Si aceptan el acuerdo de renta (Bloque 19) - solo simula -->
@@ -483,10 +486,10 @@
   <!-- Pantalla: Datos fijos (Bloque 17) -->
   <main id="pantalla-datosfijos" class="contenedor" hidden>
     <button id="volver-datosfijos" class="volver volver-principal">← Volver</button>
-    <p class="ceja">Tus cifras</p>
+    <p class="ceja">Sueldo y reglas</p>
     <h1>Datos fijos</h1>
-    <p class="estado">Tus cifras. Los cambios se guardan en este teléfono, no cambian tu archivo mis-datos.json,
-      y lo que ya pasó no se recalcula.</p>
+    <p class="estado">Sueldo, horas, préstamos, colchón, comida y transporte. Lo que cambies aplica desde la fecha que elijas;
+      lo que ya pasó no se recalcula.</p>
     <section id="df-efecto" class="tarjeta df-efecto" hidden></section>
     <button class="df-a-pagos" data-nav="pagosfijos">
       <span><b>Renta, luz, internet y teléfono</b><small>Ahora se cambian en Pagos fijos</small></span>
@@ -532,8 +535,10 @@
     <button id="volver-escenarios" class="volver">← Volver</button>
     <h1>¿Y si cobro...?</h1>
     <p id="e-aviso" class="alerta" hidden></p>
+    <section id="e-resumen" class="tarjeta e-resumen"></section>
     <p class="ayuda texto-fijo">Si no vas a poder pagar a tiempo, avisa antes del vencimiento, pide dividir el pago o una fecha nueva, y pide la confirmación por escrito.</p>
-    <section class="tarjeta">
+    <details id="e-config" class="tarjeta e-config">
+      <summary>Cambiar montos</summary>
       <p id="e-dinero-hoy" class="nota-sobre"></p>
       <p id="e-rango" class="estado"></p>
       <div class="esc-campos">
@@ -549,7 +554,7 @@
         <input id="e-colchon" type="number" inputmode="numeric" step="1" min="0" max="100">
       </div>
       <p class="estado">"Lo esperado" vacío = estimación del Próximo cheque.</p>
-    </section>
+    </details>
     <div id="e-resultados"></div>
   </main>
 
@@ -897,7 +902,7 @@
     </form>
   </div>
 
-  <div id="aviso" class="aviso-flotante" role="status" aria-live="polite" hidden>Guardado</div>
+  <div id="aviso" class="aviso-flotante" role="status" aria-live="polite" hidden><span id="aviso-texto">Guardado</span><button type="button" id="aviso-accion" class="boton-chico aviso-accion" hidden>Deshacer</button></div>
 
   <!-- Pregunta "¿Seguro?" de la app -->
   <div id="vigilante" class="ventana pregunta" hidden>

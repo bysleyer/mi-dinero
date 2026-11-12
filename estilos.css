@@ -1205,9 +1205,8 @@ body.con-nav #volver-consejero { display: none; }
 .avisos-afuera .aviso-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; }
 .avisos-afuera .aviso-item p { margin: 0; font-size: .875rem; font-weight: 600; line-height: 1.35; flex: 1; }
 .avisos-afuera .aviso-item .pl-botones { flex: none; display: flex; margin: 0; }
-.avisos-afuera .aviso-item .pl-botones .boton-chico { margin: 0; padding: 0 14px; font-size: 0; background: transparent; border-color: #5a3a35; color: var(--error); }
+.avisos-afuera .aviso-item .pl-botones .boton-chico { margin: 0; padding: 0 14px; font-size: .875rem; background: transparent; border-color: #5a3a35; color: var(--error); }
 .avisos-afuera .aviso-item.amarillo .pl-botones .boton-chico { border-color: #5a4a25; color: var(--aviso); }
-.avisos-afuera .aviso-item .pl-botones .boton-chico::after { content: "Ver"; font-size: .875rem; }
 .avisos-afuera .aviso-item .pl-botones .boton-chico ~ .boton-chico { display: none; }
 .avisos-mas { color: var(--suave); font-weight: 400; font-size: .875rem; padding: 0 4px; }
 #inicio-pagos { position: relative; }
@@ -1557,3 +1556,190 @@ details.mas-detalles > summary .opcional { display: none; }
 @media (hover: hover) and (pointer: fine) { .pf-orden-boton:not(:disabled):hover { border-color: var(--menta); color: var(--menta); } }
 .marca-estimado { font-size: .6875rem; font-weight: 700; letter-spacing: .02em; padding: 1px 6px; border-radius: 6px; background: #26313a; color: var(--suave); }
 .pf-recibo { width: 100%; margin: 0 0 12px; }
+
+/* ---------- v48: aviso oscuro con lo que se guardó y "Deshacer" (revisión de diseño) ---------- */
+.aviso-flotante {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: calc(100% - 32px); max-width: 528px; text-align: left;
+  background: #26313a; color: var(--texto); border: 1px solid #3a4853; border-radius: 16px;
+  padding: 10px 10px 10px 16px; min-height: 56px; font-size: 1rem; font-weight: 600; line-height: 1.3;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+}
+.aviso-flotante[hidden] { display: none; }
+#aviso-texto { flex: 1; min-width: 0; padding: 6px 0; }
+.aviso-accion { flex: none; min-height: 44px; min-width: 44px; margin: 0; font-size: .9375rem; }
+.aviso-accion[hidden] { display: none; }
+@media (max-width: 899px) { body.con-nav .aviso-flotante { bottom: calc(104px + env(safe-area-inset-bottom)); } }
+/* Pagos fijos (v48): líneas en ámbar, acciones en la fila, Más opciones y botón de peligro */
+.pf-alerta { color: var(--aviso); font-weight: 600; }
+.pf-lista > li { padding-bottom: 2px; }
+.pf-accion-fila, .pf-acciones-fila { margin: 0 0 12px; }
+.pf-accion-fila { width: 100%; }
+.pf-acciones-fila { display: flex; gap: 8px; }
+.pf-acciones-fila .boton-chico { flex: 1 1 0; margin: 0; }
+.pf-orden-fila { flex-wrap: wrap; }
+.pf-orden-cambio { flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 4px; padding: 10px 10px 10px 12px;
+  background: #1c262d; border: 1px solid var(--borde-fuerte); border-radius: 12px; font-size: .875rem; color: var(--aviso); }
+.pf-orden-cambio .boton-chico { margin: 0; }
+.pf-mas { margin: 12px 0 0; }
+.pf-mas > summary { min-height: 44px; display: flex; align-items: center; color: var(--menta); font-weight: 700; font-size: .9375rem; cursor: pointer; list-style: none; }
+.pf-mas > summary::-webkit-details-marker { display: none; }
+.pf-mas > summary::after { content: "▸"; margin-left: 8px; transition: transform 150ms ease; }
+.pf-mas[open] > summary::after { transform: rotate(90deg); }
+.pf-acciones.fuera-del-form { margin: 4px 0 8px; }
+.boton-chico.pf-peligro { color: var(--error); border-color: #7a4a44; }
+/* Mis deudas (v48): la fecha límite de la renta y "Ya lo pagué" primero */
+.deuda-limite { margin: 2px 0 10px; font-size: 1rem; font-weight: 700; color: var(--suave); }
+.deuda-limite.urgente { color: var(--error); }
+.pl-botones .d-pagar { flex-basis: 100%; margin: 0; min-height: 52px; }
+.pl-botones .d-ajustar { color: var(--suave); min-height: 44px; padding: 0 8px; text-decoration: none; font-weight: 600; }
+/* "Planear pagos": Desde y Hasta caben sin salirse del margen */
+.ps-dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.ps-dos .campo { min-width: 0; }
+.ps-dos .campo input { width: 100%; min-width: 0; }
+/* Gastos planeados (v48): "¿Cuándo lo compro?" y "Ya lo compré" a la vista; Editar y ✕ al tocar la fila */
+#pl-lista .deuda-sub { display: block; }
+#pl-lista .pl-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#pl-lista .pl-botones .boton-chico { margin: 0; min-height: 48px; }
+#pl-lista .pl-botones [data-pl-editar], #pl-lista .pl-botones .borrar { display: none; }
+#pl-lista > li.abierta .pl-botones [data-pl-editar], #pl-lista > li.abierta .pl-botones .borrar { display: inline-flex; }
+/* ¿Cuándo lo compro? (v48): la respuesta en una frase clara y la cuenta detrás de "Ver la cuenta" */
+.pc-problema { margin: 4px 0 12px; }
+.pc-problema-titulo { font-size: 1.125rem; font-weight: 700; color: var(--texto); margin: 0 0 4px; }
+.pc-problema p:not(.pc-problema-titulo) { margin: 0; color: var(--suave); font-size: .9375rem; line-height: 1.45; }
+.pc-cuenta { margin: 8px 0 0; }
+.pc-cuenta > summary { min-height: 44px; display: flex; align-items: center; color: var(--menta); font-weight: 600; font-size: .9375rem; cursor: pointer; list-style: none; }
+.pc-cuenta > summary::-webkit-details-marker { display: none; }
+.pc-cuenta > summary::after { content: "▸"; margin-left: 8px; }
+.pc-cuenta[open] > summary::after { content: "▾"; }
+/* Avisos de afuera (v48): "+N avisos urgentes" es un botón de verdad */
+.avisos-afuera .avisos-mas { justify-self: start; min-height: 44px; padding: 0 14px; border: 1px solid var(--borde-fuerte); border-radius: 12px;
+  background: transparent; color: var(--texto); font-weight: 600; font-size: .875rem; }
+.avisos-afuera .aviso-item p strong { color: inherit; }
+/* Transporte (v48): montos de un toque separados del monto, más grandes y con estado "elegido" */
+.ventana-caja .montos-rapidos { margin: 12px 0 16px; }
+.montos-rapidos .boton-chico { font-size: 1.125rem; min-height: 60px; border-width: 1px; }
+.montos-rapidos small { font-size: .8125rem; }
+.montos-rapidos .boton-chico[aria-pressed="true"] { border: 2px solid var(--menta); background: #11302a; }
+/* Hojas (v48): barra de arriba fija con el título y "Cerrar" a la vista */
+.hoja-barra { position: sticky; top: -20px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: -20px -16px 8px; padding: 14px 16px 10px; background: var(--tarjeta); border-radius: 20px 20px 0 0; }
+.hoja-caja .hoja-barra h2 { margin: 0; font-size: 1.3rem; color: var(--texto); text-transform: none; letter-spacing: 0; }
+.hoja-barra #hoja-cerrar { margin: 0; min-height: 44px; width: auto; padding: 0 16px; border: 1px solid #2c5a4f; border-radius: 12px; color: var(--menta); font-weight: 700; }
+#hoja-registrar > h2, #hoja-mas > h2, #hoja-avisos > h2 { display: none; }
+/* Hoja del +: categorías en la misma hoja; errores junto al campo */
+.hoja-cats { margin: 10px 0 0; }
+.hoja-cats[hidden] { display: none; }
+.hoja-cats.con-error .chip { border-color: var(--error); }
+.hoja-error { margin: 6px 0 0; font-weight: 600; }
+.hoja-error:empty { display: none; }
+.campo.con-error { border-color: var(--error) !important; }
+.hoja.escribiendo .hoja-nota, .hoja.escribiendo .hoja-etiqueta, .hoja.escribiendo .hoja-atajos { display: none; }
+/* "Antes de guardar" (v48): ámbar (informa, no es un error) y el enlace en su propia línea */
+#f-efecto.negativo { background: #2d2411; border: 1px solid #5a4a25; color: #ffe2a8; }
+#f-efecto .f-efecto-boton { display: flex; align-items: center; min-height: 44px; margin-top: 2px; padding: 0; color: var(--menta); font-weight: 700; }
+/* "Lo que viene" (v48): la flecha dice que la fila se abre */
+.pago-flecha { display: none; }
+#proximos-pagos .pago-flecha { display: block; order: 2; width: 18px; height: 18px; flex: none; fill: none; stroke: var(--suave); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; transition: transform 150ms ease; margin-left: -4px; }
+#proximos-pagos > li.abierta .pago-flecha { transform: rotate(180deg); }
+/* Íconos dibujados (v48): un solo trazo, en vez de emoji */
+.ico { width: 26px; height: 26px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.campana .ico { width: 24px; height: 24px; color: var(--texto); }
+.hoja-atajos .ico { color: var(--menta); margin-right: 2px; }
+/* "Tengo" se toca para corregirlo: el lápiz lo dice */
+#dinero-tengo { position: relative; }
+#dinero-tengo::after { content: ""; position: absolute; top: 12px; right: 12px; width: 16px; height: 16px; background: var(--suave);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3Cpath d='M13.5 6.5l4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3Cpath d='M13.5 6.5l4 4'/%3E%3C/svg%3E") center / contain no-repeat; }
+/* Errores junto al campo (v48) */
+.chips.con-error .chip { border-color: var(--error); }
+.campo-error { margin: 6px 2px 0; font-weight: 600; font-size: .9375rem; }
+/* Mi futuro (v48): con renta atrasada y el día 15 cerca, la tarjeta de arriba es ámbar y lo dice */
+.fu-frase.alerta { background: #2d2411; border-color: #5a4a25; color: #ffe2a8; }
+.fu-frase.alerta strong { color: var(--aviso); }
+.fu-frase .fu-frase-legal { font-size: .9375rem; font-weight: 700; color: #ff9d90; margin-top: 4px; }
+.fu-frase .fu-frase-legal b { color: #ffb4ab; }
+/* ¿Cómo lo cubro? (v48): nada cortado con "…"; el costo en su propia línea */
+#cb-plan .mov-detalle, #cb-todas .mov-detalle { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.cb-costo { font-size: .8125rem; font-weight: 600; color: var(--aviso); margin-top: 2px; }
+.cb-nada { margin-top: 10px; }
+.cb-nada p { margin: 0 0 6px; font-size: .9375rem; line-height: 1.45; }
+.cb-nada-sub { color: var(--suave); }
+.cb-escenarios { display: inline-flex; align-items: center; min-height: 44px; color: var(--menta); font-weight: 700; }
+#cb-plan-caja[hidden], #cb-todas-caja[hidden] { display: none; }
+/* Preguntas con montos (v48): título, filas y una nota, en vez de un bloque en negrita */
+#pregunta-texto.pq-con-filas { display: flex; flex-direction: column; gap: 8px; font-weight: 400; white-space: normal; }
+.pq-titulo { font-size: 1.2rem; font-weight: 700; color: var(--texto); margin-bottom: 2px; }
+.pq-fila { display: flex; justify-content: space-between; gap: 12px; font-size: 1rem; font-weight: 600; }
+.pq-fila b { color: var(--menta); font-variant-numeric: tabular-nums; }
+.pq-nota { font-size: .875rem; color: var(--suave); line-height: 1.45; margin-top: 4px; }
+/* Gráfica de Mi futuro (v48): fechas, cobros y el día 15, con letra que se lee */
+.fu-eje-x { font-size: 12px; fill: var(--suave); font-variant-numeric: tabular-nums; }
+.fu-cobro-punto { fill: var(--menta); }
+.fu-linea-15 { stroke: var(--error); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.fu-txt-15 { font-size: 13px; font-weight: 700; fill: var(--error); }
+.fu-punto-txt { font-size: 13px; paint-order: stroke; stroke: #171e23; stroke-width: 7px; stroke-linejoin: round; }
+.fu-toque:focus { outline: none; }
+.fu-toque:focus-visible { fill: rgba(79, 209, 181, .18); stroke: #8fe3d0; stroke-width: 1.5; }
+#fu-leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .8125rem; color: var(--suave); margin: 6px 0 0; }
+#fu-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.fu-muestra-punto { width: 8px; height: 8px; border-radius: 4px; background: var(--menta); display: inline-block; }
+.fu-muestra-15 { width: 14px; border-top: 2px dashed var(--error); display: inline-block; }
+/* Calendario (v48): "$↑" debajo del número; días de otro mes legibles (≥4.5:1); aviso del 15 en su recuadro */
+.marca-cobro { position: static; margin-top: 1px; font-size: .68rem; line-height: 1; }
+.dia.otro-mes { opacity: 1; color: #8a9ba6; background: #141b20; }
+.dia.otro-mes .marca-cobro { color: #7fb8aa; }
+.pista-15 { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: #2e1f1c; border: 1px solid #5a3a35; color: #ffd0ca; font-size: .9375rem; line-height: 1.45; }
+.pista-15 strong { color: #ffb4ab; }
+.pista-15 b { color: #fff; }
+/* ¿Y si cobro…? (v48): la respuesta arriba, los montos plegados y lo que se paga con cada cheque junto */
+.e-resumen h2 { margin-bottom: 4px; }
+.e-resumen-lista { list-style: none; margin: 0; padding: 0; }
+.e-resumen-lista li { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 52px; border-top: 1px solid var(--borde); }
+.e-resumen-lista li:first-child { border-top: 0; }
+.e-resumen-lista b { display: block; font-size: 1rem; }
+.e-resumen-lista small { color: var(--suave); font-size: .8125rem; }
+.e-resumen-lista .falta { color: var(--error); font-weight: 700; }
+.e-resumen-lista .cubre { color: var(--menta); font-weight: 700; }
+#e-config > summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; color: var(--menta);
+  font-size: 1rem; font-weight: 700; text-transform: none; letter-spacing: 0; margin: 0; cursor: pointer; list-style: none; }
+#e-config > summary::-webkit-details-marker { display: none; }
+#e-config > summary::after { content: "▸"; }
+#e-config[open] > summary::after { content: "▾"; }
+.esc-grupo { list-style: none; margin: 8px 0; padding: 12px 14px; border-radius: 12px; background: #11302a; border: 1px solid #2c5a4f; }
+.esc-grupo-titulo { margin: 0 0 6px; font-weight: 700; color: var(--menta); font-size: .9375rem; }
+.esc-grupo ul { list-style: none; margin: 0; padding: 0; }
+.esc-grupo li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: .9375rem; }
+.esc-grupo li > span:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.esc-grupo .mover-igual { display: block; font-size: .8125rem; font-weight: 600; min-height: 32px; margin-left: auto; }
+/* "Proteger" del colchón (v48): un interruptor que se ve (gris apagado, menta encendido), no solo una palabra */
+.colchon-interruptor { gap: 10px; color: var(--texto); cursor: pointer; }
+.colchon-interruptor input[type=checkbox] {
+  -webkit-appearance: none; appearance: none; position: relative; opacity: 1; width: 48px; height: 28px; min-width: 48px; margin: 0;
+  border-radius: 14px; background: #3a4853; border: 0; cursor: pointer; transition: background 150ms ease; order: 2;
+}
+.colchon-interruptor input[type=checkbox]::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #eef3f6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: transform 150ms ease;
+}
+.colchon-interruptor input[type=checkbox]:checked { background: var(--menta); }
+.colchon-interruptor input[type=checkbox]:checked::after { transform: translateX(20px); }
+.colchon-interruptor input[type=checkbox]:focus-visible { outline: 3px solid #8fe3d0; outline-offset: 2px; }
+/* Consejero (v48): "Lo más importante" en líneas, con el día destacado */
+.cj-lineas { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; gap: 8px; }
+.cj-lineas li { font-size: .9375rem; line-height: 1.45; color: var(--texto); }
+.cj-lineas .cj-dia { color: var(--aviso); }
+/* "← Volver" (v48): ya no se queda fijo encima del texto; vive en la fila del título y se va con el scroll */
+main.contenedor > .volver { position: static; box-shadow: none; }
+/* "Ver detalle" de Mi futuro: se ve que se toca y se abre */
+#fu-detalle > summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 0;
+  font-size: 1rem; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--menta); cursor: pointer; list-style: none; }
+#fu-detalle > summary::-webkit-details-marker { display: none; }
+#fu-detalle > summary::after { content: "▸"; color: var(--menta); }
+#fu-detalle[open] > summary::after { content: "▾"; }
+/* Computador: la insignia de Inicio va a la derecha del texto, como la de Avisos */
+@media (min-width: 900px) {
+  body.con-nav .nav-item[data-nav="inicio"] { position: relative; }
+  body.con-nav #nav-inicio-num { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); }
+}

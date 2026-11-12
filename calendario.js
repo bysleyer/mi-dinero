@@ -185,6 +185,11 @@ const Calendario = {
       Jornadas.abrirFormulario();
       $("f-fecha").value = fecha;
     }
+    // El título dice el día que tocaste ("Trabajé hoy" solo si es hoy)
+    if (!j && fecha !== hoy()) {
+      const t = Jornadas.aFecha(fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" }).replace(",", "");
+      $("form-titulo").textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    }
     const extra = [];
     // Bloque 9: arriba del formulario, lo que vence ese día
     const vence = Vencimientos.delDia(fecha).filter(v => !v.alerta);
@@ -193,8 +198,11 @@ const Calendario = {
         `<li>${p.pagado ? "✓ " : ""}${escapar(p.nombre)}: <strong>${dinero(p.monto)}</strong>${p.pagado ? " (pagado)" : ""}</li>`).join("");
       $("form-campos").insertAdjacentHTML("afterbegin", `<div class="ayuda cal-vence"><strong>Vence este día:</strong><ul>${filas}</ul></div>`);
     }
+    // Día 15: el aviso legal va arriba, en su recuadro, con lo que se debe (no entre los campos)
     if (Jornadas.aFecha(fecha).getDate() === this.diaDelMes("accionLegal", 15)) {
-      extra.push(`<p class="ayuda pista-15">⚠ Día 15: ${this.PISTA_15}.</p>`);
+      const atr = Proyeccion.rentaAtrasada();
+      $("form-campos").insertAdjacentHTML("afterbegin", `<div class="pista-15" role="note"><strong>${fecha === hoy() ? "Hoy" : "Este día"} es el límite de la renta atrasada:</strong>
+        ${this.PISTA_15.charAt(0).toLowerCase() + this.PISTA_15.slice(1)}.${atr > 0.005 ? ` <b>Debes ${dineroCorto(atr)}.</b>` : ""}</div>`);
     }
     if (j) {
       extra.push(`<button type="button" id="cal-borrar" class="boton-chico boton-borrar">Borrar esta jornada</button>`);
@@ -239,7 +247,7 @@ const Calendario = {
     const lista = Almacen.leerDiasLibres().slice().sort((a, b) => a.desde.localeCompare(b.desde));
     const hoyClave = hoy();
     $("cal-libres").innerHTML = lista.length === 0
-      ? `<p class="vacio">No tienes días libres planeados.</p>`
+      ? `<li class="vacio">No tienes días libres planeados.</li>`
       : lista.map(d => {
           // Días de este rango que ya llegaron y no tienen jornada: se pueden convertir en falta real
           const pendientes = [];

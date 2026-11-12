@@ -293,7 +293,7 @@ const Vencimientos = {
         const saldo = Datos.saldoDeuda(d.id);
         if (saldo > 0) agregar({
           id: d.id, letra: d.id === "deudaInternet" ? "I" : "", nombre: d.nombre, orden: d.prioridad || 5, inmediato: true,
-          partes: [{ nombre: `${d.nombre} (pago inmediato)`, monto: saldo, sinClave: true, accion: { tipo: "pagoDeuda", deudaId: d.id } }]
+          partes: [{ nombre: d.nombre, monto: saldo, sinClave: true, accion: { tipo: "pagoDeuda", deudaId: d.id } }]
         }, hoyClave);
       });
     }
@@ -400,11 +400,12 @@ const Vencimientos = {
             <li class="pago-fila ${color}">
               <div class="mov-info">
                 <div class="mov-tipo">${simbolo ? `<span aria-hidden="true">${simbolo}</span> ` : ""}${escapar(p.nombre)}</div>
-                <div class="mov-detalle">${sinFecha ? "Sin fecha · lo puedes pagar más adelante" : this.cuandoCorto(item.fecha, dias)}${p.estimado && !p.pagado ? ' · <span class="marca-estimado">estimado</span>' : ""}</div>
+                <div class="mov-detalle">${sinFecha ? "Sin fecha · págalo cuando puedas" : this.cuandoCorto(item.fecha, dias)}${p.estimado && !p.pagado ? ' · <span class="marca-estimado">estimado</span>' : ""}</div>
                 ${movido}
               </div>
               <div class="pago-lado">
                 <span class="mov-monto">${dineroCorto(p.monto)}</span>
+                <svg class="pago-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
                 ${boton}
               </div>
             </li>`;

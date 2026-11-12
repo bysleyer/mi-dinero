@@ -160,8 +160,19 @@ const Cubrir = {
     const p = this.planear();
     this._p = p;
     const esc = this.escenario();
+    $("cb-plan-caja").hidden = $("cb-todas-caja").hidden = !p.f;
     if (!p.f) {
-      $("cb-objetivo").innerHTML = `<p class="mensaje-sobrante positivo">✓ En los próximos 3 meses no te falta dinero (escenario ${escapar(esc.titulo)}).</p>`;
+      // Nada que cubrir: se dice qué viene, en vez de dos tarjetas vacías
+      const pr = this.calcular();
+      const cheque = (pr.chequesInfo || []).find(c => c.fecha >= hoy());
+      const renta = Proyeccion.estadoRenta(pr);
+      const atr = Proyeccion.rentaAtrasada();
+      const cuando = f => f === Jornadas.sumarDias(hoy(), 1) ? "Mañana" : f === hoy() ? "Hoy" : `El ${Futuro.diaCorto(f).toLowerCase()}`;
+      $("cb-objetivo").innerHTML = `<p class="mensaje-sobrante positivo">✓ En los próximos 3 meses no te falta dinero (escenario ${escapar(esc.titulo)}).</p>
+        <section class="tarjeta cb-nada"><p><strong>No hay nada que cubrir.</strong>
+          ${cheque ? `${cuando(cheque.fecha)} cobras ${dineroCorto(cheque.monto)}` : ""}${renta && renta.falta <= 0.005 ? `${cheque ? " y l" : "L"}a ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} queda pagada el ${escapar(Futuro.diaCorto(renta.fecha).toLowerCase())}` : ""}.</p>
+          ${atr > 0.005 ? `<p class="cb-nada-sub">Aparte: renta atrasada <strong>${dineroCorto(atr)}</strong>. Se paga con lo que sobra o con un plan de pagos.</p>` : ""}
+          <button class="enlace cb-escenarios" data-cb-escenarios>Ver ¿Y si cobro…? ›</button></section>`;
       $("cb-plan").innerHTML = ""; $("cb-otra").hidden = true; $("cb-todas").innerHTML = "";
       return;
     }
@@ -171,7 +182,7 @@ const Cubrir = {
     // En "Te recomiendo" el botón usa la opción tal como quedó en el plan (ej.: el teléfono dividido)
     const boton = (o, i, delPlan = null) => o.accion ? `<button class="boton-chico lleno" data-cb-op="${i}" ${delPlan ? "data-cb-plan" : ""}>${{ colchon: "Usar", planeado: "Elegir otra fecha", comida: "Aplicar", mover: "Mover", pausar: "Pausar" }[o.accion]}</button>` : "";
     const filas = p.elegidas.map(o => `<li><div class="mov-info"><div class="mov-tipo">${escapar(o.titulo)}</div>
-        <div class="mov-detalle">${escapar(o.detalle)} · ${escapar(o.costoTxt)}</div></div>
+        <div class="mov-detalle">${escapar(o.detalle)}</div><div class="cb-costo">Costo: ${escapar(o.costoTxt.replace(/^./, c => c.toLowerCase()))}</div></div>
         <div class="pago-lado"><span class="mov-monto ok">cubre ${dinero(o.aporta)}</span>${boton(o, p.ops.findIndex(x => x.id === o.id), o)}</div></li>`);
     if (p.prestamo) filas.push(`<li><div class="mov-info"><div class="mov-tipo">Préstamo sin intereses de ${dinero(p.prestamo.monto)}</div>
         <div class="mov-detalle">Lo que falta${p.elegidas.length ? " después de lo de arriba" : ""}. Devolverlo cuando puedas (te dice cuándo).</div></div>
@@ -188,7 +199,7 @@ const Cubrir = {
       (se cobran el ${Futuro.diaCorto(p.horas.cheque)}). Cada hora extra deja unos ${dinero(p.horas.valor)} netos.</p>
       <p class="estado">Depende de que en tu trabajo haya horas extra. Si no hay, usa la opción de arriba.</p>`;
     $("cb-todas").innerHTML = p.ops.length ? p.ops.map((o, i) => `<li><div class="mov-info"><div class="mov-tipo">${escapar(o.titulo)}</div>
-        <div class="mov-detalle">${escapar(o.detalle)} · ${escapar(o.costoTxt)}</div></div>
+        <div class="mov-detalle">${escapar(o.detalle)}</div><div class="cb-costo">Costo: ${escapar(o.costoTxt.replace(/^./, c => c.toLowerCase()))}</div></div>
         <div class="pago-lado"><span class="mov-monto">cubre ${dinero(Math.min(o.cubre, f.falta))}</span>${boton(o, i)}</div></li>`).join("")
       : `<li class="vacio">No hay opciones sin préstamo para estas fechas.</li>`;
   },
@@ -235,6 +246,7 @@ const Cubrir = {
   iniciar() {
     $("volver-cubrir").addEventListener("click", () => this.cerrar());
     $("pantalla-cubrir").addEventListener("click", e => {
+      if (e.target.closest("[data-cb-escenarios]")) { $("pantalla-cubrir").hidden = true; return Escenarios.abrir("pantalla-cubrir"); }
       const b = e.target.closest("[data-cb-op]");
       if (b) {
         const o = this._p.ops[Number(b.dataset.cbOp)];

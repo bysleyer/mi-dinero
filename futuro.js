@@ -41,7 +41,7 @@ const Futuro = {
   diaCorto(f) {
     return Jornadas.aFecha(f).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
   },
-  plata(n) { return n < 0 ? `−${dinero(-n)}` : dinero(n); },
+  plata(n) { return n < 0 ? `−${dineroCorto(-n)}` : dineroCorto(n); },
   fechas(pr) { return Object.keys(pr.porDia).sort(); },
 
   // ---------- Pantalla ----------
@@ -83,13 +83,28 @@ const Futuro = {
     let bajo = fechas[0];
     fechas.forEach(f => { if (pr.porDia[f].saldoFin < pr.porDia[bajo].saldoFin) bajo = f; });
     const saldoBajo = pr.porDia[bajo].saldoFin;
-    $("fu-frase").className = "fu-frase " + (saldoBajo < 0 ? "negativo" : "positivo");
+    // Con renta atrasada y el día 15 cerca, la tarjeta de arriba no puede decir "todo bien": lo dice primero
+    const atrasada = Proyeccion.rentaAtrasada();
+    const diaLegal = Calendario.diaDelMes("accionLegal", 15);
+    const faltanLegal = Deudas.diasParaDia(diaLegal);
+    const legal = atrasada > 0.005 && faltanLegal <= 7;
+    const cheque = (pr.chequesInfo || []).find(c => c.fecha >= hoy());
+    const renta = Proyeccion.estadoRenta(pr);
+    const cuandoCheque = cheque ? (cheque.fecha === hoy() ? "Hoy" : cheque.fecha === Jornadas.sumarDias(hoy(), 1) ? "Mañana" : `El ${this.dia(cheque.fecha)}`) : "";
+    const libre = legal ? Plan.semanaReal().libre : 0;
+    const lineaLegal = legal ? `<span class="fu-frase-legal">${faltanLegal === 0 ? "Hoy" : this.dia(Jornadas.sumarDias(hoy(), faltanLegal)).replace(/^./, c => c.toUpperCase())}: puede haber acción legal.
+        Debes <b>${dineroCorto(atrasada)}</b> de renta atrasada${libre < atrasada ? ` y con lo libre esta semana solo alcanzas <b>${dineroCorto(libre)}</b>` : ""}.</span>` : "";
+    $("fu-frase").className = "fu-frase " + (saldoBajo < 0 ? "negativo" : legal ? "alerta" : "positivo");
     $("fu-frase").innerHTML = saldoBajo < 0
-      ? `<strong>Te faltan ${dinero(-saldoBajo)} el ${escapar(this.dia(bajo))}.</strong><span>Es tu día más apretado del mes.</span>`
-      : `<strong>No te quedas sin dinero este mes.</strong><span>Punto más bajo: <b>${dinero(saldoBajo)}</b> el ${escapar(this.dia(bajo))}.</span>`;
+      ? `<strong>Te faltan ${dineroCorto(-saldoBajo)} el ${escapar(this.dia(bajo))}.</strong><span>Es tu día más apretado del mes.</span>${lineaLegal}`
+      : legal
+      ? `<strong>${cheque ? `${cuandoCheque} cobras ${dineroCorto(cheque.monto)}.` : "Este mes no te quedas sin dinero."} La renta atrasada sigue pendiente.</strong>` +
+        (renta ? `<span>${renta.falta > 0.005 ? `A la ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} le faltan ${dineroCorto(renta.falta)}.`
+          : `La ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} queda cubierta el ${escapar(this.diaCorto(renta.fecha).toLowerCase())}.`}</span>` : "") + lineaLegal
+      : `<strong>No te quedas sin dinero este mes.</strong><span>Punto más bajo: <b>${dineroCorto(saldoBajo)}</b> el ${escapar(this.dia(bajo))}.</span>`;
     $("fu-cuenta").textContent = Proyeccion.textoCuenta(pr);
     // Bloque 16: colchón usable y arrastre
-    $("fu-colchon").innerHTML = ColchonUI.html() + RentaUI.html(pr);
+    $("fu-colchon").innerHTML = ColchonUI.html() + RentaUI.html(pr, { sinAtrasada: legal });
     $("fu-arrastre").innerHTML = ArrastreUI.html(pr);
     // Bloque 15: gastos planeados que todavía no tienen fecha
     const sinFecha = Planeados.sinFecha();
@@ -118,7 +133,7 @@ const Futuro = {
 
   // ---------- Gráfica de líneas (30 días) ----------
   dibujarGrafica(prs, elegido) {
-    const W = 340, H = 130, M = { izq: 6, der: 6, arr: 14, aba: 22 };
+    const W = 340, H = 156, M = { izq: 6, der: 6, arr: 22, aba: 34 };
     const fechas = this.fechas(prs[elegido]);
     const n = fechas.length;
     const todos = this.ESCENARIOS.flatMap(e => fechas.map(f => prs[e.id].porDia[f].saldoFin));
@@ -165,8 +180,19 @@ const Futuro = {
 
     // Zonas para tocar cada día
     const ancho = (W - M.izq - M.der) / (n - 1);
+    // (con el teclado y el lector de pantalla: cada día se alcanza con Tab y dice su fecha y su saldo)
     const toques = fechas.map((f, i) =>
-      `<rect x="${x(i) - ancho / 2}" y="${M.arr}" width="${ancho}" height="${H - M.arr - M.aba}" class="fu-toque" data-fu-dia="${f}"><title>${this.diaCorto(f)}: ${this.plata(pr.porDia[f].saldoFin)}</title></rect>`).join("");
+      `<rect x="${x(i) - ancho / 2}" y="${M.arr}" width="${ancho}" height="${H - M.arr - M.aba}" class="fu-toque" data-fu-dia="${f}"
+        tabindex="0" role="button" aria-label="${this.diaCorto(f)}: te quedan ${this.plata(pr.porDia[f].saldoFin)}"><title>${this.diaCorto(f)}: ${this.plata(pr.porDia[f].saldoFin)}</title></rect>`).join("");
+    // Fechas abajo (cada semana), un punto en cada cobro y la línea del día 15 si hay renta atrasada
+    const fechasX = fechas.map((f, i) => (i % 7 === 0 && n - 1 - i >= 4) || i === n - 1
+      ? `<text x="${x(i)}" y="${H - 6}" class="fu-eje-x" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}">${Jornadas.aFecha(f).getDate()} ${Jornadas.aFecha(f).toLocaleDateString("es", { month: "short" }).replace(".", "")}</text>` : "").join("");
+    const cobros = fechas.map((f, i) => pr.porDia[f].lineas.some(z => z.tipo === "cheque")
+      ? `<circle cx="${x(i)}" cy="${H - M.aba + 10}" r="3.5" class="fu-cobro-punto"/>` : "").join("");
+    const diaLegal = Calendario.diaDelMes("accionLegal", 15);
+    const i15 = Proyeccion.rentaAtrasada() > 0.005 ? fechas.findIndex(f => Jornadas.aFecha(f).getDate() === diaLegal) : -1;
+    const linea15 = i15 >= 0 ? `<line x1="${x(i15)}" x2="${x(i15)}" y1="${M.arr - 6}" y2="${H - M.aba}" class="fu-linea-15"/>
+      <text x="${x(i15) + (x(i15) > W - 110 ? -5 : 5)}" y="${M.arr - 9}" class="fu-txt-15" text-anchor="${x(i15) > W - 110 ? "end" : "start"}">${Jornadas.aFecha(fechas[i15]).toLocaleDateString("es", { weekday: "short" }).replace(".", "")} ${diaLegal} · renta</text>` : "";
 
     const bajoCero = Math.min(...fechas.map(f => pr.porDia[f].saldoFin)) < 0;
     // El punto más bajo, marcado como en el concepto
@@ -174,20 +200,19 @@ const Futuro = {
     const vb = pr.porDia[fechas[ib]].saldoFin, xb = x(ib), yb = y(vb);
     const etq = `${vb < 0 ? "−" : ""}$${Math.abs(Math.round(vb)).toLocaleString("en-US")} · ${this.diaCorto(fechas[ib]).toLowerCase()}`;
     const punto = `<circle cx="${xb}" cy="${yb}" r="6" class="fu-punto${vb < 0.005 ? " rojo" : ""}"/>` +
-      `<text x="${xb + (xb > W - 120 ? -10 : 10)}" y="${yb < 30 ? yb + 18 : yb - 8}" class="fu-punto-txt" text-anchor="${xb > W - 120 ? "end" : "start"}">${etq}</text>`;
+      `<text x="${xb + (xb > W - 120 ? -10 : 10)}" y="${vb < 0 || yb < 40 ? Math.min(H - M.aba - 4, yb + 20) : yb - 10}" class="fu-punto-txt" text-anchor="${xb > W - 120 ? "end" : "start"}">${etq}</text>`;
     $("fu-grafica").innerHTML = `
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saldo proyectado de los próximos ${n} días">
+      <svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Saldo proyectado de los próximos ${n} días: el más bajo es ${this.plata(vb)} el ${this.diaCorto(fechas[ib])}. Usa Tab para oír cada día.">
         <defs>
           <clipPath id="fu-arriba"><rect x="0" y="0" width="${W}" height="${Math.max(0, y0)}"/></clipPath>
           <clipPath id="fu-abajo"><rect x="0" y="${y0}" width="${W}" height="${Math.max(0, H - y0)}"/></clipPath>
         </defs>
-        <line x1="${M.izq}" x2="${W - M.der}" y1="${y0}" y2="${y0}" class="fu-cero"/>${principal}${punto}${toques}
+        <line x1="${M.izq}" x2="${W - M.der}" y1="${y0}" y2="${y0}" class="fu-cero"/>${linea15}${principal}${punto}${fechasX}${cobros}${toques}
       </svg>`;
     $("fu-leyenda").innerHTML = `
-      <span><i class="fu-muestra elegido"></i>${this.ESCENARIOS.find(e => e.id === elegido).titulo}</span>
-      <span><i class="fu-muestra otra"></i>Los otros escenarios</span>
-      ${bajoCero ? `<span><i class="fu-muestra roja"></i>Bajo cero</span>` : ""}
-      <span><b class="fu-cobro">$</b> cobro · <b class="fu-vence">R L I T</b> vence</span>`;
+      <span><i class="fu-muestra-punto"></i>cobro (cada viernes)</span>
+      ${i15 >= 0 ? `<span><i class="fu-muestra-15"></i>día ${diaLegal}: renta atrasada</span>` : ""}
+      ${bajoCero ? `<span><i class="fu-muestra roja"></i>bajo cero</span>` : ""}`;
   },
 
   // ---------- Calendario del mes (cada día pintado según su saldo) ----------
@@ -216,7 +241,7 @@ const Futuro = {
       const cobro = d.lineas.some(l => l.tipo === "cheque");
       const vence = [...new Set(d.lineas.filter(l => l.tipo === "pago" && l.letra).map(l => l.letra))].join("");
       return `<button class="dia ${color}${libre ? " libre" : ""}${f === hoy() ? " hoy" : ""}" data-fu-dia="${f}"
-          aria-label="${this.diaCorto(f)}: ${this.plata(s)}${libre ? ", día libre" : ""}">
+          aria-label="${this.diaCorto(f)}: te quedan ${this.plata(s)}${cobro ? ", cobras" : ""}${vence ? `, vence ${d.lineas.filter(l => l.tipo === "pago" && l.letra).map(l => l.nombre).join(", ")}` : ""}${libre ? ", día libre" : ""}">
         <span class="dia-num">${num}${libre ? "<small>◇</small>" : ""}</span>
         ${cobro ? `<span class="marca-cobro">$</span>` : ""}
         ${vence ? `<span class="marca-vence">${vence}</span>` : ""}
@@ -272,7 +297,7 @@ const Futuro = {
       return `<li>
           <div class="mov-info"><div class="mov-tipo">${escapar(l.nombre)}</div>
             ${noAlcanza ? `<div class="aviso-movido">No alcanza este día</div>` : ""}
-            ${l.id === "renta" && l.saldo < -0.005 ? `<div class="error">Faltan ${dinero(Math.min(-l.monto, -l.saldo))}</div>` : ""}</div>
+            ${l.id === "renta" && l.saldo < -0.005 ? `<div class="error">Faltan ${dineroCorto(Math.min(-l.monto, -l.saldo))}</div>` : ""}</div>
           <div class="pago-lado">
             <span class="mov-monto ${l.monto >= 0 ? "positivo" : "negativo"}">${l.monto >= 0 ? "+" : "−"}${dinero(Math.abs(l.monto))}</span>
             ${movible ? `<button class="boton-chico" data-fu-mover="${escapar(l.claveMov)}">Mover</button>` : ""}
@@ -297,7 +322,7 @@ const Futuro = {
     // 1. ¿Cuándo me quedo sin dinero?
     const sinDinero = fechas.find(f => pr.porDia[f].saldoFin < -0.005);
     tarjetas.push(sinDinero
-      ? { titulo: "¿Cuándo me quedo sin dinero?", grande: this.dia(sinDinero), texto: `Te faltan ${dinero(-pr.porDia[sinDinero].saldoFin)} ese día.`, clase: "negativo" }
+      ? { titulo: "¿Cuándo me quedo sin dinero?", grande: this.dia(sinDinero), texto: `Te faltan ${dineroCorto(-pr.porDia[sinDinero].saldoFin)} ese día.`, clase: "negativo" }
       : { titulo: "¿Cuándo me quedo sin dinero?", grande: "No en el próximo mes", texto: "El saldo no baja de cero en 30 días.", clase: "positivo" });
 
     // 2 y 3: largo plazo, con las reglas de prioridad y del colchón
@@ -325,7 +350,7 @@ const Futuro = {
       const cheques = pr.chequesInfo.filter(c => c.fecha <= pr.hasta);
       const total = cheques.reduce((s, c) => s + c.monto, 0);
       const libres = Proyeccion.diasLibresEntre(pr.desde, pr.hasta);
-      tarjetas.push({ titulo: "¿Cuánto cobro al mes?", grande: dinero(total),
+      tarjetas.push({ titulo: "¿Cuánto cobro al mes?", grande: dineroCorto(total),
         texto: `En ${cheques.length} ${cheques.length === 1 ? "cheque" : "cheques"} (próximos 30 días)${libres ? `, con ${libres} ${libres === 1 ? "día libre descontado" : "días libres descontados"}` : ""}.`, clase: "" });
     }
 
@@ -347,6 +372,11 @@ const Futuro = {
       if (vis) { Almacen.guardarFuturo({ vista: vis.dataset.fuVista }); this.mostrar(); }
       const dia = e.target.closest("[data-fu-dia]");
       if (dia) this.abrirDia(dia.dataset.fuDia);
+    });
+    // Los días de la gráfica también se abren con Enter o la barra espaciadora
+    $("fu-grafica").addEventListener("keydown", e => {
+      const r = e.target.closest(".fu-toque[data-fu-dia]");
+      if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); this.abrirDia(r.dataset.fuDia); }
     });
     $("fu-sem-anterior").addEventListener("click", () => { this.semana--; this.mostrar(); });
     $("fu-sem-siguiente").addEventListener("click", () => { this.semana++; this.mostrar(); });

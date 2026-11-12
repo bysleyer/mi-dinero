@@ -30,7 +30,7 @@ const ColchonUI = {
 // Renta: la del mes, ¿queda cubierta antes de su fecha límite (el 15 o a donde la moviste)? Si no, cuánto falta.
 // La renta atrasada se muestra aparte (no es lo que toca pagar este mes).
 const RentaUI = {
-  html(pr) {
+  html(pr, opciones = {}) {
     let r = Proyeccion.estadoRenta(pr);
     if (!r && pr.opciones) {
       // La próxima renta vence después de estos días: se mira con la misma cuenta un poco más lejos
@@ -50,8 +50,8 @@ const RentaUI = {
       : r.faltaDia > 0.005
       ? tarjeta("parcial", `✓ Queda cubierta, pero ese día faltan ${dinero(r.faltaDia)} para ${escapar(Proyeccion.lista(r.cortosDia))} · ${dia}`)
       : tarjeta("cubierta", `✓ Queda cubierta · ${dia}`);
-    const atr = atrasada > 0.005
-      ? `<p class="renta-atrasada">Renta atrasada (aparte, no es la de este mes): <strong>${dinero(atrasada)}</strong>. Se paga con lo que sobra.</p>` : "";
+    const atr = atrasada > 0.005 && !(opciones && opciones.sinAtrasada)
+      ? `<p class="renta-atrasada">Renta atrasada (aparte, no es la de este mes): <strong>${dineroCorto(atrasada)}</strong>. Se paga con lo que sobra.</p>` : "";
     return linea + atr;
   },
 

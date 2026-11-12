@@ -286,10 +286,15 @@ const Plan = {
   async apartar() {
     const ap = this.cuantoApartar();
     if (ap.renta + ap.servicios <= 0.005) return;
-    const ok = await preguntar(
-      "¿Apartar lo de esta semana?\n" +
-      `Renta: +${dinero(ap.renta)}\nServicios: +${dinero(ap.servicios)}\n(Es dinero que ya tienes: solo se marca como apartado.)`, "Sí, apartar"
-    );
+    const total = redondear(ap.renta + ap.servicios);
+    const tengo = Dinero.actual();
+    const cheque = (Proyeccion.calcular().chequesInfo || []).find(c => c.fecha >= hoy());
+    // Si hoy no tienes todo eso, no se dice "es dinero que ya tienes": se dice de dónde sale
+    const nota = tengo + 0.005 >= total ? "Es dinero que ya tienes: no mueve dinero, solo lo marca como apartado."
+      : `Hoy tienes ${dineroCorto(Math.max(0, tengo))}. Esto sale ${cheque ? `del cheque del ${Futuro.diaCorto(cheque.fecha).toLowerCase()}` : "de tu próximo cheque"}; no mueve dinero, solo lo marca.`;
+    const ok = await preguntar({ titulo: "¿Apartar lo de esta semana?",
+      filas: [["Renta", `+${dineroCorto(ap.renta)}`], ["Servicios", `+${dineroCorto(ap.servicios)}`]], nota },
+      `Apartar ${dineroCorto(total)}`, "Ahora no");
     if (!ok) return;
     const plan = Almacen.leerPlan();
     plan.sobres.renta = redondear(plan.sobres.renta + ap.renta);

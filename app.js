@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 47, fecha: "12 nov 2026" };
+const VERSION_APP = { numero: 48, fecha: "12 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -44,10 +44,19 @@ const esCheque = m => m.tipo === "ingreso" && m.tipoIngreso !== "otro";
 // Pregunta "¿Seguro?" dentro de la app (no usa la ventana del navegador,
 // que no funciona en algunos lugares, como las páginas de claude.ai).
 // Devuelve una promesa: true si toca "Sí", false si toca "No".
+// texto: un texto, o { titulo, filas: [[nombre, monto]], nota } para preguntas con montos (ej.: Apartar)
 function preguntar(texto, si = "Sí", no = "No") {
   return new Promise(resolver => {
     const caja = $("pregunta");
-    $("pregunta-texto").textContent = texto;
+    if (texto && typeof texto === "object") {
+      $("pregunta-texto").innerHTML = `<span class="pq-titulo">${escapar(texto.titulo || "")}</span>` +
+        (texto.filas || []).map(([n, v]) => `<span class="pq-fila"><span>${escapar(n)}</span><b>${escapar(v)}</b></span>`).join("") +
+        (texto.nota ? `<span class="pq-nota">${escapar(texto.nota)}</span>` : "");
+      $("pregunta-texto").classList.add("pq-con-filas");
+    } else {
+      $("pregunta-texto").textContent = texto;
+      $("pregunta-texto").classList.remove("pq-con-filas");
+    }
     $("pregunta-si").textContent = si;
     $("pregunta-no").textContent = no;
     caja.hidden = false;
@@ -288,10 +297,10 @@ const Formularios = {
         caja.hidden = false;
         caja.className = "f-efecto " + (e.agrega > 0 || vig ? "negativo" : "positivo");
         caja.innerHTML = (vig ? vig + "<br>" : "") + (e.agrega > 0
-          ? `⚠ Este gasto agrega <strong>${dinero(e.agrega)}</strong> a lo que falta el ${Futuro.dia(e.diaAgrega)}.
-             <button type="button" class="enlace" data-ver-gasto>Ver opciones</button>`
-          : `✓ Con lo que ya tienes previsto, este gasto no deja ningún día bajo cero.
-             <button type="button" class="enlace" data-ver-gasto>Ver detalle</button>`);
+          ? `Con este gasto, el ${Futuro.dia(e.diaAgrega)} te faltan <strong>${dinero(e.agrega)}</strong> más para tus pagos.
+             <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver qué hacer</button>`
+          : `Con lo que ya tienes previsto, este gasto no deja ningún día sin dinero.
+             <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver detalle</button>`);
       }, 300);
     },
     leer(base) {
@@ -396,7 +405,7 @@ const Formularios = {
         </div>` + campoMonto() + `
         <div class="montos-rapidos">
           ${Transporte.montosRapidos().map(m =>
-            `<button type="button" class="boton-chico" data-llenar-monto="${m.monto}">${dinero(m.monto)}<small>${escapar(m.nombre)}</small></button>`
+            `<button type="button" class="boton-chico" data-llenar-monto="${m.monto}" aria-pressed="false">${dinero(m.monto)}<small>${escapar(m.nombre)}</small></button>`
           ).join("")}
         </div>` + campoFecha() + (t.ultimoHoy
           ? `<button type="button" id="deshacer-transporte" class="boton-chico boton-borrar">Deshacer el último (${dinero(t.ultimoHoy.monto)})</button>` : "");
@@ -448,6 +457,11 @@ let formularioExtra = null; // datos extra para el movimiento (ej.: qué vencimi
 function abrirFormulario(tipo, valores = {}) {
   formularioAbierto = tipo;
   formularioExtra = valores.extra || null;
+  // Lo que un formulario puso debajo de Guardar (ej.: Pausar en Pagos fijos) no se queda para el siguiente
+  document.querySelectorAll("#formulario .fuera-del-form").forEach(x => x.remove());
+  $("cancelar").textContent = "Cancelar";
+  $("aviso").hidden = true; // el aviso de lo anterior no tapa el formulario nuevo
+  $("formulario").querySelector("button[type=submit]").textContent = "Guardar";
   const f = Formularios[tipo];
   $("form-titulo").textContent = f.titulo;
   $("formulario").dataset.tipo = tipo;
@@ -469,8 +483,24 @@ function abrirFormulario(tipo, valores = {}) {
   if (tipo === "gasto") ponerChipsDeCategoria();
   if (f.alCambiar) f.alCambiar();
   $("form-error").textContent = "";
+  ponerTextoGuardar();
   $("ventana").hidden = false;
   document.body.style.overflow = "hidden";
+}
+
+function limpiarErrorForm() {
+  $("form-error").textContent = "";
+  document.querySelectorAll("#form-campos .con-error").forEach(x => x.classList.remove("con-error"));
+  document.querySelectorAll("#form-campos .campo-error").forEach(x => x.remove());
+}
+
+// "Guardar $5.00" (y "Guardar $12.00 en Transporte"): el botón dice lo que va a guardar
+function ponerTextoGuardar() {
+  const b = $("formulario").querySelector("button[type=submit]");
+  const m = $("f-monto") ? Number($("f-monto").value) : NaN;
+  if (!["gasto", "transporte"].includes(formularioAbierto) || !(m > 0)) { b.textContent = "Guardar"; return; }
+  const cat = formularioAbierto === "gasto" && $("f-categoria") ? $("f-categoria").value : "";
+  b.textContent = `Guardar ${dinero(m)}${cat ? ` en ${cat}` : ""}`;
 }
 
 // Cambiar entre Gasté · Me pagaron · Pagué una deuda sin volver atrás (conserva el monto que ya escribiste)
@@ -502,7 +532,17 @@ function cerrarFormulario() {
 async function guardarFormulario(evento) {
   evento.preventDefault();
   const f = Formularios[formularioAbierto];
-  const mostrarError = msg => { $("form-error").textContent = msg; };
+  // El error va junto al campo que hay que corregir (y se borra solo al corregirlo: limpiarErrorForm)
+  const mostrarError = msg => {
+    limpiarErrorForm();
+    const junto = /categor/i.test(msg) ? document.querySelector("#form-campos .chips-categoria")
+      : /monto/i.test(msg) && $("f-monto") ? $("f-monto").closest(".campo") : null;
+    if (!junto) { $("form-error").textContent = msg; return; }
+    junto.classList.add("con-error");
+    junto.insertAdjacentHTML("afterend", `<p class="error campo-error" role="alert">${escapar(msg)}</p>`);
+    const foco = junto.querySelector("input, button");
+    if (foco) foco.focus({ preventScroll: false });
+  };
   // Formularios que no son de dinero (ej.: jornadas) se guardan a su manera
   if (f.guardar) return f.guardar(mostrarError);
 
@@ -561,9 +601,33 @@ function registrarMovimiento(mov) {
   Plan.moverSobreServicios(-descuentoServicios);
   Pantalla.actualizar();
   if (mov.estimado != null) Pantalla.aviso(textoComparacion(mov), 6000);
-  else Pantalla.aviso("Guardado");
+  else Pantalla.aviso(textoGuardado(mov), 5000, { texto: "Deshacer", fn: () => deshacerMovimiento(mov.id) });
   avisarCambioMovimientos();
   return true;
+}
+
+// "Guardado: $12 en Transporte" — dice qué se guardó
+function textoGuardado(mov) {
+  const m = dineroCorto(mov.monto);
+  if (mov.tipo === "gasto") return `Guardado: ${m} en ${mov.categoria || "gastos"}`;
+  if (mov.tipo === "ingreso") return `Guardado: te pagaron ${m}`;
+  if (mov.tipo === "pagoDeuda") {
+    const d = Datos.deudas().find(x => x.id === mov.deudaId);
+    return `Guardado: ${m} a ${d ? d.nombre : "la deuda"}`;
+  }
+  return "Guardado";
+}
+
+// "Deshacer" del aviso: borra el movimiento recién guardado sin preguntar (y devuelve lo que salió de los sobres)
+function deshacerMovimiento(id) {
+  const mov = Almacen.leerMovimientos().find(m => m.id === id);
+  if (!mov) return;
+  Almacen.borrarMovimiento(id);
+  Plan.moverSobreRenta(mov.descontadoSobreRenta || 0);
+  Plan.moverSobreServicios(mov.descontadoSobreServicios || 0);
+  Pantalla.actualizar();
+  Pantalla.aviso("Listo: no se guardó");
+  avisarCambioMovimientos();
 }
 
 // "Estimé $X, te llegaron $Y, diferencia $Z" (Bloque 7)
@@ -704,14 +768,21 @@ const Pantalla = {
         }).join("");
   },
 
-  aviso(texto, duracion = 1800) {
-    const el = $("aviso");
+  // Aviso oscuro sobre la barra: dice qué pasó y, si se puede, trae "Deshacer" (accion = { texto, fn })
+  aviso(texto, duracion = 2500, accion = null) {
+    const el = $("aviso"), t = $("aviso-texto"), b = $("aviso-accion");
     // Primero se muestra y después se pone el texto: así VoiceOver lo anuncia
     el.hidden = false;
-    el.textContent = "";
-    requestAnimationFrame(() => { el.textContent = texto; });
+    t.textContent = "";
+    requestAnimationFrame(() => { t.textContent = texto; });
+    b.hidden = !accion;
+    b.onclick = null;
+    if (accion) {
+      b.textContent = accion.texto || "Deshacer";
+      b.onclick = () => { el.hidden = true; clearTimeout(this._t); accion.fn(); };
+    }
     clearTimeout(this._t);
-    this._t = setTimeout(() => { el.hidden = true; }, duracion);
+    this._t = setTimeout(() => { el.hidden = true; }, accion ? Math.max(duracion, 5000) : duracion);
   },
 
   mostrarError(mensaje) {
@@ -837,6 +908,9 @@ try {
     if (c) cambiarTipoIngreso(c.dataset.cambiarTipo);
   });
   // "Me pagaron": con "Otro ingreso" se ocultan las horas y se muestra la nota
+  $("form-campos").addEventListener("input", () => { limpiarErrorForm(); ponerTextoGuardar(); });
+  $("form-campos").addEventListener("click", e => { if (e.target.closest("[data-categoria]")) limpiarErrorForm(); });
+  $("form-campos").addEventListener("change", () => ponerTextoGuardar());
   $("form-campos").addEventListener("input", e => {
     const f = Formularios[formularioAbierto];
     if (f && f.alCambiar && (e.target.id === "f-monto" || (formularioAbierto === "gasto" && e.target.id === "f-nota"))) f.alCambiar(e);
@@ -862,10 +936,16 @@ try {
     if (c) {
       $("f-categoria").value = c.dataset.categoria;
       $("f-categoria").dispatchEvent(new Event("change", { bubbles: true }));
+      ponerTextoGuardar();
       document.querySelectorAll("[data-categoria]").forEach(x => x.setAttribute("aria-pressed", x === c));
     }
     const b = e.target.closest("[data-llenar-monto]");
-    if (b) { $("f-monto").value = Number(b.dataset.llenarMonto).toFixed(2); $("f-monto").focus(); }
+    // Monto de un toque: se llena y se marca elegido, SIN abrir el teclado (así Guardar queda a la vista)
+    if (b) {
+      $("f-monto").value = Number(b.dataset.llenarMonto).toFixed(2);
+      document.querySelectorAll("[data-llenar-monto]").forEach(x => x.setAttribute("aria-pressed", x === b));
+      ponerTextoGuardar();
+    }
     if (e.target.closest("#deshacer-transporte")) Transporte.deshacerUltimo();
     if (e.target.closest("[data-ver-gasto]")) {
       const monto = Number($("f-monto").value), fecha = $("f-fecha").value;

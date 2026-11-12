@@ -175,7 +175,7 @@ Object.assign(Consejero, {
     // Informe
     const inf = c && c.informe;
     $("cj-informe").innerHTML = inf
-      ? `${inf.titulo ? `<h3>${escapar(inf.titulo)}</h3>` : ""}${inf.resumen ? `<p>${escapar(inf.resumen)}</p>` : ""}
+      ? `${inf.titulo ? `<h3>${escapar(inf.titulo)}</h3>` : ""}${inf.resumen ? this.lineasResumen(inf.resumen) : ""}
          ${(inf.puntos || []).length ? `<details class="cj-mas"><summary>Ver todo el informe (${inf.puntos.length})</summary><ul class="cj-puntos">${inf.puntos.map(p => `<li><span aria-hidden="true">${this.ICONOS[p.tipo] || "•"}</span> ${escapar(p.texto)}</li>`).join("")}</ul></details>` : ""}
          ${c.actualizadoInforme ? `<p class="opcional">Informe del ${this.cuando(c.actualizadoInforme)}</p>` : ""}`
       : `<p class="ayuda">Aquí aparece el informe de cada noche.</p>`;
@@ -246,6 +246,17 @@ Object.assign(Consejero, {
   },
 
   // ---------- "Pregúntale a tu consejero" (abre la app de Claude) ----------
+  // "Lo más importante" en líneas cortas (no un párrafo con seis cifras): una por renglón del consejero, o una por frase;
+  // el día al principio ("Hoy:", "Mañana:", "El 18:") va destacado
+  lineasResumen(texto) {
+    const lineas = (texto.includes("\n") ? texto.split(/\n+/) : texto.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])/)).map(x => x.trim()).filter(Boolean);
+    if (lineas.length < 2) return `<p>${escapar(texto)}</p>`;
+    return `<ul class="cj-lineas">${lineas.map(l => {
+      const m = l.match(/^((?:Hoy|Mañana|Ayer|Pasado mañana|El \d{1,2}(?: de [a-z]+)?|(?:Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo)(?: \d{1,2})?))([:,])\s*/);
+      return m ? `<li><b class="cj-dia">${escapar(m[1])}:</b> ${escapar(l.slice(m[0].length))}</li>` : `<li>${escapar(l)}</li>`;
+    }).join("")}</ul>`;
+  },
+
   resumen(pregunta) {
     const L = [];
     const sem = Plan.semanaReal();

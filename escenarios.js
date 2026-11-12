@@ -225,7 +225,19 @@ const Escenarios = {
     const menos = resultados[0].r;
     $("e-aviso").hidden = menos.noCubreN1.length === 0;
     $("e-aviso").textContent = `En tu semana más baja no se cubre: ${menos.noCubreN1.join(", ")}`;
-    $("e-rango").textContent = `Vencimientos del ${fechaCorta(menos.desde)} al ${fechaCorta(menos.hasta)}`;
+    // Fechas con palabras, como el resto de la app ("jue 12 nov"): "12/11" se lee como diciembre en EE. UU.
+    const corta = f => Jornadas.aFecha(f).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
+    $("e-rango").textContent = `Vencimientos del ${corta(menos.desde)} al ${corta(menos.hasta)}`;
+
+    // La respuesta primero: ¿alcanza para la renta (o para todo) en cada escenario?
+    const renta = resultados.map(x => Proyeccion.estadoRenta(x.r.pr));
+    const conRenta = renta.find(Boolean);
+    $("e-resumen").innerHTML = `<h2>${conRenta ? `¿Alcanza para la renta del ${escapar(Futuro.diaCorto(conRenta.fecha).toLowerCase())}?` : "¿Alcanza para todo en estos días?"}</h2>
+      <ul class="e-resumen-lista">${resultados.map((x, i) => {
+        const falta = conRenta ? (renta[i] ? renta[i].falta : 0) : x.r.falta;
+        return `<li><span><b>${x.titulo}</b><small>cobras ${dineroCorto(x.monto)}</small></span>
+          <span class="${falta > 0.005 ? "falta" : "cubre"}">${falta > 0.005 ? `Faltan ${dineroCorto(falta)}` : conRenta ? "Queda cubierta" : "Alcanza"}</span></li>`;
+      }).join("")}</ul>`;
 
     $("e-resultados").innerHTML = resultados.map(({ id, titulo, monto, r }) => `
       <section class="tarjeta escenario" data-escenario="${id}">
@@ -235,7 +247,12 @@ const Escenarios = {
         <ul class="escenario-lista">
           ${[1, 2, 3].filter(n => n < 3 || r.filas.some(f => f.nivel === 3)).map(n => `
             <li class="nivel-titulo">Nivel ${n}${n === 1 ? " · no se atrasa" : n === 2 ? " · se divide o se mueve" : " · suscripciones (se pausan primero)"}</li>
-            ${r.filas.filter(f => f.nivel === n).map(f => `
+            ${this.agrupar(r.filas.filter(f => f.nivel === n)).map(g => g.cheque ? `
+              <li class="esc-grupo">
+                <p class="esc-grupo-titulo">Se paga con el cheque del ${escapar(Futuro.diaCorto(g.cheque).toLowerCase())}</p>
+                <ul>${g.filas.map(f => `<li><span>${escapar(f.nombre)}</span><span>${dinero(f.monto)}
+                  ${Vencimientos.MOVIBLES.includes(f.id) && f.claveMov ? `<button class="enlace mover-igual" data-mover="${escapar(f.claveMov)}" data-escenario="${id}">Mover igual</button>` : ""}</span></li>`).join("")}</ul>
+              </li>` : g.filas.map(f => `
               <li class="esc-fila ${f.clase}">
                 <div class="mov-info">
                   <div class="mov-tipo">${escapar(f.nombre)}${f.riesgo ? ' <span class="riesgo">riesgo alto</span>' : ""}</div>
@@ -250,7 +267,7 @@ const Escenarios = {
                       : `<button class="enlace mover-igual" data-mover="${escapar(f.claveMov)}" data-escenario="${id}">Mover igual</button>`
                     : ""}
                 </div>
-              </li>`).join("") || '<li class="vacio">Nada en estas fechas.</li>'}`).join("")}
+              </li>`).join("")).join("") || '<li class="vacio">Nada en estas fechas.</li>'}`).join("")}
         </ul>
         <div class="esc-resumen">
           ${r.falta > 0
@@ -264,6 +281,18 @@ const Escenarios = {
         <button class="boton-chico ver-plan" data-ver-plan="${id}">Ver cómo quedaría en el Plan de la semana</button>
       </section>`).join("");
     this._resultados = resultados;
+  },
+
+  // Lo que "se paga con el cheque del X" va junto en una sola tarjeta por cheque; lo demás, una fila cada uno
+  agrupar(filas) {
+    const grupos = [];
+    filas.forEach(f => {
+      const cheque = f.clase === "paga" && f.conCheque ? f.conCheque : null;
+      const ultimo = grupos[grupos.length - 1];
+      if (cheque && ultimo && ultimo.cheque === cheque) ultimo.filas.push(f);
+      else grupos.push({ cheque, filas: [f] });
+    });
+    return grupos;
   },
 
   guardarCampo(campo, entrada, min, max) {

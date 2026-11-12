@@ -60,17 +60,62 @@ const PagosFijos = {
     return grupo === "esencial" ? [...this.deDatos(), ...propios] : propios;
   },
 
+  // El monto de este mes de cada fila: el recibo si llegó, el estimado si varía, o el fijo (igual que lo que se ve en la fila)
+  montoMes(p) {
+    const d = p.estado === "activo" && this.delMes(p);
+    return d ? d.monto : p.monto;
+  },
+
   total(lista) {
-    return redondear(lista.filter(p => p.estado === "activo").reduce((s, p) => s + p.monto, 0));
+    return redondear(lista.filter(p => p.estado === "activo").reduce((s, p) => s + this.montoMes(p), 0));
+  },
+
+  // ¿Algún monto del total es estimado? (para ponerle "≈")
+  totalEstimado(lista) {
+    return lista.some(p => p.estado === "activo" && (this.delMes(p) || {}).estimado);
+  },
+
+  // La próxima versión con fecha futura (un cambio de precio programado), o null
+  cambioFuturo(p) {
+    if (p.deDatos) return null;
+    const f = hoy();
+    return (p.versiones || []).filter(v => v.desde > f).sort((a, b) => a.desde.localeCompare(b.desde))[0] || null;
+  },
+
+  pausaActual(p) {
+    return (p.pausas || []).find(x => !x.hasta) || null;
+  },
+
+  primeroDelMesQueViene() {
+    const h = Jornadas.aFecha(hoy());
+    return Resumen.aClave(new Date(h.getFullYear(), h.getMonth() + 1, 1));
+  },
+
+  diaCorto(f) {
+    return Jornadas.aFecha(f).toLocaleDateString("es", { day: "numeric", month: "short" }).replace(".", "");
+  },
+
+  // Cuota del plan que trae el recibo (la luz), si hay plan con saldo
+  cuotaPlan(id) {
+    const g = Datos.actual.gastosFijos.find(x => x.id === id && x.partes);
+    return g && g.deudaPlan && Datos.saldoDeuda(g.deudaPlan) > 0 ? g.partes.cuotaPlan : 0;
   },
 
   textoEstado(p) {
-    if (p.estado === "pausado") return "No cuenta en tus números mientras esté pausada";
+    if (p.estado === "pausado") {
+      const pa = this.pausaActual(p);
+      return pa && pa.desde > hoy() ? `Se pausa el ${this.diaCorto(pa.desde)}` :
+        `Pausada ${pa && pa.desde < hoy() ? `desde el ${this.diaCorto(pa.desde)}` : "desde hoy"}. Sigue pausada hasta que la reanudes.`;
+    }
     if (p.estado === "cancelado") return `Ya no cuenta desde el ${fechaCorta(p.canceladoDesde)}`;
     if (p.estado === "empieza") return `Empieza el ${fechaCorta(p.desde)}`;
     if (p.variable) {
       const d = this.delMes(p);
-      if (d) return `Vence el día ${p.venceDia} · ${d.recibo ? `recibo de ${this.nombreMes(d.mes).split(" ")[0]}` : d.promedio ? `estimado (promedio de ${d.promedio} ${d.promedio === 1 ? "recibo" : "recibos"})` : "varía cada mes · estimado"}`;
+      if (d && d.recibo) {
+        const cuota = this.cuotaPlan(p.id);
+        return `Vence el día ${p.venceDia} · recibo de ${this.nombreMes(d.mes).split(" ")[0]}${cuota ? ` (incluye ${dineroCorto(cuota)} del plan)` : ""}`;
+      }
+      if (d) return `Vence el día ${p.venceDia} · varía cada mes`;
     }
     return `Vence el día ${p.venceDia} · ${p.variable ? "Varía cada mes" : "Fijo"}`;
   },
@@ -92,17 +137,31 @@ const PagosFijos = {
     const apagado = p.estado === "pausado" || p.estado === "cancelado";
     const marca = p.estado === "pausado" ? `<span class="pf-marca">Pausada</span>`
       : p.estado === "cancelado" ? `<span class="pf-marca">Cancelada</span>` : "";
+    const d = !apagado && this.delMes(p);
+    const futuro = !apagado && this.cambioFuturo(p);
+    // Varía y todavía no llega el recibo de este mes: se dice en ámbar y el botón está en la misma fila
+    const faltaRecibo = d && !d.recibo;
+    const extra = [];
+    if (faltaRecibo) extra.push(`<span class="pf-sub pf-alerta">${d.promedio ? `estimado (promedio de ${d.promedio}) · ` : ""}falta el recibo de ${this.nombreMes(d.mes).split(" ")[0]}</span>`);
+    if (futuro) extra.push(`<span class="pf-sub pf-alerta">Desde el ${this.diaCorto(futuro.desde)}: ${dineroCorto(futuro.monto)} al mes</span>`);
+    const sig = this.primeroDelMesQueViene();
+    const acciones = faltaRecibo ? `<button class="boton-chico lleno pf-accion-fila" data-rc-abrir="${escapar(p.id)}">Llegó el recibo</button>`
+      : p.estado === "pausado" ? `<div class="pf-acciones-fila">
+          <button class="boton-chico lleno" data-pf-reanudar-fila="${escapar(p.id)}">Reanudar</button>
+          <button class="boton-chico" data-pf-reanudar-fila="${escapar(p.id)}" data-desde="${sig}">Reanudar el ${this.diaCorto(sig)}</button></div>` : "";
     return `
       <li>
         <button class="pf-fila ${apagado ? "apagado" : ""}" data-pf-abrir="${escapar(p.id)}"
-          aria-label="${escapar(p.nombre)}, ${dinero(p.monto)} al mes. ${escapar(this.textoEstado(p))}. Editar">
+          aria-label="${escapar(p.nombre)}, ${dinero(this.montoMes(p))} al mes. ${escapar(this.textoEstado(p))}. Editar">
           <span class="pf-info">
             <span class="pf-nombre">${escapar(p.nombre)} ${marca}</span>
             <span class="pf-sub">${escapar(this.textoEstado(p))}</span>
+            ${extra.join("")}
           </span>
-          <span class="pf-monto">${(() => { const d = !apagado && this.delMes(p); return d ? `${d.estimado ? "≈ " : ""}${dineroCorto(d.monto)}` : dineroCorto(p.monto); })()}</span>
+          <span class="pf-monto">${d ? `${d.estimado ? "≈ " : ""}${dineroCorto(d.monto)}` : dineroCorto(p.monto)}</span>
           <svg class="pf-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </button>
+        ${acciones}
       </li>`;
   },
 
@@ -110,10 +169,10 @@ const PagosFijos = {
     if ($("pantalla-pagosfijos").hidden) return;
     const es = this.lista("esencial"), su = this.lista("suscripcion");
     const tEs = this.total(es), tSu = this.total(su);
-    $("ceja-pagosfijos").textContent = `${dineroCorto(redondear(tEs + tSu))} al mes`;
+    $("ceja-pagosfijos").textContent = `${this.totalEstimado(es) || this.totalEstimado(su) ? "≈ " : ""}${dineroCorto(redondear(tEs + tSu))} al mes`;
     const ahorro = redondear(su.filter(p => p.estado === "pausado" || p.estado === "cancelado").reduce((s, p) => s + p.monto, 0));
     $("pf-esenciales").innerHTML = `
-      <div class="pf-cabeza"><h2>Esenciales</h2><span class="pf-total">${dineroCorto(tEs)} <small>al mes</small></span></div>
+      <div class="pf-cabeza"><h2>Esenciales</h2><span class="pf-total">${this.totalEstimado(es) ? "≈ " : ""}${dineroCorto(tEs)} <small>al mes</small></span></div>
       <p class="pf-ayuda">Lo que necesitas para vivir. Va primero cuando el dinero no alcanza.</p>
       <ul class="pf-lista">${es.map(p => this.fila(p)).join("")}</ul>
       <button class="boton-chico pf-agregar" data-pf-agregar="esencial">+ Agregar esencial</button>`;
@@ -184,9 +243,13 @@ const PagosFijos = {
     const cuota = luz && luz.partes && luz.deudaPlan && Datos.saldoDeuda(luz.deudaPlan) > 0 ? luz.partes.cuotaPlan : 0;
     if (cuota && monto < cuota) return error(`El recibo incluye la cuota del plan (${dinero(cuota)}): tiene que ser al menos eso.`);
     const mes = $("f-rc-mes").value;
+    const antes = Recibos.delMes(pagoId, mes);
     Almacen.guardarRecibo({ pagoId, mes, monto });
     this.recibo = null;
-    this.listo(`Recibo de ${this.nombreMes(mes).split(" ")[0]}: ${dineroCorto(monto)}`);
+    this.listo(`Recibo de ${this.nombreMes(mes).split(" ")[0]}: ${dineroCorto(monto)}`, () => {
+      if (antes) Almacen.guardarRecibo({ pagoId, mes, monto: antes.monto });
+      else { const r = Recibos.delMes(pagoId, mes); if (r) Almacen.borrarRecibo(r.id); }
+    });
   },
 
   // ---------- Orden de prioridad (campos.js: Prioridad) ----------
@@ -220,6 +283,8 @@ const PagosFijos = {
           <button class="pf-orden-boton" data-pf-subir="${escapar(id)}" ${puedeSubir ? "" : "disabled"} aria-label="Subir ${escapar(this.nombreDe(id))}">${flecha("arriba")}</button>
           <button class="pf-orden-boton" data-pf-bajar="${escapar(id)}" ${puedeBajar ? "" : "disabled"} aria-label="Bajar ${escapar(this.nombreDe(id))}">${flecha("abajo")}</button>
         </span>`}
+        ${this.ultimoOrden && this.ultimoOrden.id === id ? `<div class="pf-orden-cambio" role="status">
+          <span>${escapar(this.ultimoOrden.texto)}</span><button class="boton-chico" data-pf-orden-deshacer>Deshacer</button></div>` : ""}
       </li>`;
   },
 
@@ -254,7 +319,17 @@ const PagosFijos = {
       if (dir < 0 && i === 0) { l2.splice(i, 1); l1.push(id); } // pasa al nivel 1 (debajo de lo que ya está, nunca sobre la renta)
       else { const j = i + dir; if (j >= l2.length) return; cambiar(l2, i, j); }
     } else return;
+    const antes = Almacen.leer("prioridad");
+    const nivelAntes = Prioridad.nivel(id);
     Prioridad.guardar({ n1: l1, n2: l2, n3: l3 });
+    // Lo que cambió, dicho en la misma fila (con "Deshacer")
+    const n2 = Prioridad.niveles(), lista = [...n2.n1, ...n2.n2, ...n2.n3];
+    const nivel = Prioridad.nivel(id), sig = lista[lista.indexOf(id) + 1], ant = lista[lista.indexOf(id) - 1];
+    const texto = nivel === 2 && nivelAntes === 1 ? "Ahora, si el dinero no alcanza, la app puede moverlo o dividirlo. Va después de lo del nivel 1."
+      : nivel === 1 && nivelAntes === 2 ? "Ahora no se atrasa: se cubre antes que todo lo del nivel 2."
+      : dir < 0 && sig ? `Ahora se cubre antes que ${this.nombreDe(sig).toLowerCase()}.`
+      : ant ? `Ahora se cubre después de ${this.nombreDe(ant).toLowerCase()}.` : "Orden cambiado.";
+    this.ultimoOrden = { id, antes, texto };
     this.despuesDeOrden(id, dir);
   },
 
@@ -266,7 +341,15 @@ const PagosFijos = {
     // El foco se queda en el mismo botón para seguir moviendo con el teclado o el lector de pantalla
     const b = document.querySelector(`[data-pf-${dir < 0 ? "subir" : "bajar"}="${CSS.escape(id)}"]`);
     if (b && !b.disabled) b.focus();
-    Pantalla.aviso(`${this.nombreDe(id)}: nivel ${Prioridad.nivel(id)}`);
+  },
+
+  deshacerOrden() {
+    const u = this.ultimoOrden;
+    if (!u) return;
+    this.ultimoOrden = null;
+    if (u.antes) Almacen.guardar("prioridad", u.antes); else Prioridad.porDefecto();
+    this.recalcular();
+    Pantalla.aviso("Listo: el orden quedó como antes");
   },
 
   // ---------- Formulario ----------
@@ -281,6 +364,7 @@ const PagosFijos = {
       : propio ? propio.nombre : grupoNuevo === "suscripcion" ? "Nueva suscripción" : "Nuevo esencial";
     $("form-titulo").textContent = titulo;
     $("form-titulo").dataset.ceja = deDatos || (propio && propio.grupo === "esencial") || grupoNuevo === "esencial" ? "Esencial" : "Suscripción";
+    this.ponerAcciones();
   },
 
   camposDatos(seccion) {
@@ -330,6 +414,7 @@ const PagosFijos = {
     const variable = p ? !!p.variable : false;
     const reciboArriba = p && p.variable && p.estado === "activo" ? botonRecibo(p.id) : "";
     const chip = (attr, val, txt, on) => `<button type="button" class="chip" data-${attr}="${val}" aria-pressed="${on}">${txt}</button>`;
+    const categoria = p ? p.categoria : "Otros";
     return reciboArriba + `
       <div class="campo">
         <label for="f-pf-nombre">Nombre</label>
@@ -344,25 +429,37 @@ const PagosFijos = {
         <label for="f-pf-dia">Día del mes en que vence</label>
         <input id="f-pf-dia" type="number" inputmode="numeric" min="1" max="31" step="1" value="${p ? p.venceDia : ""}" placeholder="Ej.: 20">
       </div>
-      <p class="hoja-etiqueta pf-etq" id="pf-etq-grupo">Grupo</p>
+      ${p ? `<p class="hoja-etiqueta pf-etq" id="pf-etq-grupo">Grupo</p>
       <div class="chips pf-chips" role="group" aria-labelledby="pf-etq-grupo">
         ${chip("pf-grupo", "esencial", "Esencial", grupo === "esencial")}${chip("pf-grupo", "suscripcion", "Suscripción", grupo === "suscripcion")}
-      </div>
-      <div class="campo">
-        <label for="f-pf-categoria">Categoría</label>
-        <select id="f-pf-categoria">${CATEGORIAS.map(c => `<option ${(p ? p.categoria : grupo === "suscripcion" ? "Otros" : "Otros") === c ? "selected" : ""}>${c}</option>`).join("")}</select>
-      </div>
-      <div class="campo">
-        <label for="f-pf-nota">Nota <span class="opcional">(opcional)</span></label>
-        <input id="f-pf-nota" type="text" maxlength="120" autocomplete="off" value="${p && p.nota ? escapar(p.nota) : ""}">
-      </div>
-      ${this.campoDesde(p ? "¿Desde cuándo aplica el cambio?" : "¿Desde cuándo lo pagas?")}
-      ${p ? `<div class="pf-acciones">
-          ${p.estado === "pausado" ? `<button type="button" class="boton-chico" data-pf-reanudar>Reanudar</button>`
-            : p.estado !== "cancelado" ? `<button type="button" class="boton-chico" data-pf-pausar>Pausar</button>` : ""}
-          ${p.estado !== "cancelado" ? `<button type="button" class="boton-chico boton-borrar" data-pf-cancelar>${p.grupo === "suscripcion" ? "Cancelar suscripción" : "Ya no lo pago"}</button>`
-            : `<button type="button" class="boton-chico" data-pf-reanudar>Volver a pagarlo</button>`}
-        </div>` : ""}`;
+      </div>` : ""}
+      <details class="pf-mas" ${p && (p.nota || categoria !== "Otros") ? "open" : ""}>
+        <summary>Más opciones (categoría y nota)</summary>
+        <div class="campo">
+          <label for="f-pf-categoria">Categoría</label>
+          <select id="f-pf-categoria">${CATEGORIAS.map(c => `<option ${categoria === c ? "selected" : ""}>${c}</option>`).join("")}</select>
+        </div>
+        <div class="campo">
+          <label for="f-pf-nota">Nota <span class="opcional">(opcional)</span></label>
+          <input id="f-pf-nota" type="text" maxlength="120" autocomplete="off" value="${p && p.nota ? escapar(p.nota) : ""}">
+        </div>
+      </details>
+      ${this.campoDesde(p ? "¿Desde cuándo aplica el cambio?" : "¿Desde cuándo lo pagas?")}`;
+  },
+
+  // Pausar y "Dejar de pagar" van DEBAJO de Guardar (y "Cancelar" pasa a "Salir sin guardar"), así no se confunden
+  ponerAcciones() {
+    const e = this.editando || {};
+    const p = e.id && !e.deDatos ? this.propios().find(x => x.id === e.id) : null;
+    if (!p) return;
+    const nombre = escapar(p.nombre);
+    $("cancelar").insertAdjacentHTML("beforebegin", `<div class="pf-acciones fuera-del-form">
+        ${p.estado === "pausado" ? `<button type="button" class="boton-chico" data-pf-reanudar>Reanudar</button>`
+          : p.estado !== "cancelado" ? `<button type="button" class="boton-chico" data-pf-pausar>Pausar</button>` : ""}
+        ${p.estado !== "cancelado" ? `<button type="button" class="boton-chico pf-peligro" data-pf-cancelar>Dejar de pagar ${nombre}</button>`
+          : `<button type="button" class="boton-chico" data-pf-reanudar>Volver a pagarlo</button>`}
+      </div>`);
+    $("cancelar").textContent = "Salir sin guardar";
   },
 
   async guardar(error) {
@@ -378,8 +475,11 @@ const PagosFijos = {
         if (!DatosFijos.iguales(r.valor, DatosFijos.valorHoy(c))) cambios.push({ c, valor: r.valor });
       }
       if (!cambios.length) return error("No cambiaste nada.");
+      const antes = Almacen.leerCambiosDatos().map(x => x.id);
       cambios.forEach(({ c, valor }) => DatosFijos.aplicar(c, valor, desde));
-      return this.listo("Guardado");
+      const nuevos = Almacen.leerCambiosDatos().filter(x => !antes.includes(x.id)).map(x => x.id);
+      return this.listo(desde > hoy() ? `Guardado. Cambia desde el ${this.diaCorto(desde)}` : "Guardado",
+        () => nuevos.forEach(id => Almacen.marcarCambioDeshecho(id)));
     }
     const nombre = $("f-pf-nombre").value.trim();
     const montoTxt = $("f-monto").value.trim();
@@ -394,8 +494,10 @@ const PagosFijos = {
     const grupo = pulsado("pf-grupo").pfGrupo || e.grupo || "esencial";
     const datos = { nombre, grupo, variable, categoria: $("f-pf-categoria").value, nota: $("f-pf-nota").value.trim() };
     if (e.nuevo) {
+      const antes = Almacen.leerPagosPropios().map(x => x.id);
       Almacen.guardarPagoPropio({ ...datos, versiones: [{ desde, monto, venceDia }], pausas: [], canceladoDesde: null });
-      return this.listo(`${nombre} agregado`);
+      const nuevo = Almacen.leerPagosPropios().find(x => !antes.includes(x.id));
+      return this.listo(`${nombre} agregado: ${dineroCorto(monto)} al mes`, () => nuevo && Almacen.borrarPagoPropio(nuevo.id));
     }
     const p = Almacen.leerPagosPropios().find(x => x.id === e.id);
     const actual = this.version(p, desde) || p.versiones[0];
@@ -406,64 +508,77 @@ const PagosFijos = {
       else versiones = [...p.versiones.filter(v => v.desde !== desde), { desde, monto, venceDia }].sort((a, b) => a.desde.localeCompare(b.desde));
     }
     Almacen.guardarPagoPropio({ ...p, ...datos, versiones });
-    this.listo("Guardado");
+    const texto = desde > hoy() && actual.monto !== monto ? `Guardado. Desde el ${this.diaCorto(desde)} pagas ${dineroCorto(monto)}` : "Guardado";
+    this.listo(texto, () => Almacen.guardarPagoPropio(p));
   },
 
-  async pausar() {
-    const p = Almacen.leerPagosPropios().find(x => x.id === this.editando.id);
-    const desde = this.fechaDesde() || hoy();
+  async pausar(id = this.editando && this.editando.id) {
+    const p = Almacen.leerPagosPropios().find(x => x.id === id);
+    const desde = (this.editando && $("f-pf-aplica") && this.fechaDesde()) || hoy();
     Almacen.guardarPagoPropio({ ...p, pausas: [...(p.pausas || []).filter(x => x.hasta), { desde, hasta: null }] });
-    this.listo(`${p.nombre} pausado`);
+    const monto = (this.version(p, hoy()) || p.versiones[0]).monto;
+    this.listo(`${p.nombre} pausada. Ahorras ${dineroCorto(monto)} al mes`, () => Almacen.guardarPagoPropio(p));
   },
 
-  async reanudar() {
-    const p = Almacen.leerPagosPropios().find(x => x.id === this.editando.id);
-    const f = hoy();
+  // Reanudar hoy o desde una fecha (ej.: el 1 del mes que viene)
+  async reanudar(id = this.editando && this.editando.id, desde = hoy()) {
+    const p = Almacen.leerPagosPropios().find(x => x.id === id);
     Almacen.guardarPagoPropio({ ...p, canceladoDesde: null,
-      pausas: (p.pausas || []).map(x => x.hasta ? x : { ...x, hasta: f }).filter(x => x.hasta > x.desde) });
-    this.listo(`${p.nombre} activo otra vez`);
+      pausas: (p.pausas || []).map(x => x.hasta ? x : { ...x, hasta: desde }).filter(x => x.hasta > x.desde) });
+    this.listo(desde > hoy() ? `${p.nombre} vuelve a contar el ${this.diaCorto(desde)}` : `${p.nombre} activa otra vez`, () => Almacen.guardarPagoPropio(p));
   },
 
   async cancelar() {
     const p = Almacen.leerPagosPropios().find(x => x.id === this.editando.id);
     const monto = (this.version(p, hoy()) || p.versiones[0]).monto;
-    const ok = await preguntar(`¿Ya no pagas ${p.nombre}?\nDeja de contar desde hoy y ahorras ${dinero(monto)} al mes. Lo que ya pagaste se queda en tu historial.`,
-      p.grupo === "suscripcion" ? "Sí, cancelar" : "Sí, ya no lo pago", "Volver");
+    const ok = await preguntar(`¿Dejar de pagar ${p.nombre}?\nDeja de contar desde hoy y ahorras ${dinero(monto)} al mes. Lo que ya pagaste se queda en tu historial.`,
+      "Sí, dejar de pagarlo", "Volver");
     if (!ok) return;
     // Si todavía no había empezado, se borra (no hay nada que guardar)
     if (!this.version(p, hoy())) Almacen.borrarPagoPropio(p.id);
     else Almacen.guardarPagoPropio({ ...p, canceladoDesde: hoy() });
-    this.listo(`Ahorras ${dineroCorto(monto)} al mes`);
+    this.listo(`Ya no pagas ${p.nombre}: ahorras ${dineroCorto(monto)} al mes`, () => Almacen.guardarPagoPropio({ ...p, borrado: false }));
   },
 
-  listo(texto) {
+  // Después de guardar: recalcula todo y avisa qué pasó (con "Deshacer" si se puede)
+  listo(texto, deshacer = null) {
     this.editando = null;
     cerrarFormulario();
+    this.recalcular();
+    Pantalla.aviso(texto, 2500, deshacer ? { texto: "Deshacer", fn: () => { deshacer(); this.recalcular(); Pantalla.aviso("Listo: quedó como antes"); } } : null);
+  },
+
+  recalcular() {
     Datos.recargar();
     window.dispatchEvent(new Event("movimientos-cambiaron"));
     Pantalla.actualizar();
     this.mostrar();
-    Pantalla.aviso(texto);
   },
 
   iniciar() {
     $("abrir-pagosfijos").addEventListener("click", () => this.abrir());
     $("volver-pagosfijos").addEventListener("click", () => this.cerrar());
     $("pantalla-pagosfijos").addEventListener("click", e => {
+      const ra = e.target.closest("[data-rc-abrir]"); if (ra) return this.abrirRecibo(ra.dataset.rcAbrir);
+      const rf = e.target.closest("[data-pf-reanudar-fila]"); if (rf) return this.reanudar(rf.dataset.pfReanudarFila, rf.dataset.desde || hoy());
       const a = e.target.closest("[data-pf-abrir]"); if (a) return this.abrirEditor(a.dataset.pfAbrir);
       const n = e.target.closest("[data-pf-agregar]"); if (n) return this.abrirEditor(null, n.dataset.pfAgregar);
       const s = e.target.closest("[data-pf-subir]"); if (s) return this.moverOrden(s.dataset.pfSubir, -1);
       const bj = e.target.closest("[data-pf-bajar]"); if (bj) return this.moverOrden(bj.dataset.pfBajar, 1);
+      if (e.target.closest("[data-pf-orden-deshacer]")) return this.deshacerOrden();
       if (e.target.closest("[data-pf-orden-normal]")) {
-        Prioridad.porDefecto(); Datos.recargar(); window.dispatchEvent(new Event("movimientos-cambiaron")); Pantalla.actualizar(); this.mostrar();
+        this.ultimoOrden = null;
+        Prioridad.porDefecto(); this.recalcular();
         Pantalla.aviso("Orden de siempre");
       }
     });
-    $("form-campos").addEventListener("click", async e => {
+    $("formulario").addEventListener("click", async e => {
       const rb = e.target.closest("[data-rc-borrar]");
       if (rb && formularioAbierto === "recibo") {
         if (!(await preguntar("¿Borrar este recibo? Ese mes vuelve a usar el estimado.", "Sí, borrar", "Volver"))) return;
-        Almacen.borrarRecibo(rb.dataset.rcBorrar); this.recibo = null; return this.listo("Recibo borrado");
+        const r = Almacen.leerRecibos().find(x => x.id === rb.dataset.rcBorrar);
+        Almacen.borrarRecibo(rb.dataset.rcBorrar); this.recibo = null;
+        return this.listo("Recibo borrado", () => r && Almacen.guardarRecibo({ pagoId: r.pagoId, mes: r.mes, monto: r.monto }));
       }
       if (formularioAbierto !== "pagoFijo") return;
       const ch = e.target.closest("[data-pf-variable], [data-pf-grupo]");

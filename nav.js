@@ -54,21 +54,70 @@ const Nav = {
 
   marcar() {
     try { this.cejas(); } catch (e) { /* las cejas son solo texto: nunca deben romper la navegación */ }
-    const s = this.MARCA[this.visible()] || "inicio";
+    let s = this.MARCA[this.visible()] || "inicio";
+    // "¿Cómo lo cubro?" se queda en la sección de donde vino (ej.: Mi futuro)
+    if (this.visible() === "pantalla-cubrir" && typeof Cubrir !== "undefined" && Cubrir.origen && Cubrir.origen !== "pantalla-cubrir") s = this.MARCA[Cubrir.origen] || "inicio";
     document.querySelectorAll("[data-nav]").forEach(b => b.classList.toggle("activo", b.dataset.nav === s));
     $("nav-mas").classList.toggle("activo", this.EN_MAS.includes(s));
   },
 
   // ---------- Hojas: "＋ Registrar" y "Más" ----------
   abrirHoja(cual) {
-    if (cual === "registrar") { // cada vez empieza limpia: sin monto y con "Gasté" elegido
+    if (cual === "registrar") { // cada vez empieza limpia: sin monto, sin categoría y con "Gasté" elegido
       $("hoja-monto").value = "";
+      this.categoriaHoja = "";
       document.querySelectorAll("[data-tipo-hoja]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tipoHoja === "gasto"));
+      this.ponerCategoriasHoja();
     }
     $("hoja").hidden = false;
+    $("aviso").hidden = true;
     $("hoja-registrar").hidden = cual !== "registrar";
     $("hoja-mas").hidden = cual !== "mas";
     $("hoja-avisos").hidden = cual !== "avisos";
+    $("hoja-titulo-barra").textContent = { registrar: "Registrar", mas: "Más", avisos: "Avisos" }[cual] || "";
+    // El monto listo para escribir (en el iPhone abre el teclado porque viene de un toque)
+    if (cual === "registrar") $("hoja-monto").focus({ preventScroll: true });
+  },
+
+  // ---------- Hoja del +: con "Gasté" se elige la categoría aquí mismo y se guarda de una vez ----------
+  categoriaHoja: "",
+  tipoHoja() { return (document.querySelector("[data-tipo-hoja][aria-pressed='true']") || {}).dataset?.tipoHoja || "gasto"; },
+
+  ponerCategoriasHoja() {
+    const gasto = this.tipoHoja() === "gasto";
+    const caja = $("hoja-categorias");
+    caja.hidden = !gasto;
+    caja.classList.remove("con-error");
+    $("hoja-error").textContent = "";
+    caja.innerHTML = CATEGORIAS.map(c => `<button type="button" class="chip" data-hoja-cat="${c}" aria-pressed="${c === this.categoriaHoja}">${c}</button>`).join("");
+    this.textoBotonHoja();
+  },
+
+  textoBotonHoja() {
+    const m = Number($("hoja-monto").value);
+    const b = $("hoja-continuar");
+    if (this.tipoHoja() !== "gasto") { b.textContent = "Continuar"; return; }
+    b.textContent = m > 0 && this.categoriaHoja ? `Guardar ${dinero(m)} en ${this.categoriaHoja}` : m > 0 ? `Guardar ${dinero(m)}` : "Guardar";
+  },
+
+  errorHoja(texto, donde) {
+    $("hoja-error").textContent = texto;
+    $("hoja-categorias").classList.toggle("con-error", donde === "categoria");
+    $("hoja-monto").closest(".campo").classList.toggle("con-error", donde === "monto");
+    (donde === "monto" ? $("hoja-monto") : $("hoja-categorias").querySelector("button")).focus({ preventScroll: true });
+  },
+
+  // Guardar desde la hoja: el mismo camino que el formulario Gasté (consejero, "¿ya estaba incluido?"), sin otra pantalla
+  guardarDesdeHoja() {
+    const txt = $("hoja-monto").value.trim();
+    const monto = Number(txt);
+    if (txt === "" || !(monto > 0)) return this.errorHoja("Escribe el monto.", "monto");
+    if (!this.categoriaHoja) return this.errorHoja("Elige una categoría.", "categoria");
+    const nota = $("hoja-nota").value.trim();
+    this.cerrarHoja();
+    $("hoja-nota").value = "";
+    abrirFormulario("gasto", { selector: true, monto, categoria: this.categoriaHoja, nota: nota || undefined });
+    $("formulario").requestSubmit();
   },
 
   cerrarHoja() { if ($("hoja")) $("hoja").hidden = true; },
@@ -83,13 +132,41 @@ const Nav = {
       if (e.target.closest("#nav-registrar")) this.abrirHoja("registrar");
       if (e.target.closest("#nav-mas")) this.abrirHoja("mas");
     });
+    $("hoja-monto").addEventListener("input", () => {
+      $("hoja-monto").closest(".campo").classList.remove("con-error");
+      if (/monto/.test($("hoja-error").textContent)) $("hoja-error").textContent = "";
+      this.textoBotonHoja();
+    });
+    // Con el teclado abierto (iPhone), la hoja sube encima del teclado y esconde Nota y Atajos mientras escribes el monto
+    if (window.visualViewport) {
+      const ajustar = () => {
+        const vv = window.visualViewport;
+        const teclado = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        const caja = document.querySelector(".hoja-caja");
+        const escribiendo = teclado > 120 && document.activeElement === $("hoja-monto");
+        caja.style.marginBottom = teclado > 120 ? `${teclado}px` : "";
+        $("hoja").classList.toggle("escribiendo", escribiendo);
+      };
+      window.visualViewport.addEventListener("resize", ajustar);
+      $("hoja-monto").addEventListener("focus", ajustar);
+      $("hoja-monto").addEventListener("blur", () => setTimeout(ajustar, 50));
+    }
     $("hoja").addEventListener("click", e => {
       if (e.target.id === "hoja" || e.target.closest("#hoja-cerrar")) return this.cerrarHoja();
       const b = e.target.closest("[data-nav]");
       if (b) return this.ir(b.dataset.nav);
       const t = e.target.closest("[data-tipo-hoja]");
-      if (t) { document.querySelectorAll("[data-tipo-hoja]").forEach(b => b.setAttribute("aria-pressed", b === t)); return; }
-      if (e.target.closest("#hoja-continuar")) { // abre el formulario del tipo elegido con el monto ya escrito
+      if (t) { document.querySelectorAll("[data-tipo-hoja]").forEach(b => b.setAttribute("aria-pressed", b === t)); this.ponerCategoriasHoja(); return; }
+      const c = e.target.closest("[data-hoja-cat]");
+      if (c) {
+        this.categoriaHoja = c.dataset.hojaCat;
+        document.querySelectorAll("[data-hoja-cat]").forEach(b => b.setAttribute("aria-pressed", b === c));
+        $("hoja-categorias").classList.remove("con-error"); $("hoja-error").textContent = "";
+        this.textoBotonHoja();
+        return;
+      }
+      if (e.target.closest("#hoja-continuar") && this.tipoHoja() === "gasto") return this.guardarDesdeHoja();
+      if (e.target.closest("#hoja-continuar")) { // Me pagaron / Deuda: abre el formulario con el monto ya escrito
         const tipo = document.querySelector("[data-tipo-hoja][aria-pressed='true']").dataset.tipoHoja;
         const txt = $("hoja-monto").value.trim();
         const nota = $("hoja-nota").value.trim();

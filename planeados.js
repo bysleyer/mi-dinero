@@ -31,7 +31,7 @@ const Planeados = {
   estado(g) {
     if (this.comprado(g)) return { texto: "Comprado", clase: "comprado" };
     if (g.elegido && g.elegido.length) return { texto: "Con fecha elegida", clase: "elegido" };
-    return { texto: "Sin fecha", clase: "sin" };
+    return { texto: "Falta elegir cuándo comprarlo", clase: "sin" };
   },
 
   sinFecha() {
@@ -183,11 +183,11 @@ const Planeados = {
     const mejor = orden[0] || null, segunda = orden[1] || null;
     let problema = null;
     if (mejor && ev[mejor].color === "rojo" && g.temporal) {
-      problema = `En los próximos 30 días no hay un día en que no agregue a lo que falta. Lo que menos agrega: ` +
-        `${dinero(ev[mejor].agrega)} el ${this.textoDia(mejor)}. Opciones: en partes, gastar menos o esperar más.`;
+      problema = { titulo: "En los próximos 30 días no te alcanza.",
+        texto: `Lo mejor: el ${this.textoDia(mejor)}, y te quedas ${dinero(ev[mejor].agrega)} corto. También puedes hacerlo en partes, gastar menos o esperar más.` };
     } else if (mejor && ev[mejor].color === "rojo") {
-      problema = `Antes del ${this.textoDia(g.fechaLimite)} no hay un día en que no agregue a lo que falta ` +
-        `(lo menos: ${dinero(ev[mejor].agrega)}). Opciones: comprarlo en partes, comprar menos o mover la fecha límite.`;
+      problema = { titulo: `Antes del ${this.textoDia(g.fechaLimite)} no te alcanza.`,
+        texto: `Lo mejor: comprarlo el ${this.textoDia(mejor)} y quedarte ${dinero(ev[mejor].agrega)} corto. También puedes comprarlo en partes, comprar menos o mover la fecha.` };
     }
     return { ev, mejor, segunda, problema, hueco: this.hueco(m) };
   },
@@ -353,7 +353,7 @@ const Planeados = {
           <button id="pc-t-gaste" class="boton-chico lleno">Lo gasté</button>
           <button id="pc-t-guardar" class="boton-chico">Guardarlo como gasto planeado</button>
         </div>
-        ${m ? `<p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(m.pr))}</p>` : ""}` : `<p class="vacio">Escribe cuánto quieres gastar.</p>`}`;
+        ${m ? `<details class="pc-cuenta"><summary>Ver la cuenta</summary><p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(m.pr))}</p></details>` : ""}` : `<p class="vacio">Escribe cuánto quieres gastar.</p>`}`;
   },
 
   // ---------- ¿Cuándo lo compro? ----------
@@ -405,7 +405,7 @@ const Planeados = {
           ${g.elegido.map(p => `${dinero(p.monto)} el ${this.textoDia(p.fecha)}`).join(" y ")}
           <button id="pc-deshacer" class="boton-chico">Deshacer la fecha elegida</button>
           <button id="pc-compre" class="boton-chico lleno">Ya lo compré</button></div>` : ""}
-      <p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(m.pr))}</p>`;
+      <details class="pc-cuenta"><summary>Ver la cuenta</summary><p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(m.pr))}</p></details>`;
 
     $("pc-escenarios").innerHTML = Futuro.ESCENARIOS.map(e => `
       <button class="${e.id === est.escenario ? "activo" : ""}" data-pc-escenario="${e.id}" aria-pressed="${e.id === est.escenario}">
@@ -415,7 +415,7 @@ const Planeados = {
       : e.color === "amarillo" ? "no agrega a lo que falta, pero corre otras fechas" : `${this.textoAgrega(e)} a lo que falta`;
     $("pc-sugerencias").innerHTML =
       (s.hueco ? `<p class="pc-hueco">Aunque no lo compres, el ${this.textoDia(s.hueco.fecha)} te faltan ${dinero(s.hueco.falta)} para ${escapar(s.hueco.pago)}.</p>` : "") +
-      (s.problema ? `<p class="mensaje-sobrante negativo pc-problema">${escapar(s.problema)}</p>` : "") +
+      (s.problema ? `<div class="pc-problema"><p class="pc-problema-titulo">${escapar(s.problema.titulo)}</p><p>${escapar(s.problema.texto)}</p></div>` : "") +
       (g.temporal
         ? [[s.mejor === g.fecha ? "Ese día está bien" : "Mejor un poco más adelante", s.mejor, "mejor"]]
         : [["Mejor fecha", s.mejor, "mejor"], ["Segunda opción", s.segunda, "segunda"]]).filter(([, f]) => f).map(([t, f, id]) => `

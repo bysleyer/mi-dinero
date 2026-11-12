@@ -79,7 +79,7 @@ const DatosFijos = {
     $("df-secciones").innerHTML = this.SECCIONES.map((s, i) => {
       const campos = CAMPOS_DATOS.filter(c => c.seccion === s.id);
       return `
-        <details class="tarjeta df-seccion" data-df-seccion="${s.id}" ${(primeraVez ? i === 0 : abiertas.has(s.id)) ? "open" : ""}>
+        <details class="tarjeta df-seccion" data-df-seccion="${s.id}" ${!primeraVez && abiertas.has(s.id) ? "open" : ""}>
           <summary><h2>${s.titulo}</h2></summary>
           ${campos.map(c => {
             const v = this.valorHoy(c);

@@ -85,8 +85,10 @@ const Avisos = {
 
     // 4) Acción legal del día 15 (ya dice cuánto es la renta atrasada)
     if (atr > 0.005 && faltan <= 7) {
-      const a = { id: "dia15", firma: `${faltan}|${atr}`, clase: "amarillo",
-        texto: `El día ${diaLegal} (${faltan === 0 ? "hoy" : `en ${faltan} ${faltan === 1 ? "día" : "días"}`}) puede haber acción legal si queda renta atrasada (${dinero(atr)}). Manda tus comprobantes y pide un acuerdo de pago por escrito.`,
+      const cuando = faltan === 0 ? "hoy" : faltan === 1 ? "mañana" : `en ${faltan} días`;
+      const a = { id: "dia15", firma: `${faltan}|${atr}`, clase: faltan <= 3 ? "rojo" : "amarillo", gravedad: 0,
+        negrita: `Día ${diaLegal}, ${cuando}:`,
+        texto: `Día ${diaLegal}, ${cuando}: puede haber acción legal. Debes ${dineroCorto(atr)} de renta atrasada. Pide un acuerdo de pago por escrito y guarda tus comprobantes.`,
         acciones: [["Mis deudas", "deudas"]] };
       (faltan <= 3 ? afuera : campana).push(a);
     }
@@ -116,14 +118,20 @@ const Avisos = {
       const b = $(id);
       if (b && !b.hidden) campana.push({ id, firma: b.textContent, texto: b.textContent, acciones: [["Ir a Respaldo", "respaldo"]] });
     });
+    // Lo más grave primero: el día 15 (acción legal), la renta que no se cubre, el faltante, lo que vence hoy o mañana…
+    const peso = a => a.gravedad ?? { renta: 1, faltante: 2, vencen: 3, sync: 6 }[a.id] ?? (a.id.startsWith("pf-falta") ? 4 : 5);
+    afuera.sort((x, y) => peso(x) - peso(y));
     return { afuera, campana };
   },
 
-  html(a, enCampana) {
-    const botones = (a.acciones || []).map(([txt, acc]) =>
-      `<button class="boton-chico ${acc === "cubrir" ? "lleno" : ""}" data-av-accion="${acc}" ${a.clave ? `data-av-clave="${escapar(a.clave)}"` : ""}>${txt}</button>`).join("");
+  // Botón corto de los avisos de afuera (cabe al lado del texto)
+  CORTO: { cubrir: "Cubrir", deudas: "Deudas", pagos: "Ver", futuro: "Ver", mover: "Mover", renta: "Mover", respaldo: "Respaldo", pausar: "Pausar", planeados: "Ver", registrar: "Registrar" },
+
+  html(a, enCampana, corto = false) {
+    const botones = (a.acciones || []).slice(0, corto ? 1 : 9).map(([txt, acc]) =>
+      `<button class="boton-chico ${acc === "cubrir" ? "lleno" : ""}" data-av-accion="${acc}" ${a.clave ? `data-av-clave="${escapar(a.clave)}"` : ""} ${corto ? `aria-label="${escapar(txt)}"` : ""}>${corto ? (this.CORTO[acc] || "Ver") : txt}</button>`).join("");
     return `<div class="aviso-item ${a.clase || ""}">
-      <p>${escapar(a.texto)}</p>
+      <p>${a.negrita && a.texto.startsWith(a.negrita) ? `<strong>${escapar(a.negrita)}</strong>${escapar(a.texto.slice(a.negrita.length))}` : escapar(a.texto)}</p>
       <div class="pl-botones">${botones}${enCampana ? `<button class="boton-chico" data-av-entendido="${escapar(a.id)}" data-av-firma="${escapar(a.firma || "")}">Entendido</button>` : ""}</div>
     </div>`;
   },
@@ -144,11 +152,12 @@ const Avisos = {
     const nuevos = campana.filter(a => v[a.id] !== (a.firma || ""));
     this._campana = campana;
     this._afuera = afuera;
-    const resto = afuera.slice(1);
+    // Se ven los 2 más graves; el resto, con un botón
+    const primeros = afuera.slice(0, 2), resto = afuera.slice(2);
     if (!resto.length) this._masAbierto = false;
-    $("avisos-afuera").innerHTML = (afuera[0] ? this.html(afuera[0], false) : "") + (resto.length
-      ? `<button class="avisos-mas" data-av-mas aria-expanded="${!!this._masAbierto}">${this._masAbierto ? "Ocultar" : `${resto.length} ${resto.length === 1 ? "aviso urgente más" : "avisos urgentes más"} ›`}</button>` +
-        (this._masAbierto ? resto.map(a => this.html(a, false)).join("") : "") : "");
+    $("avisos-afuera").innerHTML = primeros.map(a => this.html(a, false, true)).join("") + (resto.length
+      ? (this._masAbierto ? resto.map(a => this.html(a, false, true)).join("") : "") +
+        `<button class="avisos-mas" data-av-mas aria-expanded="${!!this._masAbierto}">${this._masAbierto ? "Ocultar" : `+${resto.length} ${resto.length === 1 ? "aviso urgente" : "avisos urgentes"}`}</button>` : "");
     $("avisos-afuera").hidden = !afuera.length;
     const n = nuevos.length;
     $("campana-num").textContent = n;
