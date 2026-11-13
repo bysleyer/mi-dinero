@@ -139,6 +139,23 @@ const { chromium } = require("playwright");
         };
       } catch (e) { return { error: e.message }; }
     })();
+    // 4) Cifras que antes estaban escritas en las instrucciones: ahora salen de los datos de hoy
+    const hechos = (() => {
+      try {
+        const plan = Almacen.leerPlan();
+        const linea = Plan.gastosFijos().lineas.find(l => l.id === Plan.ID_GASTO_PRESTAMO);
+        const saldo = red(Datos.saldoDeuda(Plan.ID_DEUDA_PRESTAMO));
+        const semanas = linea && linea.monto > 0 ? Math.ceil(saldo / linea.monto - 0.005) : 0;
+        const cobro = Jornadas.periodoProximoCheque().cobro;
+        return {
+          colchon: { meta: red(Plan.metaColchon()), actual: red(plan.sobres.colchon) },
+          prestamoSemanal: { activo: !!linea && saldo > 0, montoSemanal: linea ? red(linea.monto) : 0, saldo, semanasRestantes: semanas,
+                             ultimoPagoAprox: semanas > 0 ? Jornadas.sumarDias(cobro, 7 * (semanas - 1)) : null,
+                             quedaLibreDesdeAprox: semanas > 0 ? Jornadas.sumarDias(cobro, 7 * semanas) : null },
+          gastosFijosSemanales: red(Plan.gastosFijos().total)
+        };
+      } catch (e) { return { error: e.message }; }
+    })();
     return {
       hoy: hoyClave,
       versionApp: VERSION_APP.numero,
@@ -159,7 +176,7 @@ const { chromium } = require("playwright");
                  rentaCero: deudas.rentaCero, amigoCero: deudas.amigoCero, calculadoEl: hoyClave, dineroHoy: red(Dinero.actual()),
                  sensibilidad: { con50Menos: sens(50), con50Mas: sens(-50) } };
       })(),
-      gastosPorSemana, reglasEstado, ingreso,
+      gastosPorSemana, reglasEstado, ingreso, hechos,
       cubrir, deudas, avisos,
       diasConPagos: dias,
       deudasDatos: Datos.deudas().map(d => ({ id: d.id, nombre: d.nombre, monto: d.monto, saldo: red(Datos.saldoReparto(d.id)), prioridad: d.prioridad, nota: d.nota })),
