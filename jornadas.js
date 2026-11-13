@@ -32,15 +32,29 @@ const Jornadas = {
   },
 
   // ---------- Cálculos de pago ----------
-  bruto(horas) {
+  // Horas extra solo sobre horas TRABAJADAS (total − enfermedad) que pasan de horasNormales.
+  // Las horas de enfermedad se pagan como regulares.
+  bruto(horas, enfermedad = 0) {
     const c = this.config();
-    const normales = Math.min(horas, c.horasNormales);
-    const extra = Math.max(0, horas - c.horasNormales);
-    return normales * c.pagoPorHora + extra * c.pagoHoraExtra;
+    const trabajadas = Math.max(0, horas - enfermedad);
+    const regulares = Math.min(trabajadas, c.horasNormales) + enfermedad;
+    const extra = Math.max(0, trabajadas - c.horasNormales);
+    return regulares * c.pagoPorHora + extra * c.pagoHoraExtra;
   },
 
-  netoDeHoras(horas) {
-    return this.bruto(horas) * this.config().proporcionNeto;
+  // Proporción neto/bruto: promedio de los últimos 4 cheques reales (mis datos, ingresos.cheques).
+  // Si hay menos de 2, usa la proporción de mis datos.
+  proporcionNeto() {
+    const hist = (Datos.actual?.ingresos?.cheques || [])
+      .filter(c => c.bruto > 0 && c.neto > 0)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, 4);
+    if (hist.length >= 2) return hist.reduce((s, c) => s + c.neto / c.bruto, 0) / hist.length;
+    return this.config().proporcionNeto;
+  },
+
+  netoDeHoras(horas, enfermedad = 0) {
+    return this.bruto(horas, enfermedad) * this.proporcionNeto();
   },
 
   // ---------- Fechas ----------

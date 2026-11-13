@@ -58,6 +58,12 @@ const Plan = {
     return { horas: plan.horas, auto: false, sugeridas: auto ? auto.horas : null };
   },
 
+  // Horas de enfermedad dentro de las horas del cheque (solo para el periodo actual)
+  enfermedadEfectiva(plan) {
+    const auto = Jornadas.horasParaPlan();
+    return auto && plan.enfermedadPeriodo === auto.periodo ? Math.max(0, plan.enfermedad || 0) : 0;
+  },
+
   // Bloque 10: ingresos registrados con fecha en la semana actual (lunes a domingo)
   ingresoReal() {
     const lunes = this.claveSemana();
@@ -124,7 +130,8 @@ const Plan = {
     const plan = Almacen.leerPlan();
     // Estimación con el cálculo del Bloque 7 (el mismo de proyeccion.js)
     const horasPlan = this.horasEfectivas(plan).horas;
-    const estimado = { bruto: Jornadas.bruto(horasPlan), neto: redondear(Jornadas.netoDeHoras(horasPlan)) };
+    const enf = this.enfermedadEfectiva(plan);
+    const estimado = { bruto: Jornadas.bruto(horasPlan, enf), neto: redondear(Jornadas.netoDeHoras(horasPlan, enf)) };
     // Si hay cheque real esta semana (y no pediste usar la estimación), manda el cheque real
     const real = this.ingresoReal();
     const usaReal = real.lista.length > 0 && plan.ignorarRealSemana !== this.claveSemana();
@@ -331,6 +338,7 @@ const Plan = {
 
     // 1. Ingreso
     const origen = this.horasEfectivas(c.plan);
+    $("p-enfermedad").value = this.enfermedadEfectiva(c.plan) || 0;
     $("p-horas-origen").innerHTML = origen.auto
       ? (origen.registrados ? "Basado en tus días registrados" : "Basado en tus días de trabajo") +
         (origen.libres ? ` (${origen.libres} ${origen.libres === 1 ? "día libre" : "días libres"})` : "")
@@ -536,6 +544,16 @@ const Plan = {
       this.mostrar();
     });
     $("p-horas").addEventListener("input", e => this.alCambiar("horas", e.target, 0, 168));
+    $("p-enfermedad").addEventListener("input", e => {
+      const v = Number(e.target.value);
+      if (e.target.value.trim() === "" || isNaN(v)) return;
+      const plan = Almacen.leerPlan();
+      plan.enfermedad = Math.min(168, Math.max(0, v));
+      const auto = Jornadas.horasParaPlan();
+      plan.enfermedadPeriodo = auto ? auto.periodo : null;
+      Almacen.guardarPlan(plan);
+      this.mostrar();
+    });
     $("p-porcentaje").addEventListener("input", e => this.alCambiar("porcentajeColchon", e.target, 0, 100));
     $("p-colchon").addEventListener("input", e => this.alCambiar("colchon", e.target, 0, Infinity));
   }
