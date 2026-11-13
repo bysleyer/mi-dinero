@@ -5,6 +5,7 @@
  * (ver sincronizar() al final), sin tocar el resto de la app.
  *
  * Claves guardadas (todas con el prefijo "midinero:"):
+ *   progreso     XP y nivel (xp.js): { desde, ganados, avisos, respaldos, nivelVisto, tema }
  *   formato      número de versión del formato de datos
  *   datos        mis cifras (ingresos, gastos, deudas...) cargadas de mis-datos.json
  *   config       { usarEjemplo, primerUso, ultimoRespaldo }
@@ -512,7 +513,8 @@ const Almacen = {
       notasConsejero: this.leer("notasConsejero") || [],
       rentaCargosDesde: this.leer("rentaCargosDesde"),
       prioridad: this.leer("prioridad"),
-      acuerdoRenta: this.leer("acuerdoRenta") || []
+      acuerdoRenta: this.leer("acuerdoRenta") || [],
+      progreso: this.leer("progreso")
     };
   },
 
@@ -557,6 +559,8 @@ const Almacen = {
     if (respaldo.rentaCargosDesde) guardar("rentaCargosDesde", respaldo.rentaCargosDesde);
     else this.borrar("rentaCargosDesde");
     guardar("acuerdoRenta", respaldo.acuerdoRenta || []);
+    // XP: el respaldo se une con lo que ya hay (el XP nunca baja); un respaldo sin XP no lo toca
+    if (respaldo.progreso) guardar("progreso", this.unirProgreso(this.leer("progreso"), respaldo.progreso));
     if (respaldo.revision) guardar("revision", respaldo.revision);
     else this.borrar("revision");
     if (respaldo.datos) {
@@ -587,7 +591,23 @@ const Almacen = {
   },
 
   marcarRespaldoDescargado() {
-    return this.guardarConfig({ ultimoRespaldo: this.ahora() });
+    const ok = this.guardarConfig({ ultimoRespaldo: this.ahora() });
+    try { if (typeof Xp !== "undefined") Xp.hizoRespaldo(); } catch (e) { /* el XP nunca debe romper el respaldo */ }
+    return ok;
+  },
+
+  // Une dos copias del progreso (XP): lo ganado en cualquiera se queda
+  unirProgreso(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    return {
+      ...a,
+      desde: [a.desde, b.desde].filter(Boolean).sort()[0] || a.desde,
+      ganados: { ...(b.ganados || {}), ...(a.ganados || {}) },
+      avisos: { ...(b.avisos || {}), ...(a.avisos || {}) },
+      respaldos: { ...(b.respaldos || {}), ...(a.respaldos || {}) },
+      nivelVisto: Math.max(a.nivelVisto || 1, b.nivelVisto || 1)
+    };
   },
 
   // ---------- Sincronización en la nube (todavía NO activa) ----------
