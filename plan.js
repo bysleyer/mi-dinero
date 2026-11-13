@@ -229,13 +229,25 @@ const Plan = {
     const finPara = despues && despues.fecha > domingo ? despues.fecha : domingo;
     const para = fechas.filter(f => f > domingo && f <= finPara).flatMap(f => pr.porDia[f].lineas.map(l => ({ ...l, fecha: f })))
       .filter(l => l.monto < 0 && (l.id === "renta" || l.tipo === "pago") && l.id !== "prestamo").slice(0, 4);
+    // ¿Lo guardado alcanza para cada pago, y el cheque llega antes? Solo hasta el próximo cheque (después ya cuenta ese dinero)
+    const chequeSig = (pr.cheques.filter(f => f > hoyClave)[0]) || null;
+    let resto = guardar;
+    const cobertura = para.map(x => {
+      const monto = redondear(-x.monto);
+      const antes = !chequeSig || x.fecha < chequeSig;
+      if (!antes) return { ...x, monto, estado: "despues" };
+      const cubre = resto >= monto - 0.005;
+      const falta = cubre ? 0 : redondear(monto - Math.max(0, resto));
+      resto = redondear(Math.max(0, resto - monto));
+      return { ...x, monto, estado: cubre ? "cubre" : "falta", falta, chequeSig };
+    });
     let hueco = null;
     if (despues && despues.saldo < -0.005) {
       const q = Proyeccion.quienFalta(pr, despues.fecha);
       hueco = { fecha: despues.fecha, falta: redondear(-despues.saldo), pago: Proyeccion.lista(q.cortos) + (q.rentaCubierta ? "; la renta sí se cubre" : "") };
     }
     return { pr, lunes, domingo, desde, inicial: pr.inicial, entra, gastos,
-             totalGastos: redondear(-gastos.reduce((s, l) => s + l.monto, 0)), finSemana, libre, guardar, para, hueco,
+             totalGastos: redondear(-gastos.reduce((s, l) => s + l.monto, 0)), finSemana, libre, guardar, para, cobertura, chequeSig, hueco,
              huecoAntes: antes && antes.saldo < -0.005 ? { fecha: antes.fecha, falta: redondear(-antes.saldo) } : null };
   },
 
@@ -394,7 +406,11 @@ const Plan = {
       <div class="p-reparto">
         <div class="p-guardar">
           <span>Guárdalo para más adelante</span><strong>${dinero(sem.guardar)}</strong>
-          ${sem.guardar > 0.005 && sem.para.length ? `<p class="estado">Para: ${sem.para.map(x => `${escapar(x.nombre)} (${Futuro.diaCorto(x.fecha)})`).join(", ")}.</p>` : ""}
+          ${sem.guardar > 0.005 && sem.cobertura.length ? `<ul class="resumen p-cobertura">${sem.cobertura.map(x => {
+            const nota = x.estado === "cubre" ? `<span class="ok">✓ cubierto con lo que guardas</span>`
+              : x.estado === "falta" ? `<span class="detalle">faltan ${dinero(x.falta)}: tu próximo cheque llega el ${Futuro.dia(x.chequeSig)}, ${x.chequeSig > x.fecha ? "después de este pago" : "ese mismo día"}</span>`
+              : `<span class="detalle">se paga con el cheque del ${Futuro.dia(sem.chequeSig)} o los siguientes</span>`;
+            return `<li><span>${escapar(x.nombre)}<span class="detalle">${Futuro.diaCorto(x.fecha)}</span>${nota}</span><span>${dinero(x.monto)}</span></li>`; }).join("")}</ul>` : ""}
         </div>
         <div class="p-libre ${sem.libre > 0.005 ? "" : "cero"}">
           <span>Libre para lo que quieras</span><strong>${dinero(sem.libre)}</strong>

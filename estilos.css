@@ -642,6 +642,13 @@ main.contenedor > .volver {
 .p-libre.cero { background: #1c262d; color: var(--suave); }
 .p-guardar strong, .p-libre strong { font-size: 1.3rem; }
 .p-guardar .estado, .p-libre .estado { grid-column: 1 / -1; margin: 2px 0 0; color: inherit; opacity: .85; }
+.p-guardar .p-cobertura { grid-column: 1 / -1; margin: 6px 0 0; padding: 0; list-style: none; font-size: .92rem; color: inherit; }
+.p-cobertura li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(245, 184, 75, .18); }
+.p-cobertura li > span:first-child { display: grid; gap: 2px; min-width: 0; }
+.p-cobertura li > span:first-child span { white-space: normal; font-weight: 400; text-align: left; color: inherit; }
+.p-cobertura li > span:last-child { flex: none; }
+.p-cobertura .detalle { opacity: .85; font-size: .85rem; }
+.p-cobertura li > span:first-child .ok { color: #8fe3d0; font-size: .85rem; font-weight: 700; }
 .p-promedio summary { font-weight: 700; cursor: pointer; }
 .d-planes { list-style: none; padding: 0; margin: 6px 0; font-size: .9rem; }
 .d-planes li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }

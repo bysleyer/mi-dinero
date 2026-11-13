@@ -83,6 +83,19 @@ const Proyeccion = {
     return r;
   },
 
+  // Gastos de Comida ya registrados que cuentan en "Dinero que tengo hoy" (los mismos que usa Dinero.actual)
+  gastosDeComida() {
+    const di = Almacen.leerDineroInicial();
+    const desde = di ? di.momento : "";
+    return Almacen.leerMovimientos().filter(m => m.tipo === "gasto" && m.categoria === "Comida" && (!desde || m.creado > desde) && !m.incluidoEnCorreccion);
+  },
+
+  // Lo que ya gastaste en Comida del día de cobro al domingo siguiente (viernes a domingo): esa compra es la comida de la semana que sigue
+  comidaYaGastada(gastos, cobro) {
+    const hasta = Jornadas.sumarDias(cobro, 2);
+    return redondear(gastos.filter(m => m.fecha >= cobro && m.fecha <= hasta).reduce((s, m) => s + m.monto, 0));
+  },
+
   // Cheque esperado de un día de cobro: paga la semana (lunes a domingo) anterior
   chequeEsperado(cobro) {
     // Bloque 17: pago por hora, días de trabajo, etc. como valen en la semana trabajada
@@ -117,6 +130,7 @@ const Proyeccion = {
     const fin = Jornadas.sumarDias(hoyClave, (horizonte || cfg.horizonte) - 1);
     const lineas = [];
     const cheques = [];
+    const gastosComida = this.gastosDeComida();
 
     const diaCheque = Math.max(0, Jornadas.DIAS.indexOf(cfg.chequeDia));
     const inicioBusqueda = Jornadas.sumarDias(hoyClave, -cfg.chequeRetraso);
@@ -139,16 +153,48 @@ const Proyeccion = {
           nombre: origen === "escenario" ? "Cheque (este escenario)"
             : `Cheque (${redondear(esperado.horas)} h${esperado.libres ? `, ${esperado.libres} ${esperado.libres === 1 ? "día libre" : "días libres"}` : ""})` });
       }
-      // Transporte: solo los días que se trabaja en la semana del cobro; comida igual
-      // (Bloque 17: con las cifras que valen ese día)
+      // Cada cheque aparta (1) el TRANSPORTE de la semana que sigue (los días de trabajo de lunes a domingo de la semana
+      // siguiente al cobro) y (2) la COMIDA de esa semana, que se compra el mismo día de cobro: si ya la gastaste
+      // (viernes a domingo), eso se descuenta para no restarla dos veces.
+      const lunesSig = Jornadas.sumarDias(lunes, 7);
       const { comida, transporte, diasTransporte, minima } = Datos.conFecha(disponible, () => ({
         comida: Vencimientos.gasto("comida"), transporte: Vencimientos.gasto("transporte"),
-        diasTransporte: this.horasSemana(lunes).diasConTrabajo, minima: this.comidaMinima() }));
+        diasTransporte: this.horasSemana(lunesSig).diasConTrabajo, minima: this.comidaMinima() }));
       if (transporte && diasTransporte > 0) lineas.push({ fecha: disponible, orden: Prioridad.orden("transporte") ?? 3, tipo: "semanal", id: "transporte",
-        nombre: `Transporte (${dinero(transporte.porDia)} × ${diasTransporte} ${diasTransporte === 1 ? "día" : "días"})`,
+        nombre: `Transporte (semana que sigue: ${dinero(transporte.porDia)} × ${diasTransporte} ${diasTransporte === 1 ? "día" : "días"})`,
         monto: -redondear(transporte.porDia * diasTransporte) });
-      if (comida) lineas.push({ fecha: disponible, orden: Prioridad.orden("comida") ?? 4, tipo: "semanal", id: "comida",
-        nombre: extrema && minima != null ? "Comida (modo extremo)" : "Comida", monto: -(extrema && minima != null ? minima : comida.monto) });
+      if (comida) {
+        const base = extrema && minima != null ? minima : comida.monto;
+        const ya = this.comidaYaGastada(gastosComida, disponible);
+        const falta = redondear(Math.max(0, base - ya));
+        if (falta > 0.005) lineas.push({ fecha: disponible, orden: Prioridad.orden("comida") ?? 4, tipo: "semanal", id: "comida",
+          nombre: (extrema && minima != null ? "Comida (modo extremo" : "Comida (semana que sigue") + (ya > 0.005 ? `, ya gastaste ${dinero(ya)})` : ")"),
+          monto: -falta });
+      }
+    }
+
+    // Transporte que todavía falta de ESTA semana: los días de trabajo desde hoy hasta el domingo, menos lo que ya registraste hoy.
+    // (El dinero que se apartó el viernes pasado sigue en "Dinero que tengo hoy" hasta que lo gastas: se aparta aquí para que no cuente como libre.)
+    {
+      const domActual = Jornadas.sumarDias(Plan.claveSemana(), 6);
+      const t = Datos.conFecha(hoyClave, () => Vencimientos.gasto("transporte"));
+      if (t && t.porDia > 0) {
+        let dias = 0;
+        const jornadas = {};
+        (this._cache ? this._cache.jornadas : Almacen.leerJornadas()).forEach(j => { jornadas[j.fecha] = j; });
+        for (let f = hoyClave; f <= domActual; f = Jornadas.sumarDias(f, 1)) {
+          const j = jornadas[f];
+          if (j ? j.horas > 0 : (!this.esLibre(f) && this.esDiaDeTrabajo(f))) dias++;
+        }
+        const di = Almacen.leerDineroInicial(), desdeMov = di ? di.momento : "";
+        const hoyGastado = Almacen.leerMovimientos()
+          .filter(m => m.tipo === "gasto" && m.categoria === "Transporte" && m.fecha === hoyClave && (!desdeMov || m.creado > desdeMov) && !m.incluidoEnCorreccion)
+          .reduce((x, m) => x + m.monto, 0);
+        const falta = redondear(Math.max(0, t.porDia * dias - hoyGastado));
+        if (falta > 0.005) lineas.push({ fecha: hoyClave, orden: Prioridad.orden("transporte") ?? 3, tipo: "semanal", id: "transporte",
+          nombre: `Transporte que falta de esta semana (${dinero(t.porDia)} × ${dias} ${dias === 1 ? "día" : "días"}${hoyGastado > 0.005 ? `, ya gastaste ${dinero(hoyGastado)} hoy` : ""})`,
+          monto: -falta });
+      }
     }
 
     // Vencimientos sin pagar (con las fechas movidas)
