@@ -5,7 +5,7 @@
  * Sin internet (o si la red tarda mucho): usa la copia guardada.
  * Solo guarda archivos de la app; nunca tus datos (esos están en el almacén del navegador).
  */
-const CACHE = "mi-dinero-v52"; // mismo número que VERSION_APP en app.js
+const CACHE = "mi-dinero-v53"; // mismo número que VERSION_APP en app.js
 const ESPERA_RED_MS = 4000;     // si la red tarda más, se usa la copia guardada
 const ARCHIVOS = [
   "./",
@@ -37,6 +37,7 @@ const ARCHIVOS = [
   "./cubrir.js",
   "./avisos.js",
   "./consejero.js",
+  "./logros.js",
   "./xp.js",
   "./arranque.js",
   "./respaldo.js",

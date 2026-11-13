@@ -8,7 +8,7 @@ const Nav = {
   SECCIONES: {
     futuro: "abrir-futuro", plan: "abrir-plan", deudas: "abrir-deudas", planeados: "abrir-planeados",
     calendario: "abrir-calendario", resumen: "abrir-resumen", datosfijos: "abrir-datosfijos", pagosfijos: "abrir-pagosfijos", respaldo: "abrir-respaldo",
-    consejero: "abrir-consejero", progreso: "abrir-progreso"
+    consejero: "abrir-consejero", progreso: "abrir-progreso", logros: "abrir-logros"
   },
   // Pantalla visible → sección marcada en el menú
   MARCA: {
@@ -16,9 +16,9 @@ const Nav = {
     "pantalla-prestamo": "futuro", "pantalla-acuerdo": "futuro", "pantalla-mover": "futuro", "pantalla-plan": "plan",
     "pantalla-deudas": "deudas", "pantalla-planeados": "planeados", "pantalla-cuando": "planeados",
     "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-datosfijos": "datosfijos", "pantalla-pagosfijos": "pagosfijos", "pantalla-respaldo": "respaldo",
-    "pantalla-cubrir": "inicio", "pantalla-consejero": "consejero", "pantalla-progreso": "progreso"
+    "pantalla-cubrir": "inicio", "pantalla-consejero": "consejero", "pantalla-progreso": "progreso", "pantalla-logros": "logros"
   },
-  EN_MAS: ["consejero", "deudas", "pagosfijos", "planeados", "calendario", "resumen", "datosfijos", "respaldo", "progreso"],
+  EN_MAS: ["consejero", "deudas", "pagosfijos", "planeados", "calendario", "resumen", "datosfijos", "respaldo", "progreso", "logros"],
 
   visible() {
     const m = [...document.querySelectorAll("main.contenedor")].find(x => !x.hidden);

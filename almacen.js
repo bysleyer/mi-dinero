@@ -5,7 +5,7 @@
  * (ver sincronizar() al final), sin tocar el resto de la app.
  *
  * Claves guardadas (todas con el prefijo "midinero:"):
- *   progreso     XP y nivel (xp.js): { desde, ganados, avisos, respaldos, nivelVisto, tema }
+ *   progreso     XP, nivel y logros (xp.js y logros.js): { desde, ganados, avisos, respaldos, nivelVisto, tema, logros, flags, ... }
  *   formato      número de versión del formato de datos
  *   datos        mis cifras (ingresos, gastos, deudas...) cargadas de mis-datos.json
  *   config       { usarEjemplo, primerUso, ultimoRespaldo }
@@ -606,7 +606,11 @@ const Almacen = {
       ganados: { ...(b.ganados || {}), ...(a.ganados || {}) },
       avisos: { ...(b.avisos || {}), ...(a.avisos || {}) },
       respaldos: { ...(b.respaldos || {}), ...(a.respaldos || {}) },
-      nivelVisto: Math.max(a.nivelVisto || 1, b.nivelVisto || 1)
+      nivelVisto: Math.max(a.nivelVisto || 1, b.nivelVisto || 1),
+      logros: { ...(b.logros || {}), ...(a.logros || {}) },
+      flags: { ...(b.flags || {}), ...(a.flags || {}) },
+      colchonAportes: Math.max(a.colchonAportes || 0, b.colchonAportes || 0),
+      ultimaVisita: [a.ultimaVisita, b.ultimaVisita].filter(Boolean).sort().pop() || null
     };
   },
 

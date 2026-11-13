@@ -78,6 +78,7 @@
           <button data-nav="resumen"><span class="tile-ico" aria-hidden="true">📊</span><b>A dónde va</b><small>Gastos por categoría y ¿Cuadra?</small></button>
           <button data-nav="datosfijos"><span class="tile-ico" aria-hidden="true">⚙️</span><b>Datos fijos</b><small>Tu sueldo, horas y colchón</small></button>
           <button data-nav="progreso"><span class="tile-ico" aria-hidden="true">🏅</span><b>Mi progreso</b><small>Nivel, íconos y temas</small></button>
+          <button data-nav="logros"><span class="tile-ico" aria-hidden="true">🎮</span><b>Logros</b><small>20 medallas por hábitos</small></button>
           <button data-nav="respaldo" class="tile-ancho"><span class="tile-ico" aria-hidden="true">☁️</span><span><b>Respaldo y sincronizar</b><small>Guardar y compartir entre aparatos</small></span></button>
         </div>
       </div>
@@ -88,6 +89,17 @@
     </div>
   </div>
 
+  <div id="lg-aviso" class="lg-aviso" hidden role="status" aria-live="polite" tabindex="-1">
+    <div class="lg-velo"></div>
+    <div class="lg-caja">
+      <span class="lg-destello" aria-hidden="true"></span>
+      <div class="lg-ico-grande" id="lg-aviso-ico" aria-hidden="true"></div>
+      <p class="lg-titulo">Logro desbloqueado</p>
+      <p class="lg-nombre-grande" id="lg-aviso-nombre"></p>
+      <p class="lg-xp-grande" id="lg-aviso-xp"></p>
+      <p class="lg-ref-aviso" id="lg-aviso-ref"></p>
+    </div>
+  </div>
   <div id="xp-subida" class="xp-subida" hidden role="dialog" aria-modal="true" aria-labelledby="xp-su-h">
     <div class="xp-velo"></div>
     <div class="xp-hoja" tabindex="-1" id="xp-hoja">
@@ -644,6 +656,18 @@
   </main>
 
   <!-- Pantalla: Respaldo (Bloque 6) -->
+  <main id="pantalla-logros" class="contenedor" hidden>
+    <button id="volver-logros" class="volver volver-principal">← Volver</button>
+    <h1>Logros</h1>
+    <section class="tarjeta">
+      <p class="lg-resumen" id="lg-resumen"></p>
+      <p class="nota-sobre" id="lg-resumen-xp"></p>
+      <p class="nota-sobre">Cada logro se gana una sola vez y nunca se pierde. Los secretos se revelan cuando los ganas.</p>
+    </section>
+    <div id="lg-lista"></div>
+    <button id="abrir-logros" class="boton-chico" hidden>Logros</button>
+  </main>
+
   <main id="pantalla-progreso" class="contenedor" hidden>
     <button id="volver-progreso" class="volver volver-principal">← Volver</button>
     <h1>Mi progreso</h1>
@@ -660,6 +684,12 @@
       <h2>Hoy</h2>
       <ul id="xp-pg-misiones" class="xp-misiones"></ul>
       <p class="nota-sobre" id="xp-pg-hoy"></p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Logros</h2>
+      <p class="nota-sobre">Medallas por hábitos, cada una con su referencia de videojuego.</p>
+      <button type="button" class="boton-chico lleno" id="xp-pg-logros">Ver los logros</button>
     </section>
 
     <section class="tarjeta">
@@ -1020,6 +1050,7 @@
   <script src="cubrir.js"></script>
   <script src="avisos.js"></script>
   <script src="consejero.js"></script>
+  <script src="logros.js"></script>
   <script src="xp.js"></script>
 </body>
 </html>
