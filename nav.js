@@ -8,7 +8,7 @@ const Nav = {
   SECCIONES: {
     futuro: "abrir-futuro", plan: "abrir-plan", deudas: "abrir-deudas", planeados: "abrir-planeados",
     calendario: "abrir-calendario", resumen: "abrir-resumen", datosfijos: "abrir-datosfijos", pagosfijos: "abrir-pagosfijos", respaldo: "abrir-respaldo",
-    consejero: "abrir-consejero"
+    consejero: "abrir-consejero", progreso: "abrir-progreso"
   },
   // Pantalla visible → sección marcada en el menú
   MARCA: {
@@ -16,9 +16,9 @@ const Nav = {
     "pantalla-prestamo": "futuro", "pantalla-acuerdo": "futuro", "pantalla-mover": "futuro", "pantalla-plan": "plan",
     "pantalla-deudas": "deudas", "pantalla-planeados": "planeados", "pantalla-cuando": "planeados",
     "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-datosfijos": "datosfijos", "pantalla-pagosfijos": "pagosfijos", "pantalla-respaldo": "respaldo",
-    "pantalla-cubrir": "inicio", "pantalla-consejero": "consejero"
+    "pantalla-cubrir": "inicio", "pantalla-consejero": "consejero", "pantalla-progreso": "progreso"
   },
-  EN_MAS: ["consejero", "deudas", "pagosfijos", "planeados", "calendario", "resumen", "datosfijos", "respaldo"],
+  EN_MAS: ["consejero", "deudas", "pagosfijos", "planeados", "calendario", "resumen", "datosfijos", "respaldo", "progreso"],
 
   visible() {
     const m = [...document.querySelectorAll("main.contenedor")].find(x => !x.hidden);
@@ -74,6 +74,7 @@ const Nav = {
     $("hoja-registrar").hidden = cual !== "registrar";
     $("hoja-mas").hidden = cual !== "mas";
     $("hoja-avisos").hidden = cual !== "avisos";
+    if (cual === "avisos") { try { if (typeof Xp !== "undefined") Xp.revisoAvisos(); } catch (e) { /* el XP nunca debe romper los avisos */ } }
     $("hoja-titulo-barra").textContent = { registrar: "Registrar", mas: "Más", avisos: "Avisos" }[cual] || "";
     // El monto listo para escribir (en el iPhone abre el teclado porque viene de un toque)
     if (cual === "registrar") $("hoja-monto").focus({ preventScroll: true });
