@@ -22,6 +22,12 @@ const { chromium } = require("playwright");
   Object.entries(sync.valores || {}).forEach(([k, v]) => { claves[k] = v && "valor" in v ? v.valor : v; });
   Object.entries(sync.mapas || {}).forEach(([k, v]) => { claves[k] = v; });
 
+  // Las reglas del consejero (consejero.json, junto a datos.json o en CONSEJERO=ruta) para medir si se cumplen
+  const archivoConsejero = process.env.CONSEJERO || path.join(path.dirname(path.resolve(archivo)), "consejero.json");
+  if (fs.existsSync(archivoConsejero)) {
+    try { claves.consejero = JSON.parse(fs.readFileSync(archivoConsejero, "utf8")); } catch (e) { /* sin reglas: se omite */ }
+  }
+
   const b = await chromium.launch();
   const ctx = await b.newContext({ timezoneId: "America/New_York", locale: "es-US" });
   if (process.env.FECHA) await ctx.clock.setFixedTime(new Date(process.env.FECHA));
@@ -69,6 +75,70 @@ const { chromium } = require("playwright");
       avisos = { afuera: a.afuera.map(t), campana: a.campana.map(t) };
     } catch (e) { avisos = { error: e.message }; }
     const movs = Almacen.leerMovimientos();
+    // 1) Gasto por semana y categoría (últimas 8 semanas, lunes a domingo) con promedio y marcas.
+    //    Promedio = semanas ANTERIORES que tienen gastos. Marca si lo de esta semana sube más de 20 % o más de $100
+    //    (solo con 2 o más semanas anteriores). La semana en curso está incompleta: se avisa con "diasTranscurridos".
+    const gastosPorSemana = (() => {
+      try {
+        const lunesActual = Plan.claveSemana();
+        const lunes = Array.from({ length: 8 }, (_, i) => Jornadas.sumarDias(lunesActual, -7 * (7 - i)));
+        const g = Almacen.leerMovimientos().filter(m => m.tipo === "gasto");
+        const total = (cat, l) => red(g.filter(m => Plan.claveSemana(new Date(m.fecha + "T12:00:00")) === l && (cat == null || (m.categoria || "Otros") === cat))
+          .reduce((s, m) => s + m.monto, 0));
+        const cats = [...new Set(g.map(m => m.categoria || "Otros"))].sort();
+        const conDatos = lunes.slice(0, -1).filter(l => total(null, l) > 0);
+        const fila = cat => {
+          const semanas = lunes.map(l => total(cat, l));
+          const actual = semanas[semanas.length - 1];
+          const previas = conDatos.map(l => total(cat, l));
+          const promedio = previas.length ? red(previas.reduce((s, x) => s + x, 0) / previas.length) : null;
+          const dif = promedio == null ? null : red(actual - promedio);
+          const pct = promedio ? Math.round((actual / promedio - 1) * 100) : null;
+          const marca = previas.length >= 2 && dif > 0 && (dif > 100 || (pct != null && pct > 20));
+          return { categoria: cat ?? "TOTAL", semanas, actual, promedioAnteriores: promedio, diferencia: dif, porcentaje: pct, marca };
+        };
+        const dow = new Date(hoyClave + "T12:00:00").getDay(); // 0 = domingo
+        return { lunes, semanasAnterioresConDatos: conDatos.length, diasTranscurridos: dow === 0 ? 7 : dow,
+                 total: fila(null), categorias: cats.map(fila).sort((x, y) => y.actual - x.actual) };
+      } catch (e) { return { error: e.message }; }
+    })();
+    // 2) Cómo van las reglas del consejero (veces y monto vs. su límite, periodo anterior, razones dadas)
+    const reglasEstado = (() => {
+      try {
+        return Vigilante.reglas().map(r => {
+          const l = Vigilante.llevas(r);
+          const per = r.periodo || "semana";
+          const fAnt = per === "dia" ? Jornadas.sumarDias(hoyClave, -1)
+            : per === "mes" ? (() => { const d = new Date(hoyClave.slice(0, 7) + "-01T12:00:00"); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })()
+            : Jornadas.sumarDias(hoyClave, -7);
+          const ant = Vigilante.llevas(r, fAnt);
+          const razones = Almacen.leerMovimientos()
+            .filter(m => m.fecha >= l.per.desde && m.fecha <= l.per.hasta && Vigilante.entra(r, m) && m.razonFueraPlan)
+            .map(m => ({ fecha: m.fecha, monto: m.monto, nota: m.nota, razon: m.razonFueraPlan }));
+          return { id: r.id, nombre: r.nombre, periodo: per, desde: l.per.desde, hasta: l.per.hasta,
+                   veces: l.veces, maxVeces: r.maxVeces ?? null, monto: l.monto, maxMonto: r.maxMonto ?? null,
+                   rota: (r.maxVeces != null && l.veces > r.maxVeces) || (r.maxMonto != null && l.monto > r.maxMonto + 0.005),
+                   periodoAnterior: { veces: ant.veces, monto: ant.monto }, razones };
+        });
+      } catch (e) { return { error: e.message }; }
+    })();
+    // 3) Ingreso: lo que la app espera de esta semana (estimación o cheque real) y el historial de cheques
+    const ingreso = (() => {
+      try {
+        const c = Plan.calcular();
+        const lista = (Datos.actual.ingresos.cheques || []).filter(x => x.bruto > 0 && x.neto > 0)
+          .sort((x, y) => y.fecha.localeCompare(x.fecha)).slice(0, 12)
+          .map(x => ({ fecha: x.fecha, bruto: x.bruto, neto: x.neto, horas: x.horas ?? null, enfermedad: x.enfermedad ?? 0, proporcion: Math.round(x.neto / x.bruto * 10000) / 10000 }));
+        return {
+          semana: { lunes: Plan.claveSemana(), origen: c.usaReal ? "cheque real" : "estimación", netoQueUsaLaApp: red(c.neto),
+                    estimadoNeto: red(c.estimado.neto), estimadoBruto: red(c.estimado.bruto), horasPlan: c.horasPlan,
+                    horasEnfermedad: Plan.enfermedadEfectiva(c.plan), chequeRealRegistrado: red(c.real.total) },
+          proporcionNeto: Math.round(Jornadas.proporcionNeto() * 10000) / 10000,
+          proporcionDe: (Datos.actual.ingresos.cheques || []).length >= 2 ? "últimos 4 cheques reales" : "mis datos",
+          ultimosCheques: lista
+        };
+      } catch (e) { return { error: e.message }; }
+    })();
     return {
       hoy: hoyClave,
       versionApp: VERSION_APP.numero,
@@ -89,6 +159,7 @@ const { chromium } = require("playwright");
                  rentaCero: deudas.rentaCero, amigoCero: deudas.amigoCero, calculadoEl: hoyClave, dineroHoy: red(Dinero.actual()),
                  sensibilidad: { con50Menos: sens(50), con50Mas: sens(-50) } };
       })(),
+      gastosPorSemana, reglasEstado, ingreso,
       cubrir, deudas, avisos,
       diasConPagos: dias,
       deudasDatos: Datos.deudas().map(d => ({ id: d.id, nombre: d.nombre, monto: d.monto, saldo: red(Datos.saldoReparto(d.id)), prioridad: d.prioridad, nota: d.nota })),
