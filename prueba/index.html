@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <!-- Seguridad: solo código de la propia app; conexiones solo a GitHub (sincronización) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mi dinero</title>
+  <meta name="theme-color" content="#0e1316">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mi dinero">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="icon" href="iconos/icono-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="iconos/icono-180.png">
+  <!-- manifest.json se agrega desde app.js solo cuando la app se abre desde una dirección web -->
+  <link rel="stylesheet" href="estilos.css">
+  <script src="arranque.js"></script>
+</head>
+<body>
+  <!-- Menú: barra abajo (teléfono) o a la izquierda (computador) -->
+  <nav id="nav" class="nav" aria-label="Menú" hidden>
+    <div class="nav-marca">Mi dinero</div>
+    <button class="nav-item" data-nav="inicio"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span id="nav-inicio-num" class="badge" hidden></span></span><span class="nav-txt">Inicio</span></button>
+    <button id="nav-avisos" class="nav-item solo-pc"><span class="nav-ico" aria-hidden="true">🔔</span><span class="nav-txt">Avisos <span id="nav-avisos-num" class="badge-txt" hidden></span></span></button>
+    <button class="nav-item" data-nav="futuro"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5"/><path d="M9 5h10v10"/></svg></span><span class="nav-txt"><span class="nav-largo">Mi futuro</span><span class="nav-corto">Futuro</span></span></button>
+    <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span class="nav-txt">Registrar</span></button>
+    <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span><span class="nav-txt">Plan</span></button>
+    <button class="nav-item solo-pc" data-nav="consejero"><span class="nav-ico" aria-hidden="true">🧑‍💼</span><span class="nav-txt">Tu consejero</span></button>
+    <button class="nav-item solo-pc" data-nav="deudas"><span class="nav-ico" aria-hidden="true">💳</span><span class="nav-txt">Mis deudas</span></button>
+    <button class="nav-item solo-pc" data-nav="pagosfijos"><span class="nav-ico" aria-hidden="true">🧾</span><span class="nav-txt">Pagos fijos</span></button>
+    <button class="nav-item solo-pc" data-nav="planeados"><span class="nav-ico" aria-hidden="true">🛍️</span><span class="nav-txt">Gastos planeados</span></button>
+    <button class="nav-item solo-pc" data-nav="calendario"><span class="nav-ico" aria-hidden="true">📅</span><span class="nav-txt">Calendario</span></button>
+    <button class="nav-item solo-pc" data-nav="resumen"><span class="nav-ico" aria-hidden="true">📊</span><span class="nav-txt">A dónde va · ¿Cuadra?</span></button>
+    <button class="nav-item solo-pc" data-nav="datosfijos"><span class="nav-ico" aria-hidden="true">⚙️</span><span class="nav-txt">Datos fijos</span></button>
+    <button class="nav-item solo-pc" data-nav="respaldo"><span class="nav-ico" aria-hidden="true">☁️</span><span class="nav-txt">Respaldo</span></button>
+    <button id="nav-mas" class="nav-item solo-tel"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span><span class="nav-txt">Más</span></button>
+  </nav>
+
+  <div id="hoja" class="hoja" hidden>
+    <div class="hoja-caja" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo-barra">
+      <div class="hoja-barra"><h2 id="hoja-titulo-barra">Registrar</h2><button id="hoja-cerrar" class="boton-chico">Cerrar</button></div>
+      <div id="hoja-registrar">
+        <h2>Registrar</h2>
+        <div class="campo campo-monto hoja-monto">
+          <label for="hoja-monto">Monto</label>
+          <div class="monto-caja"><span class="monto-signo" aria-hidden="true">$</span><input id="hoja-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        </div>
+        <div class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
+          <button class="chip" data-tipo-hoja="gasto" aria-pressed="true">Gasté</button>
+          <button class="chip" data-tipo-hoja="ingreso" aria-pressed="false">Me pagaron</button>
+          <button class="chip" data-tipo-hoja="pagoDeuda" aria-pressed="false">Deuda</button>
+        </div>
+        <div id="hoja-categorias" class="chips hoja-cats" role="group" aria-label="Categoría"></div>
+        <p id="hoja-error" class="error hoja-error" role="alert"></p>
+        <div class="campo hoja-nota">
+          <label for="hoja-nota">Nota <span class="opcional">(opcional)</span></label>
+          <input id="hoja-nota" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" placeholder="Ej.: Uber Eats, súper, taxi">
+        </div>
+        <p class="hoja-etiqueta">Atajos</p>
+        <div class="hoja-atajos">
+          <button data-registrar="transporte"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="13" rx="3"/><path d="M6 10h12"/><circle cx="9" cy="13.3" r=".6"/><circle cx="15" cy="13.3" r=".6"/><path d="M9 16.5 7 20.5M15 16.5l2 4"/></svg>Transporte</button>
+          <button data-registrar="trabaje"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.3"/></svg>Trabajé hoy</button>
+          <button data-registrar="no-trabaje"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/></svg>No trabajé hoy</button>
+          <button data-registrar="ysigasto"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.3-.9.8-.9 1.4v.6"/><circle cx="12" cy="16.8" r=".7"/></svg>¿Y si gasto…?</button>
+        </div>
+        <button id="hoja-continuar" class="boton-grande guardar">Continuar</button>
+      </div>
+      <div id="hoja-mas">
+        <h2>Más</h2>
+        <div class="hoja-lista hoja-tiles">
+          <button data-nav="consejero"><span class="tile-ico" aria-hidden="true">🧑‍💼</span><b>Tu consejero</b><small>Informe y reglas</small></button>
+          <button data-nav="deudas"><span class="tile-ico" aria-hidden="true">💳</span><b>Mis deudas</b><small>Qué debes y cuándo termina</small></button>
+          <button data-nav="pagosfijos"><span class="tile-ico" aria-hidden="true">🧾</span><b>Pagos fijos</b><small>Lo que pagas cada mes</small></button>
+          <button data-nav="planeados"><span class="tile-ico" aria-hidden="true">🛍️</span><b>Gastos planeados</b><small>Compras que quieres hacer</small></button>
+          <button data-nav="calendario"><span class="tile-ico" aria-hidden="true">📅</span><b>Calendario</b><small>Días, pagos y cheques</small></button>
+          <button data-nav="resumen"><span class="tile-ico" aria-hidden="true">📊</span><b>A dónde va</b><small>Gastos por categoría y ¿Cuadra?</small></button>
+          <button data-nav="datosfijos"><span class="tile-ico" aria-hidden="true">⚙️</span><b>Datos fijos</b><small>Tu sueldo, horas y colchón</small></button>
+          <button data-nav="progreso"><span class="tile-ico" aria-hidden="true">🏅</span><b>Mi progreso</b><small>Nivel, íconos y temas</small></button>
+          <button data-nav="logros"><span class="tile-ico" aria-hidden="true">🎮</span><b>Logros</b><small>20 medallas por hábitos</small></button>
+          <button data-nav="respaldo" class="tile-ancho"><span class="tile-ico" aria-hidden="true">☁️</span><span><b>Respaldo y sincronizar</b><small>Guardar y compartir entre aparatos</small></span></button>
+        </div>
+      </div>
+      <div id="hoja-avisos">
+        <h2>Avisos</h2>
+        <div id="avisos-lista"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="lg-aviso" class="lg-aviso" hidden role="status" aria-live="polite" tabindex="-1">
+    <div class="lg-velo"></div>
+    <div class="lg-caja">
+      <span class="lg-destello" aria-hidden="true"></span>
+      <div class="lg-ico-grande" id="lg-aviso-ico" aria-hidden="true"></div>
+      <p class="lg-titulo">Logro desbloqueado</p>
+      <p class="lg-nombre-grande" id="lg-aviso-nombre"></p>
+      <p class="lg-xp-grande" id="lg-aviso-xp"></p>
+      <p class="lg-ref-aviso" id="lg-aviso-ref"></p>
+    </div>
+  </div>
+  <div id="xp-subida" class="xp-subida" hidden role="dialog" aria-modal="true" aria-labelledby="xp-su-h">
+    <div class="xp-velo"></div>
+    <div class="xp-hoja" tabindex="-1" id="xp-hoja">
+      <div class="xp-agarre" aria-hidden="true"></div>
+      <div class="xp-centro">
+        <div class="xp-anillo"><svg viewBox="0 0 112 112" aria-hidden="true"><circle cx="56" cy="56" r="48" fill="none" stroke="var(--tarjeta)" stroke-width="9"/><circle cx="56" cy="56" r="48" fill="none" stroke="var(--menta, #4fd1b5)" stroke-width="9" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="0"/></svg><b id="xp-su-nivel">2</b></div>
+        <h2 id="xp-su-h">Subiste de nivel</h2>
+        <p id="xp-su-p"></p>
+      </div>
+      <div class="xp-desbloqueo" id="xp-su-premios" hidden><p class="xp-etq">Desbloqueaste</p><p id="xp-su-texto"></p><div class="xp-chips" id="xp-su-chips"></div></div>
+      <button class="xp-seguir" id="xp-su-seguir" type="button">Seguir</button>
+    </div>
+  </div>
+
+  <main id="pantalla-inicio" class="contenedor">
+    <div class="cabeza-inicio">
+      <div class="titulo-pantalla"><p id="ceja-inicio" class="ceja"></p><h1>Mi dinero</h1></div>
+      <button id="campana" class="campana" aria-label="Avisos" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><span id="campana-num" class="badge" hidden></span></button>
+      <button id="dinero-tengo" class="dinero-tengo" aria-label="Dinero que tengo. Toca para corregirlo"></button>
+    </div>
+    <button type="button" class="xp-franja" id="xp-franja" aria-label="Mi progreso">
+      <span class="xp-top">
+        <span class="xp-nivel"><span class="xp-ico" id="xp-ico" aria-hidden="true"></span><b id="xp-nivel-n">Nivel 1</b><span class="xp-titulo" id="xp-titulo">Principiante</span></span>
+        <span class="xp-cifra" id="xp-cifra">0 / 100 XP</span>
+      </span>
+      <span class="xp-barra" id="xp-barra" aria-hidden="true"><i id="xp-barra-i" style="width:0%"></i></span>
+      <span class="xp-pie" id="xp-pie">100 XP para el nivel 2</span>
+    </button>
+    <p id="estado-carga" class="estado"></p>
+    <button id="aviso-ejemplo" class="aviso-hoy aviso-boton" hidden>Estás viendo datos de ejemplo. Toca aquí para cargar mis-datos.json.</button>
+    <button id="aviso-respaldo" class="aviso-hoy aviso-boton" hidden></button>
+    <button id="aviso-datos-viejos" class="aviso-hoy aviso-boton" hidden>Tus datos son de una versión anterior. Toca aquí y carga tu mis-datos.json más reciente.</button>
+    <p id="aviso-hoy" class="aviso-hoy" hidden>Hoy no has registrado nada</p>
+
+    <!-- Resumen de esta semana (con el menú: el inicio es un resumen; registrar está en ＋) -->
+    <section id="inicio-semana" class="inicio-semana" hidden aria-label="Resumen: lo que tengo y esta semana"><div class="kpis"><div id="kpi-semana" class="kpi-semana"></div></div></section>
+    <div id="avisos-afuera" class="avisos-afuera" hidden></div>
+    <!-- Lo que viene, lo de hoy y el consejero (con el menú); sin menú se ven los botones de siempre -->
+    <section class="tarjeta" id="inicio-pagos">
+      <h2>Lo que viene · 14 días</h2>
+      <ul id="proximos-pagos" class="movimientos"></ul>
+      <button id="pagos-ver-todos" class="enlace" hidden>Ver todos ›</button>
+    </section>
+    <section id="inicio-hoy" class="tarjeta inicio-hoy" hidden></section>
+    <section id="inicio-consejero" class="tarjeta inicio-consejero" hidden></section>
+
+    <div class="botones">
+      <button class="boton-grande ingreso" data-form="ingreso">Me pagaron</button>
+      <button class="boton-grande gasto" data-form="gasto">Gasté</button>
+      <button class="boton-grande deuda" data-form="pagoDeuda">Pagué una deuda</button>
+      <div class="rapidos">
+        <button id="rapido-transporte" class="boton-chico">Transporte</button>
+      </div>
+      <div class="rapidos jornada-botones">
+        <button id="trabaje-hoy" class="boton-mediano">Trabajé hoy</button>
+        <button id="no-trabaje-hoy" class="boton-chico">No trabajé hoy</button>
+      </div>
+      <button id="abrir-calendario" class="boton-mediano">Calendario</button>
+      <button id="abrir-futuro" class="boton-grande futuro">Mi futuro</button>
+      <button id="abrir-pagosfijos" class="boton-mediano">Pagos fijos</button>
+      <button id="abrir-planeados" class="boton-mediano">Gastos planeados</button>
+      <button id="abrir-plan" class="boton-mediano">Plan de la semana</button>
+      <button id="abrir-deudas" class="boton-mediano">Mis deudas</button>
+      <button id="abrir-resumen" class="boton-mediano">A dónde se va mi dinero</button>
+      <button id="abrir-consejero" class="boton-mediano">Tu consejero</button>
+    </div>
+
+    <details class="tarjeta mas-detalles">
+      <summary>Más detalles <span class="opcional">(cheque, jornadas, deuda y movimientos)</span></summary>
+    <section class="tarjeta">
+      <h2>Próximo cheque</h2>
+      <div id="cheque"></div>
+    </section>
+
+    <details class="tarjeta jornadas">
+      <summary>Mis jornadas <span class="opcional">(últimas 14)</span></summary>
+      <ul id="jornadas-lista" class="movimientos"></ul>
+    </details>
+
+    <section class="tarjeta">
+      <h2>Deuda total pendiente</h2>
+      <p id="deuda-total" class="cifra-grande">—</p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Últimos movimientos</h2>
+      <ul id="movimientos" class="movimientos"></ul>
+    </section>
+    </details>
+
+    <div class="botones-final">
+      <button id="abrir-datosfijos" class="boton-chico">Datos fijos</button>
+      <button id="abrir-respaldo" class="boton-chico">Respaldo</button>
+    </div>
+    <p id="version-app" class="version-app"></p>
+    <p id="sync-estado" class="version-app" hidden></p>
+  </main>
+
+  <!-- Pantalla: Calendario (Bloque 8) -->
+  <main id="pantalla-calendario" class="contenedor" hidden>
+    <button id="volver-calendario" class="volver volver-principal">← Volver</button>
+    <p id="ceja-calendario" class="ceja"></p>
+    <h1>Calendario</h1>
+
+    <section class="tarjeta cal-tarjeta">
+      <div class="cal-cabeza">
+        <button id="cal-anterior" class="cal-flecha" aria-label="Mes anterior">‹</button>
+        <h2 id="cal-titulo" class="cal-titulo"></h2>
+        <button id="cal-siguiente" class="cal-flecha" aria-label="Mes siguiente">›</button>
+      </div>
+      <button id="cal-hoy" class="boton-chico cal-hoy">Hoy</button>
+      <div class="cal-chips" aria-hidden="true"><span><i class="cc-trab"></i>Trabajé</span><span><i class="cc-cobro">$</i>Cobro</span><span><i class="cc-vence">L</i>Vence</span></div>
+      <div class="cal-dias cal-nombres" aria-hidden="true">
+        <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+      </div>
+      <div id="cal-semanas"></div>
+      <details class="cal-leyenda-caja"><summary>¿Qué significa cada marca?</summary>
+      <ul class="cal-leyenda">
+        <li><span class="muestra trabajado">✓</span> Trabajé (horas)</li>
+        <li><span class="muestra no-trabajo">✕</span> No trabajé</li>
+        <li><span class="muestra pendiente">•</span> Falta anotar</li>
+        <li><span class="muestra hoy"></span> Hoy</li>
+        <li><span class="muestra libre">◇</span> Día libre planeado (no se va a trabajar)</li>
+        <li><span class="muestra">$↑</span> Cobro: cheque de la semana de arriba</li>
+        <li><span class="muestra"><span class="marca-vence">L</span></span> Vence: R renta, L luz, I internet, T teléfono, E otro esencial, S suscripción</li>
+        <li><span class="muestra"><span class="marca-vence movido">T↻</span></span> Pago movido a este día</li>
+        <li><span class="muestra"><span class="marca-vence">P</span></span> Gasto planeado</li>
+        <li><span class="muestra dia-15">15<small>!</small></span> Si queda saldo de renta, la administradora inicia acción legal</li>
+      </ul>
+      </details>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Días que no voy a trabajar</h2>
+      <button id="abrir-libres" class="boton-mediano">Días que no voy a trabajar</button>
+      <ul id="cal-libres" class="movimientos"></ul>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Resumen del mes</h2>
+      <ul id="cal-mes" class="resumen"></ul>
+    </section>
+  </main>
+
+  <!-- Pantalla: Mi futuro (Bloque 14) - solo muestra -->
+  <main id="pantalla-futuro" class="contenedor" hidden>
+    <button id="volver-futuro" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Próximo mes</p>
+    <h1>Mi futuro</h1>
+
+    <p id="fu-frase" class="fu-frase"></p>
+    <button id="fu-cuenta" class="enlace fu-cuenta"></button>
+    <button id="fu-cubrir" class="boton-mediano fu-gasto" data-cubrir hidden>¿Cómo lo cubro?</button>
+    <button id="fu-sin-fecha" class="aviso-hoy aviso-boton" hidden></button>
+    <div id="fu-colchon"></div>
+
+    <div id="fu-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
+    <button id="fu-gasto" class="boton-mediano fu-gasto">¿Y si gasto…? (ver qué pasa antes de gastar)</button>
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes de Mi futuro">
+      <button data-pestana="grafica">Gráfica</button><button data-pestana="calendario">Calendario</button><button data-pestana="preguntas">Preguntas</button>
+    </div>
+
+    <section class="tarjeta" data-sec="grafica">
+      <h2>Tu dinero día por día</h2>
+      <div id="fu-grafica" class="fu-grafica"></div>
+      <div id="fu-leyenda" class="fu-leyenda"></div>
+    </section>
+
+    <section class="tarjeta" data-sec="calendario">
+      <div class="selector fu-vistas" role="group" aria-label="Vista">
+        <button data-fu-vista="mes">Mes</button>
+        <button data-fu-vista="semana">Semana</button>
+      </div>
+      <div id="fu-mes">
+        <div class="cal-cabeza">
+          <button id="fu-mes-anterior" class="cal-flecha" aria-label="Mes anterior">‹</button>
+          <h2 id="fu-mes-titulo" class="cal-titulo fu-sem-titulo"></h2>
+          <button id="fu-mes-siguiente" class="cal-flecha" aria-label="Mes siguiente">›</button>
+        </div>
+        <div class="cal-dias cal-nombres" aria-hidden="true">
+          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        </div>
+        <div id="fu-calendario" class="cal-dias fu-calendario"></div>
+        <p class="estado">Toca un día para ver lo que pasa. Verde: bien · amarillo: cerca de cero · rojo: bajo cero · azul ◇: día libre. Con las flechas ves hasta 3 meses adelante (después del próximo cheque, todo es estimado).<br>
+          Letras: <b>$</b> cobro · <b>R</b> renta · <b>T</b> teléfono · <b>I</b> internet · <b>L</b> luz · <b>E</b> otro esencial · <b>S</b> suscripción. El número de cada día es lo que te queda.</p>
+      </div>
+      <div id="fu-semana" hidden>
+        <div class="cal-cabeza">
+          <button id="fu-sem-anterior" class="cal-flecha" aria-label="Semana anterior">‹</button>
+          <h2 id="fu-sem-titulo" class="cal-titulo fu-sem-titulo"></h2>
+          <button id="fu-sem-siguiente" class="cal-flecha" aria-label="Semana siguiente">›</button>
+        </div>
+        <ul id="fu-sem-lista" class="fu-sem-lista"></ul>
+      </div>
+    </section>
+
+    <div id="fu-arrastre" data-sec="preguntas"></div>
+    <div id="fu-tarjetas" class="fu-tarjetas" data-sec="preguntas"></div>
+
+    <button id="fu-libre" class="boton-mediano" data-sec="preguntas">No voy a trabajar un día</button>
+
+    <details id="fu-detalle" class="tarjeta fu-detalle" data-sec="preguntas">
+      <summary>Ver detalle</summary>
+      <p class="estado">Las mismas cuentas, en lista.</p>
+      <button id="abrir-alcanza" class="boton-mediano">¿Me alcanza? (día por día)</button>
+      <button id="fu-abrir-escenarios" class="boton-mediano">¿Y si cobro...? (por niveles, montos editables)</button>
+      <button id="abrir-prestamo" class="boton-mediano">¿Me conviene un préstamo?</button>
+      <button id="abrir-acuerdo" class="boton-mediano">Si aceptan el acuerdo de renta</button>
+    </details>
+  </main>
+
+  <!-- Pantalla: Gastos planeados (Bloque 15) -->
+  <!-- Pantalla: Pagos fijos (pagosfijos.js) -->
+  <main id="pantalla-pagosfijos" class="contenedor" hidden>
+    <button id="volver-pagosfijos" class="volver volver-principal">← Volver</button>
+    <p id="ceja-pagosfijos" class="ceja"></p>
+    <h1>Pagos fijos</h1>
+    <div class="pestanas" data-pestanas role="group" aria-label="Tipo de pago">
+      <button data-pestana="esenciales">Esenciales</button><button data-pestana="suscripciones">Suscripciones</button><button data-pestana="orden">Orden</button>
+    </div>
+    <section id="pf-esenciales" class="tarjeta pf-grupo" data-sec="esenciales"></section>
+    <section id="pf-suscripciones" class="tarjeta pf-grupo" data-sec="suscripciones"></section>
+    <section id="pf-orden" class="tarjeta pf-grupo" data-sec="orden"></section>
+  </main>
+
+  <main id="pantalla-planeados" class="contenedor" hidden>
+    <button id="volver-planeados" class="volver volver-principal">← Volver</button>
+    <p id="ceja-planeados" class="ceja"></p>
+    <h1>Gastos planeados</h1>
+    <button id="pl-agregar" class="boton-grande deuda">+ Agregar gasto planeado</button>
+    <section class="tarjeta">
+      <ul id="pl-lista" class="lista-deudas"></ul>
+    </section>
+    <section class="tarjeta pl-simular">
+      <p class="ayuda">¿Quieres saber si te alcanza? Prueba</p>
+      <button id="pl-ysigasto" class="boton-chico">¿Y si gasto…?</button>
+    </section>
+  </main>
+
+  <!-- Pantalla: ¿Cuándo lo compro? (Bloque 15) -->
+  <main id="pantalla-cuando" class="contenedor" hidden>
+    <button id="volver-cuando" class="volver">← Volver</button>
+    <h1 id="pc-h1">¿Cuándo lo compro?</h1>
+    <section id="pc-cabeza" class="tarjeta"></section>
+    <div id="pc-colchon"></div>
+    <div id="pc-escenarios" class="selector fu-escenarios" role="group" aria-label="Escenario"></div>
+    <section class="tarjeta">
+      <h2>Sugerencia</h2>
+      <div id="pc-sugerencias"></div>
+    </section>
+    <section class="tarjeta" data-sec="calendario">
+      <div class="selector fu-vistas" role="group" aria-label="Vista">
+        <button data-pc-vista="mes">Mes</button>
+        <button data-pc-vista="semana">Semana</button>
+      </div>
+      <div id="pc-mes">
+        <div class="cal-dias cal-nombres" aria-hidden="true">
+          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        </div>
+        <div id="pc-calendario" class="cal-dias fu-calendario"></div>
+      </div>
+      <p id="pc-monto-cal" class="estado"></p>
+      <div id="pc-semana" hidden>
+        <div class="cal-cabeza">
+          <button id="pc-sem-anterior" class="cal-flecha" aria-label="Semana anterior">‹</button>
+          <h2 id="pc-sem-titulo" class="cal-titulo fu-sem-titulo"></h2>
+          <button id="pc-sem-siguiente" class="cal-flecha" aria-label="Semana siguiente">›</button>
+        </div>
+        <ul id="pc-sem-lista" class="fu-sem-lista"></ul>
+      </div>
+      <ul class="cal-leyenda">
+        <li><span class="muestra mv-verde"></span> No afecta nada: no agrega a lo que falta</li>
+        <li><span class="muestra mv-amarillo"></span> No agrega a lo que falta, pero corre el colchón, el amigo o la renta atrasada</li>
+        <li><span class="muestra mv-rojo"></span> Agrega a lo que falta o deja sin cubrir un pago de Nivel 1 que antes sí se cubría</li>
+        <li>"agrega $X": lo que este gasto le suma a lo que falta (no lo que ya faltaba)</li>
+      </ul>
+      <p class="estado">Toca un día para ver su impacto.</p>
+    </section>
+    <section id="pc-impacto" class="tarjeta" hidden></section>
+    <section id="pc-opciones" class="tarjeta" hidden></section>
+    <div id="pc-arrastre"></div>
+    <section id="pc-partes" class="tarjeta" hidden></section>
+  </main>
+
+  <!-- Pantalla: ¿Me conviene un préstamo? (Bloque 18) - solo simula -->
+  <!-- Pantalla: ¿Cómo lo cubro? (solo sugiere) -->
+  <!-- Pantalla: Tu consejero (consejero.js) -->
+  <main id="pantalla-consejero" class="contenedor" hidden>
+    <button id="volver-consejero" class="volver">← Volver</button>
+    <p id="cj-estado" class="ceja"></p>
+    <h1>Consejero</h1>
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes de tu consejero">
+      <button data-pestana="hoy">Hoy</button><button data-pestana="reglas">Reglas</button><button data-pestana="notas">Notas</button>
+    </div>
+    <section class="tarjeta" data-sec="hoy"><h2>Lo más importante</h2><div id="cj-informe"></div></section>
+    <section id="cj-pasos-caja" class="tarjeta" data-sec="hoy"><h2>Tu plan</h2><div id="cj-pasos"></div></section>
+    <section class="tarjeta" data-sec="hoy"><h2>Metas de la semana</h2><ul id="cj-metas" class="cj-lista cj-metas"></ul></section>
+    <section class="tarjeta" data-sec="reglas"><h2>Tus reglas</h2><ul id="cj-reglas" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta" data-sec="notas"><h2>Comentarios</h2><ul id="cj-comentarios" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta" data-sec="hoy"><h2>Fuera del plan esta semana</h2><ul id="cj-fuera" class="movimientos cj-lista"></ul></section>
+    <section class="tarjeta" data-sec="notas">
+      <h2>Háblale a tu consejero</h2>
+      <p class="ayuda">Cuéntale algo que la app no sabe (un cumpleaños, un cambio de turno, una duda). Lo lee en la próxima revisión y te contesta aquí.</p>
+      <div class="campo"><label for="cj-nota" class="oculto">Tu nota</label><textarea id="cj-nota" rows="3" maxlength="400"></textarea></div>
+      <button id="cj-enviar" class="boton-mediano">Enviar</button>
+      <ul id="cj-notas" class="movimientos cj-lista"></ul>
+    </section>
+    <section class="tarjeta" data-sec="notas">
+      <h2>¿Una duda ya?</h2>
+      <p class="ayuda">Se abre tu app de Claude con tu situación y tu pregunta ya escritas.</p>
+      <div class="campo"><label for="cj-pregunta" class="oculto">Tu pregunta</label><textarea id="cj-pregunta" rows="2" maxlength="300" placeholder="Ej.: ¿me alcanza para unos zapatos de $80?"></textarea></div>
+      <button id="cj-preguntar" class="boton-mediano">Preguntar en Claude</button>
+      <p id="cj-pregunta-ayuda" class="ayuda" hidden>Si no aparece escrito, pégalo: ya está copiado.</p>
+    </section>
+  </main>
+
+  <main id="pantalla-cubrir" class="contenedor" hidden>
+    <button id="volver-cubrir" class="volver">← Volver</button>
+    <h1>¿Cómo lo cubro?</h1>
+    <div id="cb-objetivo"></div>
+    <section id="cb-plan-caja" class="tarjeta">
+      <h2>Te recomiendo</h2>
+      <div id="cb-plan"></div>
+    </section>
+    <section id="cb-otra" class="tarjeta" hidden></section>
+    <section id="cb-todas-caja" class="tarjeta">
+      <h2>Todas las opciones</h2>
+      <ul id="cb-todas" class="movimientos cb-lista"></ul>
+    </section>
+    <p class="estado">Solo sugiere: nada cambia hasta que toques un botón. El tren y el taxi no se tocan.</p>
+  </main>
+
+  <!-- Pantalla: Si aceptan el acuerdo de renta (Bloque 19) - solo simula -->
+  <main id="pantalla-acuerdo" class="contenedor" hidden>
+    <button id="volver-acuerdo" class="volver">← Volver</button>
+    <h1>Si aceptan el acuerdo de renta</h1>
+    <p class="estado">Solo simula: no registra pagos ni cambia saldos ni deudas.</p>
+    <p id="ac-frase" class="fu-frase"></p>
+    <section id="ac-parametros" class="tarjeta">
+      <h2>El acuerdo</h2>
+      <div class="campo"><label for="ac-saldo">Saldo de renta al empezar</label>
+        <input id="ac-saldo" type="number" inputmode="decimal" step="0.01" min="0"></div>
+      <div class="campo"><label for="ac-renta">Renta mensual (vence el día 1)</label>
+        <input id="ac-renta" type="number" inputmode="decimal" step="0.01" min="0"></div>
+      <label class="mv-check"><input id="ac-recargo-activo" type="checkbox"> Siguen cobrando recargo</label>
+      <div class="ps-dos">
+        <div class="campo"><label for="ac-recargo-monto">Recargo</label>
+          <input id="ac-recargo-monto" type="number" inputmode="decimal" step="0.01" min="0"></div>
+        <div class="campo"><label for="ac-recargo-dia">Día en que se cobra</label>
+          <input id="ac-recargo-dia" type="number" inputmode="numeric" step="1" min="1" max="31"></div>
+      </div>
+      <p class="estado">El recargo se cobra si ese día el saldo de renta es mayor que 0.</p>
+      <h3 class="pc-sub">Tramos de pago (cada viernes)</h3>
+      <ul id="ac-tramos" class="ac-tramos"></ul>
+      <button id="ac-agregar" class="enlace">+ Agregar tramo</button>
+      <p id="ac-error" class="error" role="alert"></p>
+      <button id="ac-correo" class="boton-chico">Volver a los valores del correo</button>
+    </section>
+    <section class="tarjeta">
+      <h2>Resumen</h2>
+      <ul id="ac-resumen" class="resumen"></ul>
+      <p id="ac-cuenta" class="estado"></p>
+    </section>
+    <section class="tarjeta">
+      <h2>Por viernes</h2>
+      <ul id="ac-semanas" class="ac-semanas"></ul>
+      <p class="ayuda">"Libre para lo que quieras" es lo que puedes gastar esa semana sin que ningún día después quede bajo cero.</p>
+    </section>
+  </main>
+
+  <main id="pantalla-prestamo" class="contenedor" hidden>
+    <button id="volver-prestamo" class="volver">← Volver</button>
+    <h1>¿Me conviene un préstamo?</h1>
+    <p class="estado">Solo simula: no registra dinero ni agrega deudas.</p>
+    <section class="tarjeta">
+      <div class="campo"><label for="ps-tipo">¿Qué tipo de préstamo?</label>
+        <select id="ps-tipo">
+          <option value="fijo">Con pagos fijos (ej.: $130 cada viernes)</option>
+          <option value="libre">Sin intereses: lo pago cuando pueda</option>
+        </select></div>
+      <div class="campo ps-solo-libre" hidden><label for="ps-quien">¿Quién te presta? <span class="opcional">(opcional)</span></label>
+        <input id="ps-quien" type="text" maxlength="40" placeholder="Ej.: mi hermano"></div>
+      <div class="campo"><label for="ps-monto">Monto que recibiría</label>
+        <input id="ps-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="campo ps-solo-fijo"><label for="ps-pago">Pago por semana</label>
+        <input id="ps-pago" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="ps-dos ps-solo-fijo">
+        <div class="campo"><label for="ps-semanas">Número de semanas</label>
+          <input id="ps-semanas" type="number" inputmode="numeric" step="1" min="1"></div>
+        <div class="campo"><label for="ps-total">o total a devolver</label>
+          <input id="ps-total" type="number" inputmode="decimal" step="0.01" min="0"></div>
+      </div>
+      <div class="campo ps-solo-fijo"><label for="ps-dia">Día de la semana del pago</label>
+        <select id="ps-dia">
+          <option value="lunes">Lunes</option><option value="martes">Martes</option><option value="miércoles">Miércoles</option>
+          <option value="jueves">Jueves</option><option value="viernes" selected>Viernes</option><option value="sábado">Sábado</option><option value="domingo">Domingo</option>
+        </select></div>
+      <div class="campo"><label for="ps-fecha">Fecha en que lo recibiría</label>
+        <input id="ps-fecha" type="date"></div>
+      <div class="campo"><label for="ps-para">Para qué lo usaría</label>
+        <select id="ps-para">
+          <option value="renta">Renta atrasada</option>
+          <option value="planeado">Un gasto planeado</option>
+          <option value="otro">Otro</option>
+          <option value="cubrir">Para cubrir lo que me falta</option>
+        </select></div>
+      <div class="campo" id="ps-campo-planeado" hidden><label for="ps-planeado">¿Cuál gasto planeado?</label>
+        <select id="ps-planeado"></select></div>
+      <p id="ps-error" class="error" role="alert"></p>
+      <button id="ps-simular" class="boton-grande deuda">Simular</button>
+    </section>
+    <section id="ps-resultado" class="tarjeta" hidden></section>
+    <section class="tarjeta">
+      <h2>Simulaciones guardadas</h2>
+      <ul id="ps-guardadas" class="movimientos"></ul>
+    </section>
+  </main>
+
+  <!-- Pantalla: Datos fijos (Bloque 17) -->
+  <main id="pantalla-datosfijos" class="contenedor" hidden>
+    <button id="volver-datosfijos" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Sueldo y reglas</p>
+    <h1>Datos fijos</h1>
+    <p class="estado">Sueldo, horas, préstamos, colchón, comida y transporte. Lo que cambies aplica desde la fecha que elijas;
+      lo que ya pasó no se recalcula.</p>
+    <section id="df-efecto" class="tarjeta df-efecto" hidden></section>
+    <button class="df-a-pagos" data-nav="pagosfijos">
+      <span><b>Renta, luz, internet y teléfono</b><small>Ahora se cambian en Pagos fijos</small></span>
+      <svg class="pf-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <div id="df-secciones"></div>
+    <section class="tarjeta">
+      <h2>Historial de cambios</h2>
+      <ul id="df-historial" class="movimientos"></ul>
+    </section>
+  </main>
+
+  <!-- Ventana de un día (Mi futuro) -->
+  <div id="fu-dia" class="ventana" hidden>
+    <div class="ventana-caja" role="dialog" aria-labelledby="fu-dia-contenido">
+      <div id="fu-dia-contenido"></div>
+      <button id="fu-dia-cerrar" class="boton-grande cancelar">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Pantalla: ¿Me alcanza? (Bloque 9) -->
+  <main id="pantalla-alcanza" class="contenedor" hidden>
+    <button id="volver-alcanza" class="volver">← Volver</button>
+    <h1>¿Me alcanza?</h1>
+    <section class="tarjeta">
+      <div class="campo">
+        <label for="a-dinero">Dinero que tengo hoy</label>
+        <input id="a-dinero" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <p class="nota-sobre">Próximos 21 días: cheques esperados, vencimientos, comida y transporte.
+        Es solo una guía: no registra ni paga nada.</p>
+      <button id="abrir-escenarios" class="boton-mediano">¿Y si cobro...?</button>
+    </section>
+    <section class="tarjeta">
+      <h2>Línea de tiempo</h2>
+      <p id="a-cuenta" class="estado esc-cuenta"></p>
+      <ul id="a-lista" class="movimientos"></ul>
+    </section>
+  </main>
+
+  <!-- Pantalla: ¿Y si cobro...? (Bloque 11) -->
+  <main id="pantalla-escenarios" class="contenedor" hidden>
+    <button id="volver-escenarios" class="volver">← Volver</button>
+    <h1>¿Y si cobro...?</h1>
+    <p id="e-aviso" class="alerta" hidden></p>
+    <section id="e-resumen" class="tarjeta e-resumen"></section>
+    <p class="ayuda texto-fijo">Si no vas a poder pagar a tiempo, avisa antes del vencimiento, pide dividir el pago o una fecha nueva, y pide la confirmación por escrito.</p>
+    <details id="e-config" class="tarjeta e-config">
+      <summary>Cambiar montos</summary>
+      <p id="e-dinero-hoy" class="nota-sobre"></p>
+      <p id="e-rango" class="estado"></p>
+      <div class="esc-campos">
+        <div class="campo"><label for="e-menos">Menos</label>
+          <input id="e-menos" type="number" inputmode="decimal" step="1" min="0"></div>
+        <div class="campo"><label for="e-esperado">Lo esperado</label>
+          <input id="e-esperado" type="number" inputmode="decimal" step="1" min="0"></div>
+        <div class="campo"><label for="e-mas">Más</label>
+          <input id="e-mas" type="number" inputmode="decimal" step="1" min="0"></div>
+      </div>
+      <div class="campo">
+        <label for="e-colchon">Semana buena: % del extra al colchón</label>
+        <input id="e-colchon" type="number" inputmode="numeric" step="1" min="0" max="100">
+      </div>
+      <p class="estado">"Lo esperado" vacío = estimación del Próximo cheque.</p>
+    </details>
+    <div id="e-resultados"></div>
+  </main>
+
+  <!-- Pantalla: Mover este pago (Bloque 12) -->
+  <main id="pantalla-mover" class="contenedor" hidden>
+    <button id="volver-mover" class="volver">← Volver</button>
+    <h1>Mover este pago</h1>
+    <section id="mv-cabeza" class="tarjeta"></section>
+    <div id="mv-colchon"></div>
+    <section id="mv-prestamo-opciones" class="tarjeta" hidden>
+      <h2>Préstamo de una persona</h2>
+      <div class="campo">
+        <label for="mv-recargo">Recargo acordado <span class="opcional">(opcional; vacío = sin recargo)</span></label>
+        <input id="mv-recargo" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="campo">
+        <label for="mv-correr">¿Qué pasa con los pagos que siguen?</label>
+        <select id="mv-correr">
+          <option value="no">Se quedan igual (esa semana pagas doble)</option>
+          <option value="si">Se corren (el préstamo termina después)</option>
+        </select>
+      </div>
+      <p class="estado">Depende de lo que acuerdes con quien te prestó. Lo ves abajo en "¿Qué pasa en tu mes?" antes de guardar.</p>
+      <p id="mv-error-prestamo" class="error" role="alert"></p>
+    </section>
+    <section class="tarjeta">
+      <h2>Sugerencia</h2>
+      <div id="mv-sugerencias"></div>
+    </section>
+    <section class="tarjeta cal-tarjeta">
+      <h2>Próximos días</h2>
+      <div class="cal-dias cal-nombres" aria-hidden="true">
+        <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+      </div>
+      <div id="mv-calendario" class="mv-calendario"></div>
+      <ul class="cal-leyenda">
+        <li><span class="muestra mv-verde"></span> Alcanza, sin recargo</li>
+        <li><span class="muestra mv-amarillo"></span> Alcanza, con recargo o fuera de la gracia</li>
+        <li><span class="muestra mv-rojo"></span> No alcanza o riesgo alto</li>
+        <li><span class="muestra mv-gris"></span> Todavía no tienes dinero</li>
+        <li><span class="muestra">$</span> Cheque esperado · letras: otros vencimientos</li>
+      </ul>
+      <p class="estado">Toca un día para ver qué pasa si pagas ese día.</p>
+    </section>
+    <section id="mv-detalle" class="tarjeta" hidden></section>
+    <section id="mv-ajuste" class="tarjeta">
+      <h2>Ajustar a mi manera</h2>
+      <p class="estado">Pon tus fechas y montos (puedes dividirlo en varias). Antes de guardar ves qué pasa en tu mes.</p>
+      <div id="mv-partes"></div>
+      <button id="mv-agregar-parte" class="enlace">+ Agregar otra fecha</button>
+      <p id="mv-suma" class="estado"></p>
+      <div id="mv-efecto-ajuste"></div>
+      <p id="mv-error-ajuste" class="error" role="alert"></p>
+      <button id="mv-guardar-ajuste" class="boton-grande deuda">Guardar estas fechas</button>
+    </section>
+    <section class="tarjeta">
+      <label class="mv-check"><input id="mv-acordado" type="checkbox"> Ya lo acordé con la empresa</label>
+      <div class="campo">
+        <label for="mv-nota">Nota <span class="opcional">(ej.: quién te atendió)</span></label>
+        <input id="mv-nota" type="text" maxlength="120">
+      </div>
+      <p class="estado">Esto solo guarda la fecha. No registra el pago ni cambia saldos.</p>
+    </section>
+  </main>
+
+  <!-- Pantalla: Respaldo (Bloque 6) -->
+  <main id="pantalla-logros" class="contenedor" hidden>
+    <button id="volver-logros" class="volver volver-principal">← Volver</button>
+    <h1>Logros</h1>
+    <section class="tarjeta">
+      <p class="lg-resumen" id="lg-resumen"></p>
+      <p class="nota-sobre" id="lg-resumen-xp"></p>
+      <p class="nota-sobre">Cada logro se gana una sola vez y nunca se pierde. Los secretos se revelan cuando los ganas.</p>
+    </section>
+    <div id="lg-lista"></div>
+    <button id="abrir-logros" class="boton-chico" hidden>Logros</button>
+  </main>
+
+  <main id="pantalla-progreso" class="contenedor" hidden>
+    <button id="volver-progreso" class="volver volver-principal">← Volver</button>
+    <h1>Mi progreso</h1>
+
+    <section class="tarjeta">
+      <div class="xp-pg-cabeza">
+        <div class="xp-anillo xp-anillo-chico"><svg viewBox="0 0 112 112" aria-hidden="true"><circle cx="56" cy="56" r="48" fill="none" stroke="var(--panel2)" stroke-width="9"/><circle id="xp-pg-anillo" cx="56" cy="56" r="48" fill="none" stroke="var(--menta, #4fd1b5)" stroke-width="9" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6"/></svg><b id="xp-pg-nivel">1</b></div>
+        <div><p class="xp-pg-titulo" id="xp-pg-titulo">Principiante</p><p class="xp-pg-cifra" id="xp-pg-cifra"></p></div>
+      </div>
+      <p class="nota-sobre" id="xp-pg-faltan"></p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Hoy</h2>
+      <ul id="xp-pg-misiones" class="xp-misiones"></ul>
+      <p class="nota-sobre" id="xp-pg-hoy"></p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Logros</h2>
+      <p class="nota-sobre">Medallas por hábitos, cada una con su referencia de videojuego.</p>
+      <button type="button" class="boton-chico lleno" id="xp-pg-logros">Ver los logros</button>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Íconos de nivel</h2>
+      <ul id="xp-pg-iconos" class="xp-premios"></ul>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Temas de color</h2>
+      <p class="nota-sobre">Cambian el color de los botones y las barras. Las alertas no cambian.</p>
+      <ul id="xp-pg-temas" class="xp-temas"></ul>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Últimos XP</h2>
+      <ul id="xp-pg-recientes" class="xp-recientes"></ul>
+    </section>
+    <button id="abrir-progreso" class="boton-chico" hidden>Mi progreso</button>
+  </main>
+
+  <main id="pantalla-respaldo" class="contenedor" hidden>
+    <button id="volver-respaldo" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Tus datos</p>
+    <h1>Respaldo</h1>
+
+    <p id="sy-estado" class="estado"></p>
+    <section class="tarjeta">
+      <h2>Sincronizar entre aparatos</h2>
+      <p class="nota-sobre">Tus datos se guardan en tu repositorio <strong>privado</strong> de GitHub y se combinan entre tus aparatos (gana lo más reciente). La llave se queda solo en este aparato.</p>
+      <div class="pl-botones">
+        <button id="sy-ahora" class="boton-chico lleno">Sincronizar ahora</button>
+        <button id="sy-desconectar" class="boton-chico" hidden>Desconectar este aparato</button>
+      </div>
+      <details class="pegar">
+        <summary>Conectar o cambiar la conexión</summary>
+      <div class="campo"><label for="sy-repo">Repositorio de datos</label>
+        <input id="sy-repo" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="usuario/mi-dinero-datos"></div>
+      <div class="campo"><label for="sy-token">Llave (token) de GitHub</label>
+        <input id="sy-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></div>
+      <div class="campo"><label for="sy-aparato">Nombre de este aparato</label>
+        <input id="sy-aparato" type="text" maxlength="40" placeholder="Ej.: mi teléfono"></div>
+      <div class="campo"><label for="sy-modo">¿Cómo se usa aquí?</label>
+        <select id="sy-modo">
+          <option value="completo">Completo (soy yo: veo y registro)</option>
+          <option value="ver">Solo ver: "¿Se puede comprar?"</option>
+        </select></div>
+      <p id="sy-error" class="error" role="alert"></p>
+      <button id="sy-conectar" class="boton-grande guardar">Conectar y sincronizar</button>
+      </details>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Respaldo en archivo</h2>
+      <p class="nota-sobre">Guarda en un archivo todo lo de este dispositivo: movimientos, saldos, ajustes, sobres, colchón y cifras.</p>
+      <p id="respaldo-ultimo" class="estado"></p>
+      <button id="descargar-respaldo" class="boton-chico boton-ancho">Descargar respaldo</button>
+    </section>
+
+    <details class="tarjeta mas-opciones">
+      <summary>Más opciones</summary>
+      <h3>Copiar respaldo</h3>
+      <button id="copiar-respaldo" class="boton-chico copiar">Copiar respaldo (para iPhone)</button>
+      <p id="respaldo-copia-estado" class="nota-sobre"></p>
+      <textarea id="respaldo-copia" class="texto-respaldo" aria-label="Texto del respaldo para copiar" rows="4" readonly hidden></textarea>
+      <h3>Cargar respaldo</h3>
+      <p id="respaldo-origen" class="nota-sobre"></p>
+      <p class="nota-sobre">Elige un respaldo (mi-dinero-AAAA-MM-DD.json) o tu archivo mis-datos.json. Antes de cargar te muestro qué trae.</p>
+      <label class="boton-grande deuda boton-archivo">
+        Elegir archivo
+        <input id="cargar-respaldo" type="file" hidden>
+      </label>
+      <details class="pegar">
+        <summary>O pega un respaldo copiado</summary>
+        <textarea id="pegar-respaldo" class="texto-respaldo" aria-label="Pega aquí el texto del respaldo" rows="4" placeholder="Pega aquí el texto del respaldo"></textarea>
+        <button id="revisar-pegado" class="boton-chico">Revisar lo pegado</button>
+      </details>
+      <div id="respaldo-revision" class="revision" hidden></div>
+    </details>
+
+  </main>
+
+  <!-- Pantalla: Primera vez (Bloque 6) -->
+  <main id="pantalla-primera" class="contenedor" hidden>
+    <h1>Mi dinero</h1>
+    <p class="subtitulo-pantalla">Tus cuentas día por día, solo en este teléfono.</p>
+    <section class="tarjeta">
+      <h2>Paso 1 · Carga tus datos</h2>
+      <label class="boton-grande deuda boton-archivo">
+        Elegir mis-datos.json
+        <input id="cargar-primera" type="file" hidden>
+      </label>
+      <details class="pegar">
+        <summary>O pega un respaldo copiado</summary>
+        <textarea id="pegar-primera" class="texto-respaldo" aria-label="Pega aquí el texto del respaldo" rows="4" placeholder="Pega aquí el texto del respaldo"></textarea>
+        <button id="revisar-primera" class="boton-chico">Revisar lo pegado</button>
+      </details>
+      <div id="primera-revision" class="revision" hidden></div>
+    </section>
+    <details class="tarjeta primera-sync">
+      <summary><h2>¿Ya usas Mi dinero en otro aparato?</h2>
+        <span class="nota-sobre">Conéctate a tu repositorio privado y tus datos bajan solos.</span>
+        <span class="boton-grande cancelar boton-falso">Conectar</span></summary>
+      <div class="campo"><label for="sp-repo">Repositorio de datos</label>
+        <input id="sp-repo" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="usuario/mi-dinero-datos"></div>
+      <div class="campo"><label for="sp-token">Llave (token) de GitHub</label>
+        <input id="sp-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></div>
+      <div class="campo"><label for="sp-aparato">Nombre de este aparato</label>
+        <input id="sp-aparato" type="text" maxlength="40" placeholder="Ej.: mi teléfono"></div>
+      <div class="campo"><label for="sp-modo">¿Cómo se usa aquí?</label>
+        <select id="sp-modo">
+          <option value="completo">Completo (soy yo: veo y registro)</option>
+          <option value="ver">Solo ver: "¿Se puede comprar?"</option>
+        </select></div>
+      <p id="sp-error" class="error" role="alert"></p>
+      <button id="sp-conectar" class="boton-grande guardar">Conectar y sincronizar</button>
+    </details>
+    <button id="usar-ejemplo" class="boton-chico">Probar con datos de ejemplo</button>
+    <p class="privacidad">🔒 Tus datos se quedan en este dispositivo.</p>
+  </main>
+
+  <!-- Pantalla: ¿Se puede comprar? (modo Solo ver) -->
+  <main id="pantalla-ver" class="contenedor" hidden>
+    <h1>¿Se puede comprar?</h1>
+    <p id="ver-estado" class="estado"></p>
+    <section class="tarjeta">
+      <div class="campo"><label for="ver-monto">¿Cuánto cuesta?</label>
+        <input id="ver-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="campo"><label for="ver-fecha">¿Para cuándo?</label>
+        <input id="ver-fecha" type="date"></div>
+      <button id="ver-calcular" class="boton-grande deuda">Ver si se puede</button>
+    </section>
+    <section id="ver-resultado" class="tarjeta ver-resultado" hidden></section>
+    <section class="tarjeta">
+      <h2>Lo primero esta semana</h2>
+      <p id="ver-semana" class="nota-sobre"></p>
+    </section>
+    <p class="estado">Solo para ver: no se guarda ni se cambia nada.
+      <button id="ver-actualizar" class="enlace">Actualizar</button> · <button id="ver-desconectar" class="enlace">Desconectar</button></p>
+  </main>
+
+  <!-- Pantalla: Plan de la semana -->
+  <main id="pantalla-plan" class="contenedor" hidden>
+    <button id="volver" class="volver volver-principal">← Volver</button>
+    <p id="ceja-plan" class="ceja"></p>
+    <h1>Plan</h1>
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes del plan">
+      <button data-pestana="sobres">Sobres</button><button data-pestana="semana">Esta semana</button><button data-pestana="colchon">Colchón</button>
+    </div>
+
+    <section class="tarjeta p-sobres" data-sec="sobres">
+      <h2>Tus sobres (dinero apartado)</h2>
+      <div id="p-sobres" class="p-sobres-lista"></div>
+      <button id="apartar" class="boton-grande guardar">Apartar lo de esta semana</button>
+      <p id="apartar-texto" class="nota-sobre"></p>
+    </section>
+
+    <section class="tarjeta" data-sec="semana">
+      <h2>Ingreso esperado</h2>
+      <p id="p-ingreso-origen" class="origen-ingreso"></p>
+      <p id="p-cuenta" class="estado esc-cuenta"></p>
+      <div class="campo">
+        <label for="p-horas">Horas que voy a trabajar esta semana</label>
+        <input id="p-horas" type="number" inputmode="decimal" step="0.5" min="0">
+        <p id="p-horas-origen" class="estado origen-horas"></p>
+        <label for="p-enfermedad">De esas, horas de enfermedad (se pagan regulares)</label>
+        <input id="p-enfermedad" type="number" inputmode="decimal" step="0.5" min="0" value="0">
+      </div>
+      <ul class="resumen">
+        <li><span>Bruto</span><span id="p-bruto"></span></li>
+        <li><span id="p-neto-nombre">Neto esperado</span><span id="p-neto"></span></li>
+        <li id="p-estimado-fila" hidden><span id="p-estimado-nombre">Estimación</span><span id="p-estimado"></span></li>
+      </ul>
+      <div class="campo cobre">
+        <label for="p-cobre">Cobré esta semana: $</label>
+        <div class="fila-cobre">
+          <input id="p-cobre" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+          <button id="p-cobre-guardar" class="boton-chico lleno">Guardar</button>
+        </div>
+        <p id="p-cobre-error" class="error" role="alert"></p>
+        <div id="p-cobre-pregunta" class="revision" hidden></div>
+      </div>
+    </section>
+
+    <section class="tarjeta" data-sec="semana">
+      <h2>Esta semana</h2>
+      <p id="p-semana-rango" class="estado"></p>
+      <div id="p-semana"></div>
+    </section>
+
+    <section class="tarjeta" data-sec="colchon">
+      <h2>Colchón para semanas malas</h2>
+      <ul class="resumen">
+        <li><span>Meta del colchón</span><span id="p-meta"></span></li>
+      </ul>
+      <div class="campo">
+        <label for="p-colchon">Colchón ahorrado</label>
+        <input id="p-colchon" type="number" inputmode="decimal" step="0.01" min="0">
+      </div>
+      <div class="barra"><div id="p-barra" class="barra-relleno"></div></div>
+      <p id="p-barra-texto" class="barra-texto"></p>
+      <div class="campo">
+        <label for="p-porcentaje">Si mandas algo al colchón: porcentaje de lo libre (sugerencia)</label>
+        <input id="p-porcentaje" type="number" inputmode="numeric" step="1" min="0" max="100">
+      </div>
+    </section>
+
+    <section class="tarjeta" data-sec="semana">
+      <h2>Si quieres usar lo libre (tú decides)</h2>
+      <div id="p-sugerencia"></div>
+      <p id="p-amigo" class="mensaje-sobrante positivo" hidden>Ya puedes pagarle a tu amigo</p>
+    </section>
+
+    <details class="tarjeta p-promedio" data-sec="semana">
+      <summary>Promedio semanal de tus gastos fijos (solo referencia)</summary>
+      <p class="estado">Es la renta y las facturas del mes divididas entre semanas. No mira el calendario: para saber qué es libre usa "Esta semana".</p>
+      <ul id="p-gastos" class="resumen"></ul>
+      <p id="p-sobrante" class="estado"></p>
+    </details>
+  </main>
+
+  <!-- Pantalla: Mis deudas (Bloque 4) -->
+  <main id="pantalla-deudas" class="contenedor" hidden>
+    <button id="volver-deudas" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Prioridad por orden</p>
+    <h1>Mis deudas</h1>
+    <div id="alerta-15" class="alerta" hidden></div>
+    <div class="pestanas" data-pestanas role="group" aria-label="Partes de mis deudas">
+      <button data-pestana="deudas">Deudas</button><button data-pestana="pagos">Pagos</button><button data-pestana="termino">Cuándo termino</button>
+    </div>
+
+    <section class="tarjeta" data-sec="deudas">
+      <h2>Lista de deudas (en orden de prioridad)</h2>
+      <ul id="d-lista" class="lista-deudas"></ul>
+    </section>
+
+    <section class="tarjeta" data-sec="deudas">
+      <h2>Automático</h2>
+      <ul id="d-automaticas" class="lista-deudas"></ul>
+    </section>
+
+    <section class="tarjeta" data-sec="pagos">
+      <h2>Qué pagar esta semana</h2>
+      <div id="d-pagar"></div>
+    </section>
+
+    <section class="tarjeta" data-sec="termino">
+      <h2>Proyección</h2>
+      <div class="campo">
+        <label for="d-extra">¿Y si pago $___ extra por semana?</label>
+        <input id="d-extra" type="number" inputmode="decimal" step="1" min="0" placeholder="0">
+      </div>
+      <p id="d-libre" class="mensaje-sobrante"></p>
+      <p id="d-ritmo" class="nota-sobre"></p>
+      <ul id="d-fechas" class="resumen"></ul>
+      <h2 class="subtitulo">Comparar porcentaje al colchón</h2>
+      <ul id="d-comparador" class="resumen"></ul>
+    </section>
+  </main>
+
+  <!-- Pantalla: A dónde se va mi dinero (Bloque 5) -->
+  <main id="pantalla-resumen" class="contenedor" hidden>
+    <button id="volver-resumen" class="volver volver-principal">← Volver</button>
+    <p id="ceja-resumen" class="ceja"></p>
+    <h1>A dónde va</h1>
+
+    <div class="selector" role="group" aria-label="Período">
+      <button data-periodo="semana">Esta semana</button>
+      <button data-periodo="mes">Este mes</button>
+      <button data-periodo="cuatro">Últimas 4 semanas</button>
+    </div>
+    <p id="r-rango" class="estado"></p>
+
+    <section class="tarjeta">
+      <h2>Gastos por categoría</h2>
+      <ul id="r-categorias" class="lista-deudas"></ul>
+      <ul id="r-totales" class="resumen"></ul>
+    </section>
+
+    <section class="tarjeta">
+      <h2>¿Cuadra mi dinero? <span class="opcional">(opcional)</span></h2>
+      <p id="r-ultimo" class="nota-sobre"></p>
+      <button id="r-ver" class="enlace">Ver de dónde sale</button>
+      <div id="r-detalle" hidden></div>
+      <div class="campo">
+        <label for="r-dinero">Lo que tienes de verdad (efectivo + cuenta)</label>
+        <input id="r-dinero" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Cuéntalo y escríbelo aquí">
+      </div>
+      <button id="r-revisar" class="boton-chico lleno">Revisar</button>
+      <p id="r-resultado" class="mensaje-sobrante"></p>
+      <div id="r-acciones" class="pl-botones"></div>
+    </section>
+  </main>
+
+  <!-- Ventana de formulario -->
+  <div id="ventana" class="ventana" hidden>
+    <form id="formulario" class="ventana-caja" novalidate role="dialog" aria-modal="true" aria-labelledby="form-titulo">
+      <h2 id="form-titulo"></h2>
+      <div id="form-campos"></div>
+      <p id="form-error" class="error" role="alert"></p>
+      <button type="submit" class="boton-grande guardar">Guardar</button>
+      <button type="button" id="cancelar" class="boton-grande cancelar">Cancelar</button>
+    </form>
+  </div>
+
+  <div id="aviso" class="aviso-flotante" role="status" aria-live="polite" hidden><span id="aviso-texto">Guardado</span><button type="button" id="aviso-accion" class="boton-chico aviso-accion" hidden>Deshacer</button></div>
+
+  <!-- Pregunta "¿Seguro?" de la app -->
+  <div id="vigilante" class="ventana pregunta" hidden>
+    <div class="ventana-caja pregunta-caja" role="alertdialog" aria-labelledby="vg-titulo">
+      <p id="vg-titulo" class="pregunta-texto"><strong>👀 Tu consejero</strong></p>
+      <div id="vg-texto" class="vg-texto"></div>
+      <div id="vg-incluido" class="vg-incluido" hidden>
+        <p id="vg-incluido-texto"></p>
+        <label><input type="radio" name="vg-inc" value="si"> Sí, ya estaba incluido</label>
+        <label><input type="radio" name="vg-inc" value="no"> No, fue después</label>
+      </div>
+      <div class="campo"><label for="vg-razon">¿Por qué este gasto fuera del plan?</label>
+        <textarea id="vg-razon" rows="2" maxlength="140"></textarea></div>
+      <p id="vg-error" class="error" role="alert"></p>
+      <button id="vg-guardar" class="boton-grande deuda">Guardar con esta razón</button>
+      <button id="vg-volver" class="boton-grande cancelar">Volver</button>
+    </div>
+  </div>
+
+  <div id="pregunta" class="ventana pregunta" hidden>
+    <div class="ventana-caja pregunta-caja" role="alertdialog" aria-labelledby="pregunta-texto">
+      <p id="pregunta-texto" class="pregunta-texto"></p>
+      <button id="pregunta-si" class="boton-grande deuda">Sí</button>
+      <button id="pregunta-no" class="boton-grande cancelar">No</button>
+    </div>
+  </div>
+
+  <!-- Orden: datos de ejemplo, almacén, campos, app, plan, proyeccion, jornadas, deudas, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, cubrir, avisos, consejero -->
+  <script src="datos-ejemplo.js"></script>
+  <script src="almacen.js"></script>
+  <script src="campos.js"></script>
+  <script src="app.js"></script>
+  <script src="plan.js"></script>
+  <script src="proyeccion.js"></script>
+  <script src="jornadas.js"></script>
+  <script src="deudas.js"></script>
+  <script src="resumen.js"></script>
+  <script src="calendario.js"></script>
+  <script src="planeados.js"></script>
+  <script src="pagos.js"></script>
+  <script src="alcanza.js"></script>
+  <script src="escenarios.js"></script>
+  <script src="mover.js"></script>
+  <script src="futuro.js"></script>
+  <script src="colchon.js"></script>
+  <script src="datosfijos.js"></script>
+  <script src="pagosfijos.js"></script>
+  <script src="prestamo.js"></script>
+  <script src="acuerdo.js"></script>
+  <script src="respaldo.js"></script>
+  <script src="sincronizar.js"></script>
+  <script src="nav.js"></script>
+  <script src="cubrir.js"></script>
+  <script src="avisos.js"></script>
+  <script src="consejero.js"></script>
+  <script src="logros.js"></script>
+  <script src="xp.js"></script>
+</body>
+</html>
