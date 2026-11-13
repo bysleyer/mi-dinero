@@ -1832,3 +1832,71 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
 .xp-recientes b { color: var(--menta, #4fd1b5); font-variant-numeric: tabular-nums; }
 .xp-recientes .xp-vacio { color: var(--suave); display: block; }
 @media (prefers-reduced-motion: reduce) { .xp-hoja { animation: none; } .xp-barra i { transition: none; } }
+
+
+/* ---------- Logros: aviso al ganar uno (centro de la pantalla) ---------- */
+.lg-aviso { position: fixed; inset: 0; z-index: 320; display: grid; place-items: center; padding: 20px; }
+.lg-aviso[hidden] { display: none; }
+.lg-velo { position: absolute; inset: 0; background: rgba(5, 8, 10, .62); opacity: 0; }
+.lg-caja {
+  position: relative; width: min(290px, 100%); background: var(--panel2); border: 1.5px solid var(--menta, #4fd1b5); border-radius: 26px;
+  padding: 26px 20px 22px; text-align: center; opacity: 0; transform: scale(.6); box-shadow: 0 20px 50px rgba(0, 0, 0, .6);
+}
+.lg-mostrar .lg-velo { animation: lg-velo 3.4s ease-out forwards; }
+.lg-mostrar .lg-caja { animation: lg-entra 3.4s cubic-bezier(.2, .9, .3, 1.1) forwards; }
+@keyframes lg-velo { 0% { opacity: 0; } 12% { opacity: 1; } 84% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes lg-entra {
+  0% { transform: scale(.6); opacity: 0; } 14% { transform: scale(1.06); opacity: 1; } 22% { transform: scale(1); opacity: 1; }
+  84% { transform: scale(1); opacity: 1; } 100% { transform: scale(.92); opacity: 0; }
+}
+.lg-ico-grande { position: relative; width: 104px; height: 104px; margin: 0 auto; border-radius: 28px; background: var(--fondo); border: 2px solid var(--menta, #4fd1b5); display: grid; place-items: center; }
+.lg-ico-grande svg { width: 62px; height: 62px; fill: #5b6a74; }
+.lg-mostrar .lg-ico-grande svg { animation: lg-encender .5s .3s steps(4, end) forwards; }
+.lg-giro.lg-mostrar .lg-ico-grande svg { animation: lg-giro .9s .3s steps(8, end) forwards, lg-encender .5s .35s steps(4, end) forwards; }
+.lg-estrella.lg-mostrar .lg-ico-grande svg { animation: lg-vuelta .9s .3s steps(10, end) forwards, lg-encender .5s .35s steps(4, end) forwards; }
+.lg-temblar.lg-mostrar .lg-ico-grande svg { animation: lg-temblar .5s .3s steps(4, end) 2, lg-encender .5s .35s steps(4, end) forwards; }
+@keyframes lg-encender { from { fill: #5b6a74; } to { fill: var(--menta, #4fd1b5); } }
+@keyframes lg-giro { 0% { transform: scaleX(1); } 25% { transform: scaleX(.2); } 50% { transform: scaleX(1); } 75% { transform: scaleX(.2); } 100% { transform: scaleX(1); } }
+@keyframes lg-vuelta { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.15); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes lg-temblar { 0% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } 100% { transform: translateX(0); } }
+.lg-anillo { position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--menta, #4fd1b5); opacity: 0; pointer-events: none; }
+.lg-mostrar .lg-anillo { animation: lg-anillo .9s .3s ease-out forwards; }
+@keyframes lg-anillo { 0% { transform: scale(.8); opacity: 0; } 20% { opacity: .9; } 100% { transform: scale(1.9); opacity: 0; } }
+.lg-part { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; border-radius: 1px; background: var(--menta, #4fd1b5); opacity: 0; pointer-events: none; }
+.lg-mostrar .lg-part { animation: lg-volar .8s .5s steps(8, end) forwards; }
+@keyframes lg-volar { 0% { opacity: 1; transform: translate(-50%, -50%); } 100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--dx), var(--dy)); } }
+.lg-titulo { margin: 16px 0 0; font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--menta, #4fd1b5); }
+.lg-nombre-grande { margin: 6px 0 0; font-size: 1.2rem; font-weight: 800; line-height: 1.2; }
+.lg-xp-grande { margin: 10px 0 0; font-size: 1.65rem; font-weight: 900; color: var(--menta, #4fd1b5); font-variant-numeric: tabular-nums; }
+.lg-ref-aviso { margin: 4px 0 0; font-size: .85rem; color: var(--suave); }
+
+/* ---------- Logros: pantalla con la lista ---------- */
+.lg-resumen { margin: 0; font-size: 1.4rem; font-weight: 800; }
+.lg-grupo { margin: 22px 0 10px; font-size: .85rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); }
+.lg-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.lg-tarjeta { display: flex; gap: 12px; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 16px; padding: 14px; }
+.lg-ico { width: 52px; height: 52px; flex: none; border-radius: 14px; background: var(--panel2); border: 1.5px solid var(--borde-fuerte); display: grid; place-items: center; }
+.lg-ico svg { width: 36px; height: 36px; fill: var(--suave); }
+.lg-tarjeta.ganado .lg-ico { border-color: var(--menta, #4fd1b5); background: color-mix(in srgb, var(--menta, #4fd1b5) 10%, transparent); }
+.lg-tarjeta.ganado .lg-ico svg { fill: var(--menta, #4fd1b5); }
+.lg-tarjeta.curso .lg-ico { border-color: var(--aviso); }
+.lg-tarjeta.curso .lg-ico svg { fill: var(--aviso); }
+.lg-tarjeta.secreto .lg-ico { border-style: dashed; }
+.lg-tarjeta.secreto .lg-ico svg { fill: #3a4850; }
+.lg-texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.lg-nombre { font-size: 1rem; font-weight: 800; }
+.lg-ref { font-size: .85rem; color: var(--menta, #4fd1b5); font-weight: 700; }
+.lg-tarjeta.secreto:not(.ganado) .lg-ref { color: var(--suave); }
+.lg-cond { font-size: .9rem; color: var(--suave); line-height: 1.35; }
+.lg-barra { display: block; height: 5px; border-radius: 999px; background: var(--panel2); overflow: hidden; margin-top: 4px; }
+.lg-barra i { display: block; height: 100%; background: var(--aviso); border-radius: 999px; }
+.lg-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: .85rem; font-weight: 700; }
+.lg-xp { color: var(--menta, #4fd1b5); font-variant-numeric: tabular-nums; }
+.lg-estado { color: var(--suave); font-variant-numeric: tabular-nums; }
+.lg-tarjeta.ganado .lg-estado { color: var(--menta, #4fd1b5); }
+.lg-tarjeta.curso .lg-estado { color: var(--aviso); }
+@media (prefers-reduced-motion: reduce) {
+  .lg-mostrar .lg-velo, .lg-mostrar .lg-caja, .lg-mostrar .lg-ico-grande svg, .lg-mostrar .lg-anillo, .lg-mostrar .lg-part { animation: none !important; }
+  .lg-mostrar .lg-velo { opacity: 1; } .lg-mostrar .lg-caja { opacity: 1; transform: none; }
+  .lg-mostrar .lg-ico-grande svg { fill: var(--menta, #4fd1b5); }
+}

@@ -10,17 +10,21 @@
  *   respaldo                           +10  (una vez a la semana)
  *   recibo del mes (luz...)            +15  (una vez al mes)
  *   pago fijo pagado en su fecha       +20  (cada pago)
+ *   aporte al colchón                  +10  (una vez a la semana; se nota cuando subes el número del colchón en Plan)
+ *   logros (logros.js)                 de +10 a +200 XP, una sola vez cada uno
  * Subir del nivel n al n+1 cuesta 100 + 50·(n−1) XP.
  *
  * Solo se cuenta lo que pasa desde que se activó el XP ("desde"): nada se calcula hacia atrás.
- * Pendiente: aporte semanal al colchón (la app todavía no guarda aportes), logros y jefes de deudas.
+ * Pendiente: los jefes de deudas.
  *
  * Datos guardados: { desde, ganados: { id: { xp, fecha, tipo, texto } }, avisos: { fecha: 1 },
- *                    respaldos: { lunesDeLaSemana: 1 }, nivelVisto, tema }
+ *                    respaldos: { lunesDeLaSemana: 1 }, nivelVisto, tema,
+ *                    logros: { id: { fecha, visto } }, flags: { vuelta, madrugador, colchon500 },
+ *                    colchonVisto, colchonAportes, ultimaVisita }
  */
 const Xp = {
   CLAVE: "progreso",
-  PUNTOS: { registro: 10, avisos: 5, respaldo: 10, recibo: 15, pago: 20 },
+  PUNTOS: { registro: 10, avisos: 5, respaldo: 10, recibo: 15, pago: 20, colchon: 10 },
   TOPE_DIARIO: 15,
 
   // Iconos de nivel (uno por título) y temas de color que se desbloquean
@@ -80,11 +84,13 @@ const Xp = {
     let p = Almacen.leer(this.CLAVE);
     if (!p || typeof p !== "object") p = this._memoria;
     if (!p) {                                  // primera vez: queda anotado desde cuándo se cuenta el XP
-      p = { desde: hoy(), ganados: {}, avisos: {}, respaldos: {}, nivelVisto: 1, tema: "menta" };
+      p = { desde: hoy(), ganados: {}, avisos: {}, respaldos: {}, nivelVisto: 1, tema: "menta", logros: {}, flags: {}, colchonVisto: null, colchonAportes: 0, ultimaVisita: null };
       this.guardar(p);
     }
     p.ganados = p.ganados || {}; p.avisos = p.avisos || {}; p.respaldos = p.respaldos || {};
     p.nivelVisto = p.nivelVisto || 1; p.tema = p.tema || "menta"; p.desde = p.desde || hoy();
+    p.logros = p.logros || {}; p.flags = p.flags || {}; p.colchonAportes = p.colchonAportes || 0;
+    if (p.colchonVisto === undefined) p.colchonVisto = null;
     return p;
   },
   guardar(p) {
@@ -100,9 +106,23 @@ const Xp = {
   },
 
   // ---------- Qué se gana ----------
-  // Revisa los datos de la app y anota lo nuevo. Devuelve { p, ganado: [{xp, texto}] }.
+  // Los pagos fijos con vencimiento (a tiempo o con retraso), uno por vencimiento, de lo registrado desde que se activó el XP
+  pagosDeMovimientos(p) {
+    const por = {};
+    Almacen.leerMovimientos().forEach(m => {
+      const dia = this.fechaLocal(m.creado);
+      if (!dia || dia < p.desde) return;
+      const v = typeof m.vencimiento === "string" && m.vencimiento.match(/@(\d{4}-\d{2}-\d{2})/);
+      if (!v || !m.fecha || !(m.tipo === "gasto" || m.tipo === "pagoDeuda")) return;
+      if (!por[m.vencimiento] || m.fecha < por[m.vencimiento].fecha) por[m.vencimiento] = { venc: v[1], fecha: m.fecha, aTiempo: m.fecha <= v[1] };
+    });
+    return Object.values(por);
+  },
+
+  // Revisa los datos de la app y anota lo nuevo. Devuelve { p, nuevo: [{xp, texto}] }.
   recalcular() {
     const p = this.leer();
+    const antes = JSON.stringify(p);
     const nuevo = [];
     const sumar = (id, xp, fecha, tipo, texto) => { if (this.ganar(p, id, xp, fecha, tipo, texto)) nuevo.push({ xp, texto }); };
     const desde = p.desde;
@@ -110,7 +130,10 @@ const Xp = {
     Almacen.leerMovimientos().forEach(m => {
       const dia = this.fechaLocal(m.creado);
       if (!dia || dia < desde) return;                       // solo lo registrado desde que se activó el XP
-      if (m.tipo === "gasto") sumar(`registro:${dia}`, this.PUNTOS.registro, dia, "registro", "Registraste tus gastos");
+      if (m.tipo === "gasto") {
+        sumar(`registro:${dia}`, this.PUNTOS.registro, dia, "registro", "Registraste tus gastos");
+        if (new Date(m.creado).getHours() < 6) p.flags.madrugador = true;   // logro secreto: antes de las 6 a. m.
+      }
       const v = typeof m.vencimiento === "string" && m.vencimiento.match(/@(\d{4}-\d{2}-\d{2})/);
       if (v && m.fecha && m.fecha <= v[1] && (m.tipo === "gasto" || m.tipo === "pagoDeuda"))
         sumar(`pago:${m.vencimiento}`, this.PUNTOS.pago, m.fecha, "pago", "Pagaste a tiempo");
@@ -122,7 +145,20 @@ const Xp = {
     Object.keys(p.avisos).forEach(dia => { if (dia >= desde) sumar(`avisos:${dia}`, this.PUNTOS.avisos, dia, "avisos", "Revisaste tus avisos"); });
     Object.keys(p.respaldos).forEach(sem => { if (sem >= this.lunesDe(desde)) sumar(`respaldo:${sem}`, this.PUNTOS.respaldo, sem, "respaldo", "Hiciste un respaldo"); });
 
-    if (nuevo.length) this.guardar(p);
+    // Colchón: un aporte es cuando el número sube respecto a lo último que vio la app (lo de antes de activar el XP no cuenta)
+    let col = 0;
+    try { col = Number((Almacen.leerPlan().sobres || {}).colchon) || 0; } catch (e) { /* sin plan */ }
+    if (p.colchonVisto == null) p.colchonVisto = col;
+    else if (col > p.colchonVisto + 0.004) {
+      p.colchonAportes = (p.colchonAportes || 0) + 1;
+      sumar(`colchon:${this.lunesDe(hoy())}`, this.PUNTOS.colchon, hoy(), "colchon", "Aportaste a tu colchón");
+      if (col >= 500) p.flags.colchon500 = true;
+      p.colchonVisto = col;
+    } else if (col < p.colchonVisto - 0.004) p.colchonVisto = col;
+
+    if (typeof Logros !== "undefined") Logros.evaluar(p, this.pagosDeMovimientos(p), sumar);
+
+    if (JSON.stringify(p) !== antes) this.guardar(p);
     return { p, nuevo };
   },
 
@@ -167,7 +203,10 @@ const Xp = {
     if (antes != null && e.total > antes) this._ultimo = { xp: e.total - antes, hasta: Date.now() + 6000 };
     this.pintarFranja(e);
     if (!$("pantalla-progreso").hidden) this.pintarProgreso(e);
-    if (e.nivel > e.p.nivelVisto) this.mostrarSubida(e);
+    const hayLogros = typeof Logros !== "undefined";
+    if (hayLogros) { Logros.pintar(); Logros.mostrarPendientes(e.p); }
+    // primero se muestran los logros nuevos y después la hoja de subida de nivel
+    if (e.nivel > e.p.nivelVisto && !(hayLogros && (Logros.ocupado() || Logros.pendientes(e.p).length))) this.mostrarSubida(e);
   },
 
   pintarFranja(e) {
@@ -198,6 +237,7 @@ const Xp = {
       mision(e.hoy.registro, "Registra tus gastos de hoy", this.PUNTOS.registro) +
       mision(e.hoy.avisos, "Revisa tus avisos", this.PUNTOS.avisos);
     $("xp-pg-hoy").textContent = `Hoy: ${e.hoy.xp} de ${this.TOPE_DIARIO} XP posibles. Se reinicia a medianoche.`;
+    if (typeof Logros !== "undefined") $("xp-pg-logros").textContent = `Ver los logros (${Logros.LISTA.filter(l => e.p.logros[l.id]).length} de ${Logros.LISTA.length})`;
     $("xp-pg-iconos").innerHTML = this.ICONOS.map(i => {
       const abierto = e.nivel >= i.desde;
       return `<li class="xp-premio${abierto ? "" : " bloqueado"}"><span class="xp-medalla">${abierto ? this.svgIcono(i) : '<span class="xp-candado" aria-hidden="true">🔒</span>'}</span><b>${i.nombre}</b><small>${abierto ? i.titulo : "Nivel " + i.desde}</small></li>`;
@@ -268,6 +308,10 @@ const Xp = {
     $("xp-su-seguir").addEventListener("click", () => this.cerrarSubida());
     $("xp-subida").addEventListener("keydown", ev => { if (ev.key === "Escape") this.cerrarSubida(); });
     $("xp-pg-temas").addEventListener("click", ev => { const b = ev.target.closest("[data-tema]"); if (b) this.elegirTema(b.dataset.tema); });
+    // Logro secreto "Vuelta sin reproches": volver después de 7 días sin entrar
+    const p = this.leer(), h = hoy();
+    if (typeof Logros !== "undefined" && p.ultimaVisita && Logros.diasEntre(p.ultimaVisita, h) >= 7) p.flags.vuelta = true;
+    p.ultimaVisita = h; this.guardar(p);
     this.actualizar();
   }
 };
