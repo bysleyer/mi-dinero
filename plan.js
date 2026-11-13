@@ -152,7 +152,7 @@ const Plan = {
     // Servicios: las facturas de mis datos y los pagos fijos que agregué (lo mismo que va en el sobre de servicios)
     const semanalServicios = [...Vencimientos.facturasDeDatos().map(g => g.id), ...lineas.filter(l => l.id.startsWith("pf-")).map(l => l.id)]
       .reduce((s, id) => s + this.montoDe(lineas, id), 0);
-    return { plan, bruto, neto, lineas, total, sobrante, meta, aColchon, aDeudas,
+    return { plan, bruto, neto, estimado, horasPlan, lineas, total, sobrante, meta, aColchon, aDeudas,
              semanalRenta, semanalServicios, usaReal, real, vista, puedePagarAmigo, planeados, totalPlaneados };
   },
 
@@ -354,6 +354,13 @@ const Plan = {
     $("p-bruto").textContent = c.bruto == null ? "—" : dinero(c.bruto);
     $("p-cuenta").textContent = Proyeccion.textoCuenta(Proyeccion.calcular(), Jornadas.periodoProximoCheque().cobro);
     $("p-neto").textContent = dinero(c.neto);
+    // Si manda el cheque real (o la vista previa), la estimación con las horas se sigue mostrando aparte
+    const muestraEstimado = c.usaReal || !!c.vista;
+    $("p-estimado-fila").hidden = !muestraEstimado;
+    if (muestraEstimado) {
+      $("p-estimado-nombre").textContent = `Estimación con ${c.horasPlan} h`;
+      $("p-estimado").textContent = dinero(c.estimado.neto);
+    }
 
     // Promedio semanal (solo referencia)
     $("p-gastos").innerHTML = c.lineas.map(l => `
