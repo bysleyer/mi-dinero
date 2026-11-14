@@ -205,8 +205,11 @@ const Plan = {
   },
 
   // ---------- Esta semana, con la cuenta día por día (proyeccion.js, 3 meses) ----------
-  // Libre = lo que se puede gastar sin que ningún día (desde el cheque de esta semana) quede bajo cero.
+  // Libre = lo que puedes gastar HOY sin que ningún día de los próximos 3 meses quede bajo cero.
+  //   (Antes se medía desde el cheque de esta semana: de lunes a jueves decía "libre" con dinero que todavía no tenías.)
+  // Llega libre = lo que se suma a lo libre cuando cobres el cheque de esta semana.
   // Guárdalo = lo que queda al final de la semana y hace falta más adelante.
+  // Libre + llega libre + guárdalo = lo que queda el domingo.
   DIAS_ADELANTE: 92,
 
   semanaReal() {
@@ -222,32 +225,49 @@ const Plan = {
     const minDe = arr => arr.reduce((m, f) => !m || pr.porDia[f].saldoFin < m.saldo ? { fecha: f, saldo: pr.porDia[f].saldoFin } : m, null);
     const antes = minDe(fechas.filter(f => f < desde));
     const despues = minDe(fechas.filter(f => f >= desde));
+    const todo = minDe(fechas);
     const finSemana = pr.porDia[domingo] ? pr.porDia[domingo].saldoFin : pr.porDia[fechas[fechas.length - 1]].saldoFin;
-    const libre = redondear(Math.max(0, despues ? despues.saldo : 0));
-    const guardar = redondear(Math.max(0, finSemana - libre));
-    // ¿Para qué se guarda? Lo grande que viene después de esta semana, hasta el día más apretado
-    const finPara = despues && despues.fecha > domingo ? despues.fecha : domingo;
-    const para = fechas.filter(f => f > domingo && f <= finPara).flatMap(f => pr.porDia[f].lineas.map(l => ({ ...l, fecha: f })))
-      .filter(l => l.monto < 0 && (l.id === "renta" || l.tipo === "pago") && l.id !== "prestamo").slice(0, 4);
-    // ¿Lo guardado alcanza para cada pago, y el cheque llega antes? Solo hasta el próximo cheque (después ya cuenta ese dinero)
+    const libreCheque = redondear(Math.max(0, despues ? despues.saldo : 0)); // libre desde el cheque de esta semana
+    const libre = redondear(Math.max(0, Math.min(libreCheque, todo ? todo.saldo : 0)));
+    const llegaLibre = redondear(Math.max(0, libreCheque - libre));
+    const guardar = redondear(Math.max(0, finSemana - libreCheque));
+    // ¿Para qué se guarda? Se sigue la cuenta después del domingo: cada pago se paga primero con los cheques que ya
+    // llegaron y solo lo que no alcanza sale de lo guardado. Así cada fila dice cuánto de lo guardado se lleva,
+    // y la suma de las filas es lo guardado.
     const chequeSig = (pr.cheques.filter(f => f > hoyClave)[0]) || null;
-    let resto = guardar;
-    const cobertura = para.map(x => {
-      const monto = redondear(-x.monto);
-      const antes = !chequeSig || x.fecha < chequeSig;
-      if (!antes) return { ...x, monto, estado: "despues" };
-      const cubre = resto >= monto - 0.005;
-      const falta = cubre ? 0 : redondear(monto - Math.max(0, resto));
-      resto = redondear(Math.max(0, resto - monto));
-      return { ...x, monto, estado: cubre ? "cubre" : "falta", falta, chequeSig };
-    });
+    const cobertura = [];
+    let S = guardar, C = 0, hasta = null;
+    for (const f of fechas.filter(x => x > domingo)) {
+      if (S <= 0.005) break;
+      const ls = pr.porDia[f].lineas;
+      C = redondear(C + ls.filter(l => l.monto > 0).reduce((s, l) => s + l.monto, 0));
+      const salen = ls.filter(l => l.monto < 0 && l.tipo !== "simulado");
+      const total = redondear(-salen.reduce((s, l) => s + l.monto, 0));
+      const deCheques = Math.min(C, total);
+      C = redondear(C - deCheques);
+      let deGuardado = redondear(Math.min(S, total - deCheques));
+      if (deGuardado <= 0.005) continue;
+      S = redondear(S - deGuardado);
+      hasta = f;
+      // Lo que sale de lo guardado se cuenta primero en lo más importante del día (la renta, luego por prioridad)
+      [...salen].sort((a, b) => a.orden - b.orden).forEach(l => {
+        if (deGuardado <= 0.005) return;
+        const usa = redondear(Math.min(-l.monto, deGuardado));
+        deGuardado = redondear(deGuardado - usa);
+        const cheques = pr.cheques.filter(c => c > domingo && c <= f);
+        cobertura.push({ ...l, fecha: f, monto: redondear(-l.monto), deGuardado: usa, cheques,
+                         completo: usa >= -l.monto - 0.005, antesDelCheque: !chequeSig || f < chequeSig });
+      });
+    }
+    const para = cobertura; // (nombre anterior)
     let hueco = null;
     if (despues && despues.saldo < -0.005) {
       const q = Proyeccion.quienFalta(pr, despues.fecha);
       hueco = { fecha: despues.fecha, falta: redondear(-despues.saldo), pago: Proyeccion.lista(q.cortos) + (q.rentaCubierta ? "; la renta sí se cubre" : "") };
     }
     return { pr, lunes, domingo, desde, inicial: pr.inicial, entra, gastos,
-             totalGastos: redondear(-gastos.reduce((s, l) => s + l.monto, 0)), finSemana, libre, guardar, para, cobertura, chequeSig, hueco,
+             totalGastos: redondear(-gastos.reduce((s, l) => s + l.monto, 0)), finSemana, libre, llegaLibre, libreCheque, guardar,
+             para, cobertura, coberturaHasta: hasta, chequeSig, hueco,
              huecoAntes: antes && antes.saldo < -0.005 ? { fecha: antes.fecha, falta: redondear(-antes.saldo) } : null };
   },
 
@@ -287,15 +307,13 @@ const Plan = {
   // Cuánto apartar: de lo que hay que guardar, lo que va para la renta y las facturas (en orden de fecha),
   // menos lo que ya está en cada sobre
   cuantoApartar(sem = this.semanaReal(), so = this.sobresMetas()) {
-    let queda = sem.guardar;
-    const obligaciones = [];
-    if (so.renta.cuando && so.renta.meta > 0) obligaciones.push({ sobre: "renta", fecha: so.renta.cuando, monto: so.renta.meta });
-    so.servicios.facturas.filter(f => f.fecha > sem.domingo).forEach(f => obligaciones.push({ sobre: "servicios", fecha: f.fecha, monto: f.monto }));
+    // Lo mismo que dice "Guárdalo": de lo guardado, lo que se lleva la renta y lo que se llevan las facturas
+    // (antes se repartía por fecha sin contar los cheques que llegan antes, y la renta salía con menos de lo que necesita)
+    const servicios = new Set([...Vencimientos.facturasDeDatos().map(g => g.id), ...Almacen.leerPagosPropios().map(p => p.id)]);
     const objetivo = { renta: 0, servicios: 0 };
-    obligaciones.sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(o => {
-      const m = Math.min(o.monto, queda);
-      objetivo[o.sobre] = redondear(objetivo[o.sobre] + m);
-      queda = redondear(queda - m);
+    sem.cobertura.forEach(x => {
+      if (x.id === "renta") objetivo.renta = redondear(objetivo.renta + x.deGuardado);
+      else if (x.tipo === "pago" && servicios.has(x.id)) objetivo.servicios = redondear(objetivo.servicios + x.deGuardado);
     });
     return { renta: redondear(Math.max(0, objetivo.renta - so.renta.guardado)),
              servicios: redondear(Math.max(0, objetivo.servicios - so.servicios.guardado)) };
@@ -406,15 +424,19 @@ const Plan = {
       <div class="p-reparto">
         <div class="p-guardar">
           <span>Guárdalo para más adelante</span><strong>${dinero(sem.guardar)}</strong>
-          ${sem.guardar > 0.005 && sem.cobertura.length ? `<ul class="resumen p-cobertura">${sem.cobertura.map(x => {
-            const nota = x.estado === "cubre" ? `<span class="ok">✓ cubierto con lo que guardas</span>`
-              : x.estado === "falta" ? `<span class="detalle">faltan ${dinero(x.falta)}: tu próximo cheque llega el ${Futuro.dia(x.chequeSig)}, ${x.chequeSig > x.fecha ? "después de este pago" : "ese mismo día"}</span>`
-              : `<span class="detalle">se paga con el cheque del ${Futuro.dia(sem.chequeSig)} o los siguientes</span>`;
-            return `<li><span>${escapar(x.nombre)}<span class="detalle">${Futuro.diaCorto(x.fecha)}</span>${nota}</span><span>${dinero(x.monto)}</span></li>`; }).join("")}</ul>` : ""}
+          ${sem.guardar > 0.005 && sem.cobertura.length ? `<p class="estado">Esto es lo que tus próximos cheques no alcanzan a cubrir:</p>
+          <ul class="resumen p-cobertura">${sem.cobertura.map(x => {
+            const chq = x.cheques.length ? `tus cheques del ${Futuro.listaDias(x.cheques)}` : "";
+            const nota = x.completo
+              ? `<span class="detalle">${x.antesDelCheque ? "vence antes de tu próximo cheque: sale todo de lo que guardas" : "sale todo de lo que guardas"}</span>`
+              : `<span class="detalle">de ${dinero(x.monto)}: el resto lo pagan ${chq || "tus cheques"}</span>`;
+            return `<li><span>${escapar(x.nombre)}<span class="detalle">${Futuro.diaCorto(x.fecha)}</span>${nota}</span><span>${dinero(x.deGuardado)}</span></li>`; }).join("")}</ul>
+          <p class="estado">Lo demás de esos días (facturas, comida, transporte) ya lo pagan tus cheques.</p>` : ""}
         </div>
         <div class="p-libre ${sem.libre > 0.005 ? "" : "cero"}">
           <span>Libre para lo que quieras</span><strong>${dinero(sem.libre)}</strong>
-          <p class="estado">Lo puedes gastar sin que ningún día de los próximos 3 meses quede bajo cero.</p>
+          <p class="estado">Lo puedes gastar hoy sin que ningún día de los próximos 3 meses quede bajo cero.</p>
+          ${sem.llegaLibre > 0.005 ? `<p class="estado">Cuando cobres el ${Futuro.dia(sem.desde)} se suman <b>${dinero(sem.llegaLibre)}</b> libres más.</p>` : ""}
         </div>
       </div>
       ${sem.hueco ? `<p class="pc-hueco">Aunque guardes todo, el ${Futuro.dia(sem.hueco.fecha)} te faltan ${dinero(sem.hueco.falta)} para ${escapar(sem.hueco.pago)}.</p>` : ""}`;

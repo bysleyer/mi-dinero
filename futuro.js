@@ -41,6 +41,13 @@ const Futuro = {
   diaCorto(f) {
     return Jornadas.aFecha(f).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
   },
+  // "20 nov", "20 y 27 nov", "27 nov y 4 dic"
+  listaDias(fechas) {
+    const d = f => Jornadas.aFecha(f);
+    const mes = f => d(f).toLocaleDateString("es", { month: "short" }).replace(".", "");
+    const partes = fechas.map((f, i) => i < fechas.length - 1 && mes(f) === mes(fechas[i + 1]) ? `${d(f).getDate()}` : `${d(f).getDate()} ${mes(f)}`);
+    return partes.length <= 1 ? (partes[0] || "") : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
+  },
   plata(n) { return n < 0 ? `−${dineroCorto(-n)}` : dineroCorto(n); },
   fechas(pr) { return Object.keys(pr.porDia).sort(); },
 

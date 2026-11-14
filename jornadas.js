@@ -85,6 +85,9 @@ const Jornadas = {
       const domingo = this.sumarDias(lunes, 6);
       return cheques.some(m => m.fecha >= lunes && m.fecha <= domingo);
     };
+    // Sábado o domingo con el cheque del viernes sin registrar: ese sigue siendo el próximo (igual que en la cuenta día por día)
+    const deEstaSemana = this.sumarDias(Plan.claveSemana(h), (diaCobro + 6) % 7);
+    if (deEstaSemana < hoyClave && !cobrado(deEstaSemana)) cobro = deEstaSemana;
     for (let i = 0; i < 60 && cobrado(cobro); i++) cobro = this.sumarDias(cobro, 7);
     const inicio = this.sumarDias(Plan.claveSemana(this.aFecha(cobro)), -7);
     return { cobro, inicio, fin: this.sumarDias(inicio, 6) };

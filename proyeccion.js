@@ -183,6 +183,42 @@ const Proyeccion = {
     let cobro = Jornadas.sumarDias(inicioBusqueda, (diaCheque - Jornadas.aFecha(inicioBusqueda).getDay() + 7) % 7);
     const ingresos = Almacen.leerMovimientos().filter(esCheque); // "Otro ingreso" no reemplaza al cheque
     let escenarioUsado = false;
+    // Sábado y domingo después del cobro: el cheque de esta semana ya pasó (no sale en la cuenta), pero lo que apartó
+    // —el transporte de la semana que sigue y la comida que todavía no compras— sigue haciendo falta. Antes se
+    // olvidaba hasta el lunes y "Libre" subía el fin de semana con dinero que ya tenía dueño.
+    {
+      const cobroPrev = Jornadas.sumarDias(Jornadas.sumarDias(inicioBusqueda, (diaCheque - Jornadas.aFecha(inicioBusqueda).getDay() + 7) % 7), -7);
+      const dispPrev = Jornadas.sumarDias(cobroPrev, cfg.chequeRetraso);
+      const lunesSig = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(cobroPrev)), 7);
+      if (dispPrev < hoyClave && hoyClave < lunesSig) {
+        // El cheque del viernes que todavía no registras (lo cobraste tarde o no lo has anotado): se sigue contando,
+        // como el viernes en la noche. Antes desaparecía el sábado y la cuenta decía que faltaba dinero.
+        const lunesPrev = Plan.claveSemana(Jornadas.aFecha(cobroPrev));
+        if (!ingresos.some(m => m.fecha >= lunesPrev && m.fecha <= Jornadas.sumarDias(lunesPrev, 6))) {
+          const esp = this.chequeEsperado(cobroPrev);
+          let monto = esp.monto, origen = "esperado";
+          if (chequeEscenario != null && !escenarioUsado) { monto = chequeEscenario; origen = "escenario"; escenarioUsado = true; }
+          cheques.push({ fecha: hoyClave, monto, origen, horas: esp.horas, libres: esp.libres, sinRegistrar: cobroPrev });
+          lineas.push({ fecha: hoyClave, orden: 0, tipo: "cheque", id: "cheque", monto, origen, sinRegistrar: cobroPrev,
+            nombre: origen === "escenario" ? "Cheque (este escenario)" : `Cheque del ${Jornadas.aFecha(cobroPrev).toLocaleDateString("es", { weekday: "long", day: "numeric" })} (todavía no lo registras)` });
+        }
+        const { comida, transporte, minima } = Datos.conFecha(dispPrev, () => ({
+          comida: Vencimientos.gasto("comida"), transporte: Vencimientos.gasto("transporte"), minima: this.comidaMinima() }));
+        const diasT = transporte ? this.diasTransporte(lunesSig, transporte.diasPorSemana) : 0;
+        if (transporte && diasT > 0) lineas.push({ fecha: hoyClave, orden: Prioridad.orden("transporte") ?? 3, tipo: "semanal", id: "transporte",
+          nombre: `Transporte (semana que sigue: ${dinero(transporte.porDia)} × ${diasT} ${diasT === 1 ? "día" : "días"})`,
+          monto: -redondear(transporte.porDia * diasT) });
+        if (comida) {
+          const base = extrema && minima != null ? minima : comida.monto;
+          const ya = this.comidaYaGastada(gastosComida, dispPrev);
+          const falta = redondear(Math.max(0, base - ya));
+          if (falta > 0.005) lineas.push({ fecha: hoyClave, orden: Prioridad.orden("comida") ?? 4, tipo: "semanal", id: "comida",
+            nombre: (extrema && minima != null ? "Comida (modo extremo" : "Comida (semana que sigue") + (ya > 0.005 ? `, ya gastaste ${dinero(ya)})` : ")"),
+            monto: -falta });
+        }
+      }
+    }
+
     for (; Jornadas.sumarDias(cobro, cfg.chequeRetraso) <= fin; cobro = Jornadas.sumarDias(cobro, 7)) {
       const disponible = Jornadas.sumarDias(cobro, cfg.chequeRetraso);
       const lunes = Plan.claveSemana(Jornadas.aFecha(cobro));

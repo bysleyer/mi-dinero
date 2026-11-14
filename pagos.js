@@ -320,7 +320,10 @@ const Vencimientos = {
       let resta = Math.max(0, Datos.saldoDeuda(Plan.ID_DEUDA_PRESTAMO));
       const saltos = this.saltosPrestamo();
       const diaCobro = Calendario.diaDeCobro();
-      let f = Jornadas.sumarDias(hoyClave, (diaCobro - Jornadas.aFecha(hoyClave).getDay() + 7) % 7);
+      // Desde el día de cobro de hace poco (DIAS_ATRAS): un pago del viernes que no hiciste sigue pendiente (vencido)
+      // en vez de desaparecer el sábado. El total de pagos no cambia: se calcula con el saldo de la deuda.
+      const atras = Jornadas.sumarDias(hoyClave, -this.DIAS_ATRAS);
+      let f = Jornadas.sumarDias(atras, (diaCobro - Jornadas.aFecha(atras).getDay() + 7) % 7);
       for (; f <= hasta; f = Jornadas.sumarDias(f, 7)) {
         const clave = `prestamo-0@${f}`;
         if (pagados.has(clave)) {
@@ -329,6 +332,11 @@ const Vencimientos = {
           continue;
         }
         if (saltos.some(x => f > x.desde && f <= x.hasta)) continue; // semana corrida: sin pago
+        if (f < hoyClave && this.pagadoSinClave({ monto: gp.monto, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_PRESTAMO } }, f)) {
+          if (f >= desde) agregar({ id: "prestamo", letra: "", nombre: gp.nombre, orden: 20,
+            partes: [{ nombre: gp.nombre, monto: gp.monto, clave, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_PRESTAMO } }] }, f);
+          continue; // ya se pagó sin "Ya lo pagué": no vuelve a restar del saldo
+        }
         if (resta <= 0.005) break;
         const monto = Math.min(gp.monto, resta);
         resta = redondear(resta - monto);
