@@ -135,7 +135,7 @@ const Futuro = {
     if (est.vista === "mes") this.dibujarCalendario(prLargo);
     else this.dibujarSemana(prLargo);
 
-    this.dibujarTarjetas(pr, est.escenario);
+    this.dibujarTarjetas(prLargo, est.escenario); // las preguntas usan los mismos 3 meses que el calendario
   },
 
   // ---------- Gráfica de líneas (30 días) ----------
@@ -330,7 +330,7 @@ const Futuro = {
     const sinDinero = fechas.find(f => pr.porDia[f].saldoFin < -0.005);
     tarjetas.push(sinDinero
       ? { titulo: "¿Cuándo me quedo sin dinero?", grande: this.dia(sinDinero), texto: `Te faltan ${dineroCorto(-pr.porDia[sinDinero].saldoFin)} ese día.`, clase: "negativo" }
-      : { titulo: "¿Cuándo me quedo sin dinero?", grande: "No en el próximo mes", texto: "El saldo no baja de cero en 30 días.", clase: "positivo" });
+      : { titulo: "¿Cuándo me quedo sin dinero?", grande: "No en los próximos 3 meses", texto: "El saldo no baja de cero en 3 meses.", clase: "positivo" });
 
     // 2 y 3: largo plazo, con las reglas de prioridad y del colchón
     const largo = Proyeccion.planDeudas({ chequeEscenario: Escenarios.config()[escenario] });
@@ -352,13 +352,13 @@ const Futuro = {
     // 4. ¿Cuánto cobro al mes?
     const dias = Jornadas.config().diasDeTrabajo || [];
     if (!dias.length) {
-      tarjetas.push({ titulo: "¿Cuánto cobro al mes?", grande: "Falta un dato", texto: "En tus datos no están tus días de trabajo.", clase: "" });
+      tarjetas.push({ titulo: "¿Cuánto cobro en 3 meses?", grande: "Falta un dato", texto: "En tus datos no están tus días de trabajo.", clase: "" });
     } else {
       const cheques = pr.chequesInfo.filter(c => c.fecha <= pr.hasta);
       const total = cheques.reduce((s, c) => s + c.monto, 0);
       const libres = Proyeccion.diasLibresEntre(pr.desde, pr.hasta);
-      tarjetas.push({ titulo: "¿Cuánto cobro al mes?", grande: dineroCorto(total),
-        texto: `En ${cheques.length} ${cheques.length === 1 ? "cheque" : "cheques"} (próximos 30 días)${libres ? `, con ${libres} ${libres === 1 ? "día libre descontado" : "días libres descontados"}` : ""}.`, clase: "" });
+      tarjetas.push({ titulo: "¿Cuánto cobro en 3 meses?", grande: dineroCorto(total),
+        texto: `En ${cheques.length} ${cheques.length === 1 ? "cheque" : "cheques"} (próximos 3 meses)${libres ? `, con ${libres} ${libres === 1 ? "día libre descontado" : "días libres descontados"}` : ""}.`, clase: "" });
     }
 
     $("fu-tarjetas").innerHTML = tarjetas.map(t => `
