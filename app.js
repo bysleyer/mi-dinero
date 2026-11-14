@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 54, fecha: "13 nov 2026" };
+const VERSION_APP = { numero: 55, fecha: "13 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -411,7 +411,7 @@ const Formularios = {
             `<button type="button" class="boton-chico" data-llenar-monto="${m.monto}" aria-pressed="false">${dinero(m.monto)}<small>${escapar(m.nombre)}</small></button>`
           ).join("")}
         </div>` + campoFecha() + (t.ultimoHoy
-          ? `<button type="button" id="deshacer-transporte" class="boton-chico boton-borrar">Deshacer el último (${dinero(t.ultimoHoy.monto)})</button>` : "");
+          ? `<button type="button" id="deshacer-transporte" class="boton-chico boton-borrar">Deshacer el último (${dinero(t.ultimoHoy.monto)})</button>` : "") + Transporte.htmlCierre();
     },
     leer(base) {
       base.tipo = "gasto";
@@ -859,6 +859,30 @@ const Transporte = {
     };
   },
 
+  // "Eso fue todo el transporte de hoy": deja de reservar lo que falta de hoy (queda libre). Se puede reabrir.
+  htmlCierre() {
+    const e = Proyeccion.transporteDeEstaSemana();
+    if (!e || !e.hoyCuenta) return "";
+    if (e.cerrado) {
+      return `<div class="transporte-cierre"><p class="ayuda">Dijiste que hoy ya no gastas más en transporte: no se reserva más para hoy.</p>
+        <button type="button" id="cerrar-transporte" class="boton-chico">Reabrir el transporte de hoy</button></div>`;
+    }
+    return `<div class="transporte-cierre">
+      <button type="button" id="cerrar-transporte" class="boton-chico">Eso fue todo el transporte de hoy</button>
+      <p class="ayuda">${e.restoHoy > 0.005 ? `Dejas de reservar los ${dinero(e.restoHoy)} que faltaban de hoy y quedan libres.` : "Hoy ya cubriste tu meta; así avisas que no habrá más."}</p></div>`;
+  },
+
+  cerrarHoy() {
+    const plan = Almacen.leerPlan();
+    const hoyClave = hoy();
+    const cerrar = plan.transporteCerradoEl !== hoyClave;
+    plan.transporteCerradoEl = cerrar ? hoyClave : null;
+    Almacen.guardarPlan(plan);
+    Pantalla.aviso(cerrar ? "Listo: hoy ya no se reserva más transporte" : "Se vuelve a reservar el transporte de hoy");
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
+    if (!$("ventana").hidden && formularioAbierto === "transporte") abrirFormulario("transporte");
+  },
+
   // Borra el último gasto de transporte de hoy (con la misma función y pregunta que la ✕)
   async deshacerUltimo() {
     const ultimo = this.resumen().ultimoHoy;
@@ -951,6 +975,7 @@ try {
       ponerTextoGuardar();
     }
     if (e.target.closest("#deshacer-transporte")) Transporte.deshacerUltimo();
+    if (e.target.closest("#cerrar-transporte")) Transporte.cerrarHoy();
     if (e.target.closest("[data-ver-gasto]")) {
       const monto = Number($("f-monto").value), fecha = $("f-fecha").value;
       const pantalla = [...document.querySelectorAll("main.contenedor")].find(x => !x.hidden);

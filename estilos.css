@@ -1907,3 +1907,7 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
   .lg-mostrar .lg-velo { opacity: 1; } .lg-mostrar .lg-caja { opacity: 1; transform: none; }
   .lg-mostrar .lg-ico-grande svg { fill: var(--menta, #4fd1b5); }
 }
+
+/* Transporte: cierre del día */
+.transporte-cierre { margin-top: 10px; display: grid; gap: 6px; }
+.transporte-cierre .ayuda { margin: 0; }

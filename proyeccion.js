@@ -90,6 +90,52 @@ const Proyeccion = {
     return Almacen.leerMovimientos().filter(m => m.tipo === "gasto" && m.categoria === "Comida" && (!desde || m.creado > desde) && !m.incluidoEnCorreccion);
   },
 
+  // ---------- Transporte: días que se reservan ----------
+  // Los días de transporte de una semana vienen de "Días de trabajo (transporte)" en Datos fijos (diasPorSemana):
+  // cuenta de lunes en adelante, quita días libres y feriados, quita un día registrado como "No trabajé",
+  // y suma un día fuera de ese rango que sí trabajaste (jornada registrada). Sin ese número, usa los días de trabajo de siempre.
+  diaConTransporte(fecha, i, n, jornadas) {
+    const j = jornadas[fecha];
+    if (j) return j.horas > 0;
+    if (n == null) return this.esDiaDeTrabajo(fecha) && !this.esLibre(fecha);
+    return i < n && !this.esLibre(fecha);
+  },
+
+  diasTransporte(lunes, n, desde = null) {
+    const jornadas = {};
+    (this._cache ? this._cache.jornadas : Almacen.leerJornadas()).forEach(j => { jornadas[j.fecha] = j; });
+    let dias = 0;
+    for (let i = 0; i < 7; i++) {
+      const f = Jornadas.sumarDias(lunes, i);
+      if (desde && f < desde) continue;
+      if (this.diaConTransporte(f, i, n, jornadas)) dias++;
+    }
+    return dias;
+  },
+
+  // Lo que todavía hay que reservar de transporte en ESTA semana: lo que falta de hoy + los días que quedan hasta el domingo.
+  // "Eso fue todo el transporte de hoy" (plan.transporteCerradoEl) deja de reservar lo que falta de hoy.
+  transporteDeEstaSemana() {
+    const hoyClave = hoy();
+    const t = Datos.conFecha(hoyClave, () => Vencimientos.gasto("transporte"));
+    if (!t || !(t.porDia > 0)) return null;
+    const lunes = Plan.claveSemana();
+    const n = t.diasPorSemana;
+    const jornadas = {};
+    (this._cache ? this._cache.jornadas : Almacen.leerJornadas()).forEach(j => { jornadas[j.fecha] = j; });
+    const i = Math.round((Jornadas.aFecha(hoyClave) - Jornadas.aFecha(lunes)) / 86400000);
+    const hoyCuenta = this.diaConTransporte(hoyClave, i, n, jornadas);
+    const cerrado = Almacen.leerPlan().transporteCerradoEl === hoyClave;
+    const di = Almacen.leerDineroInicial(), desdeMov = di ? di.momento : "";
+    const gastadoHoy = redondear(Almacen.leerMovimientos()
+      .filter(m => m.tipo === "gasto" && m.categoria === "Transporte" && m.fecha === hoyClave && (!desdeMov || m.creado > desdeMov) && !m.incluidoEnCorreccion)
+      .reduce((x, m) => x + m.monto, 0));
+    const restoHoy = hoyCuenta && !cerrado ? redondear(Math.max(0, t.porDia - gastadoHoy)) : 0;
+    const diasFuturos = this.diasTransporte(lunes, n, Jornadas.sumarDias(hoyClave, 1));
+    return { porDia: t.porDia, hoyCuenta, cerrado, gastadoHoy, restoHoy, diasFuturos,
+             total: redondear(restoHoy + diasFuturos * t.porDia) };
+  },
+
   // Lo que ya gastaste en Comida del día de cobro al domingo siguiente (viernes a domingo): esa compra es la comida de la semana que sigue
   comidaYaGastada(gastos, cobro) {
     const hasta = Jornadas.sumarDias(cobro, 2);
@@ -157,9 +203,9 @@ const Proyeccion = {
       // siguiente al cobro) y (2) la COMIDA de esa semana, que se compra el mismo día de cobro: si ya la gastaste
       // (viernes a domingo), eso se descuenta para no restarla dos veces.
       const lunesSig = Jornadas.sumarDias(lunes, 7);
-      const { comida, transporte, diasTransporte, minima } = Datos.conFecha(disponible, () => ({
-        comida: Vencimientos.gasto("comida"), transporte: Vencimientos.gasto("transporte"),
-        diasTransporte: this.horasSemana(lunesSig).diasConTrabajo, minima: this.comidaMinima() }));
+      const { comida, transporte, minima } = Datos.conFecha(disponible, () => ({
+        comida: Vencimientos.gasto("comida"), transporte: Vencimientos.gasto("transporte"), minima: this.comidaMinima() }));
+      const diasTransporte = transporte ? this.diasTransporte(lunesSig, transporte.diasPorSemana) : 0;
       if (transporte && diasTransporte > 0) lineas.push({ fecha: disponible, orden: Prioridad.orden("transporte") ?? 3, tipo: "semanal", id: "transporte",
         nombre: `Transporte (semana que sigue: ${dinero(transporte.porDia)} × ${diasTransporte} ${diasTransporte === 1 ? "día" : "días"})`,
         monto: -redondear(transporte.porDia * diasTransporte) });
@@ -173,27 +219,16 @@ const Proyeccion = {
       }
     }
 
-    // Transporte que todavía falta de ESTA semana: los días de trabajo desde hoy hasta el domingo, menos lo que ya registraste hoy.
+    // Transporte que todavía falta de ESTA semana (lo que falta de hoy y los días que quedan).
     // (El dinero que se apartó el viernes pasado sigue en "Dinero que tengo hoy" hasta que lo gastas: se aparta aquí para que no cuente como libre.)
     {
-      const domActual = Jornadas.sumarDias(Plan.claveSemana(), 6);
-      const t = Datos.conFecha(hoyClave, () => Vencimientos.gasto("transporte"));
-      if (t && t.porDia > 0) {
-        let dias = 0;
-        const jornadas = {};
-        (this._cache ? this._cache.jornadas : Almacen.leerJornadas()).forEach(j => { jornadas[j.fecha] = j; });
-        for (let f = hoyClave; f <= domActual; f = Jornadas.sumarDias(f, 1)) {
-          const j = jornadas[f];
-          if (j ? j.horas > 0 : (!this.esLibre(f) && this.esDiaDeTrabajo(f))) dias++;
-        }
-        const di = Almacen.leerDineroInicial(), desdeMov = di ? di.momento : "";
-        const hoyGastado = Almacen.leerMovimientos()
-          .filter(m => m.tipo === "gasto" && m.categoria === "Transporte" && m.fecha === hoyClave && (!desdeMov || m.creado > desdeMov) && !m.incluidoEnCorreccion)
-          .reduce((x, m) => x + m.monto, 0);
-        const falta = redondear(Math.max(0, t.porDia * dias - hoyGastado));
-        if (falta > 0.005) lineas.push({ fecha: hoyClave, orden: Prioridad.orden("transporte") ?? 3, tipo: "semanal", id: "transporte",
-          nombre: `Transporte que falta de esta semana (${dinero(t.porDia)} × ${dias} ${dias === 1 ? "día" : "días"}${hoyGastado > 0.005 ? `, ya gastaste ${dinero(hoyGastado)} hoy` : ""})`,
-          monto: -falta });
+      const t = this.transporteDeEstaSemana();
+      if (t && t.total > 0.005) {
+        const partes = [];
+        if (t.diasFuturos > 0) partes.push(`${t.diasFuturos} ${t.diasFuturos === 1 ? "día" : "días"} × ${dinero(t.porDia)}`);
+        if (t.restoHoy > 0.005) partes.push(`hoy faltan ${dinero(t.restoHoy)} de ${dinero(t.porDia)}`);
+        lineas.push({ fecha: hoyClave, orden: Prioridad.orden("transporte") ?? 3, tipo: "semanal", id: "transporte",
+          nombre: `Transporte que falta de esta semana (${partes.join(" + ")})`, monto: -t.total });
       }
     }
 

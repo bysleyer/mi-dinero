@@ -70,13 +70,22 @@ const Jornadas = {
     return `${f.getFullYear()}-${d2(f.getMonth() + 1)}-${d2(f.getDate())}`;
   },
 
-  // Próximo día de cobro (hoy cuenta si hoy es día de cobro) y los días que cubre:
+  // Próximo día de cobro SIN COBRAR (hoy cuenta si es día de cobro y todavía no registras ese cheque) y los días que cubre:
   // de lunes a domingo de la semana anterior a la del cobro.
   periodoProximoCheque(hoyClave = hoy()) {
     const diaCobro = Math.max(0, this.DIAS.indexOf(this.config().diaDeCobro));
     const h = this.aFecha(hoyClave);
     const faltan = (diaCobro - h.getDay() + 7) % 7;
-    const cobro = this.sumarDias(hoyClave, faltan);
+    let cobro = this.sumarDias(hoyClave, faltan);
+    // Si el cheque de esa semana de cobro ya está registrado (ya cobraste), el próximo es el del viernes que sigue.
+    // Sin esto, el mismo viernes después de cobrar "el próximo cheque" seguía siendo el de hoy.
+    const cheques = Almacen.leerMovimientos().filter(esCheque);
+    const cobrado = c => {
+      const lunes = Plan.claveSemana(this.aFecha(c));
+      const domingo = this.sumarDias(lunes, 6);
+      return cheques.some(m => m.fecha >= lunes && m.fecha <= domingo);
+    };
+    for (let i = 0; i < 60 && cobrado(cobro); i++) cobro = this.sumarDias(cobro, 7);
     const inicio = this.sumarDias(Plan.claveSemana(this.aFecha(cobro)), -7);
     return { cobro, inicio, fin: this.sumarDias(inicio, 6) };
   },
