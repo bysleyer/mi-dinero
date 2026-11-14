@@ -70,6 +70,16 @@ const Jornadas = {
     return `${f.getFullYear()}-${d2(f.getMonth() + 1)}-${d2(f.getDate())}`;
   },
 
+  // ¿A qué día de cobro pertenece un cheque registrado en "fecha"? Al de su semana; pero si lo registras 3 días o más
+  // antes del día de cobro (lunes o martes, cobrando el viernes), es el cheque del viernes anterior que anotaste tarde.
+  // Antes contaba como el del viernes que viene y la cuenta dejaba de esperar ese cheque.
+  cobroDeCheque(fecha) {
+    const diaCobro = Math.max(0, this.DIAS.indexOf(this.config().diaDeCobro));
+    const cobro = this.sumarDias(Plan.claveSemana(this.aFecha(fecha)), (diaCobro + 6) % 7);
+    const antes = Math.round((this.aFecha(cobro) - this.aFecha(fecha)) / 86400000);
+    return antes >= 3 ? this.sumarDias(cobro, -7) : cobro;
+  },
+
   // Próximo día de cobro SIN COBRAR (hoy cuenta si es día de cobro y todavía no registras ese cheque) y los días que cubre:
   // de lunes a domingo de la semana anterior a la del cobro.
   periodoProximoCheque(hoyClave = hoy()) {
@@ -80,11 +90,7 @@ const Jornadas = {
     // Si el cheque de esa semana de cobro ya está registrado (ya cobraste), el próximo es el del viernes que sigue.
     // Sin esto, el mismo viernes después de cobrar "el próximo cheque" seguía siendo el de hoy.
     const cheques = Almacen.leerMovimientos().filter(esCheque);
-    const cobrado = c => {
-      const lunes = Plan.claveSemana(this.aFecha(c));
-      const domingo = this.sumarDias(lunes, 6);
-      return cheques.some(m => m.fecha >= lunes && m.fecha <= domingo);
-    };
+    const cobrado = c => cheques.some(m => this.cobroDeCheque(m.fecha) === c);
     // Sábado o domingo con el cheque del viernes sin registrar: ese sigue siendo el próximo (igual que en la cuenta día por día)
     const deEstaSemana = this.sumarDias(Plan.claveSemana(h), (diaCobro + 6) % 7);
     if (deEstaSemana < hoyClave && !cobrado(deEstaSemana)) cobro = deEstaSemana;

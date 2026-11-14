@@ -282,20 +282,34 @@ const Deudas = {
 
   textoLibre(p) {
     if (p.libre === "ya") return "Ya no tienes deudas";
-    if (!p.libre) return `No se alcanza a pagar en ${this.MAX_SEMANAS} semanas`;
+    if (!p.libre) return "No se alcanza a pagar en 2 años";
     return `${mesAño(p.libre)} (${p.semanas} sem.)`;
+  },
+
+  // Fechas con la MISMA cuenta día por día de Mi futuro (proyeccion.js → planDeudas), con el % al colchón y el extra elegidos.
+  // (Antes esta pestaña usaba promedios por semana y podía no coincidir con Mi futuro.)
+  fechasReales(pct, extra, pr) {
+    const d = Proyeccion.planDeudas({ pr, pct, extraSemanal: extra });
+    const aFecha = x => x && x !== "ya" ? Jornadas.aFecha(x) : x;
+    const fechas = {};
+    Object.entries(d.ceros).forEach(([id, f]) => { if (f) fechas[id] = f === "ya" ? "pagada" : aFecha(f); });
+    const libre = aFecha(d.libre);
+    const semanas = libre && libre !== "ya" ? Math.max(1, Math.ceil((libre - Jornadas.aFecha(hoy())) / (7 * 86400000))) : null;
+    return { fechas, libre, semanas, fechaColchon: aFecha(d.colchonLleno) };
   },
 
   mostrarProyeccion() {
     const plan = Almacen.leerPlan();
     const extra = plan.extraProyeccion || 0;
-    const p = this.proyectar(plan.porcentajeColchon, extra);
+    const pr = Proyeccion.calcular({ horizonte: 730 });
+    const prom = this.proyectar(plan.porcentajeColchon, extra); // solo para el ritmo por semana (promedio)
+    const p = { ...this.fechasReales(plan.porcentajeColchon, extra, pr), ritmoConPrestamo: prom.ritmoConPrestamo, ritmoSinPrestamo: prom.ritmoSinPrestamo };
 
     const libre = $("d-libre");
     libre.className = "mensaje-sobrante " + (p.libre ? "positivo" : "negativo");
     libre.textContent = p.libre === "ya" ? "Ya no tienes deudas"
       : p.libre ? `Libre de deudas aproximadamente en ${mesAño(p.libre)} (${p.semanas} semanas)`
-      : `Con estos números no se alcanza a pagar en ${this.MAX_SEMANAS} semanas`;
+      : "Con estos números no se alcanza a pagar en 2 años";
 
     const ritmo = [];
     if (p.ritmoConPrestamo != null) ritmo.push(`${dinero(p.ritmoConPrestamo)} por semana mientras dure el préstamo semanal`);
@@ -317,7 +331,7 @@ const Deudas = {
     let comp = [50, 25, 0].map(pct => `
       <li class="${pct === actual ? "actual" : ""}">
         <span>${pct}% al colchón${pct === actual ? " (actual)" : ""}</span>
-        <span>${this.textoLibre(this.proyectar(pct, extra))}</span>
+        <span>${this.textoLibre(this.fechasReales(pct, extra, pr))}</span>
       </li>`).join("");
     if (![50, 25, 0].includes(actual)) {
       comp += `<li class="actual"><span>${actual}% al colchón (actual)</span>

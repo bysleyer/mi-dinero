@@ -77,7 +77,8 @@ const Plan = {
     const p = n => String(n).padStart(2, "0");
     const domingo = `${dom.getFullYear()}-${p(dom.getMonth() + 1)}-${p(dom.getDate())}`;
     const lista = Almacen.leerMovimientos()
-      .filter(x => esCheque(x) && x.fecha >= lunes && x.fecha <= domingo) // "Otro ingreso" no cuenta
+      // El cheque de esta semana: el de su día de cobro (uno anotado tarde el lunes es de la semana anterior). "Otro ingreso" no cuenta
+      .filter(x => esCheque(x) && Jornadas.cobroDeCheque(x.fecha) === Jornadas.cobroDeCheque(domingo))
       .sort((x, y) => (x.fecha + x.creado).localeCompare(y.fecha + y.creado));
     return { lista, total: redondear(lista.reduce((s, x) => s + x.monto, 0)) };
   },

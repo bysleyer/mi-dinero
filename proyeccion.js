@@ -193,8 +193,7 @@ const Proyeccion = {
       if (dispPrev < hoyClave && hoyClave < lunesSig) {
         // El cheque del viernes que todavía no registras (lo cobraste tarde o no lo has anotado): se sigue contando,
         // como el viernes en la noche. Antes desaparecía el sábado y la cuenta decía que faltaba dinero.
-        const lunesPrev = Plan.claveSemana(Jornadas.aFecha(cobroPrev));
-        if (!ingresos.some(m => m.fecha >= lunesPrev && m.fecha <= Jornadas.sumarDias(lunesPrev, 6))) {
+        if (!ingresos.some(m => Jornadas.cobroDeCheque(m.fecha) === cobroPrev)) {
           const esp = this.chequeEsperado(cobroPrev);
           let monto = esp.monto, origen = "esperado";
           if (chequeEscenario != null && !escenarioUsado) { monto = chequeEscenario; origen = "escenario"; escenarioUsado = true; }
@@ -223,7 +222,7 @@ const Proyeccion = {
       const disponible = Jornadas.sumarDias(cobro, cfg.chequeRetraso);
       const lunes = Plan.claveSemana(Jornadas.aFecha(cobro));
       const domingo = Jornadas.sumarDias(lunes, 6);
-      const real = ingresos.filter(m => m.fecha >= lunes && m.fecha <= domingo);
+      const real = ingresos.filter(m => Jornadas.cobroDeCheque(m.fecha) === cobro);
       const esperado = this.chequeEsperado(cobro);
       if (real.length) {
         cheques.push({ fecha: disponible, monto: real.reduce((s, m) => s + m.monto, 0), origen: "real" });
@@ -468,14 +467,17 @@ const Proyeccion = {
     const dias = opciones.dias || 730;
     const pr = opciones.pr || this.calcular({ chequeEscenario: opciones.chequeEscenario ?? null, horizonte: dias,
                                              excluirPlaneado: opciones.excluirPlaneado || null });
-    const ajustes = opciones.ajustes || [];
+    // extraSemanal: dinero de más con cada cheque (¿Y si pago $X extra por semana?)
+    const ajustes = [...(opciones.ajustes || []),
+      ...(opciones.extraSemanal > 0 ? pr.cheques.map(c => ({ fecha: c, monto: -opciones.extraSemanal })) : [])];
     const orden = Plan.deudasEnOrden();
     const saldos = {};
     // La renta del mes ya está en la cuenta; aquí solo se reparte la renta ATRASADA
     orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id)); });
-    // Deudas atrasadas sin fecha (internet atrasado): las fechas estimadas no suponen que las pagas
-    // (si las programas con "Mover", ya están en la cuenta día por día)
-    Datos.deudas().filter(d => d.venceInmediato).forEach(d => { if (saldos[d.id] != null) saldos[d.id] = 0; });
+    // Deudas atrasadas sin fecha (internet atrasado): se pagan con lo que sobra, en su orden (después de la renta atrasada).
+    // Si las programaste con "Mover", ya están en la cuenta día por día y aquí no se reparten otra vez.
+    const movidosV = typeof Vencimientos !== "undefined" ? Vencimientos.movidos() : {};
+    Datos.deudas().filter(d => d.venceInmediato).forEach(d => { if (saldos[d.id] != null && movidosV[`${d.id}@inmediato`]) saldos[d.id] = 0; });
     // Pagos planeados a deudas ("Planear pagos"): ya están en la cuenta día por día, no se reparten otra vez.
     // Si cubren toda la deuda, queda en cero cuando la cuenta alcanza a cubrir el último pago planeado.
     const planHasta = {};
@@ -496,7 +498,10 @@ const Proyeccion = {
     const plan = Almacen.leerPlan();
     let colchon = plan.sobres.colchon;
     const meta = Plan.metaColchon();
-    const pct = plan.porcentajeColchon / 100;
+    const pct = (opciones.pct ?? plan.porcentajeColchon) / 100;
+    // Fecha en que cada deuda queda en cero ("ya" si ya está en cero)
+    const ceros = {};
+    Object.keys(saldos).forEach(id => { if (saldos[id] <= 0.005) ceros[id] = planHasta[id] ? (planHasta[id] === "nunca" ? null : planHasta[id]) : "ya"; });
 
     // Saldo más bajo de cada día hasta el final
     const fechas = Object.keys(pr.porDia).sort();
@@ -529,11 +534,24 @@ const Proyeccion = {
         if (rep.deudas.deudaAmigo && !r.amigoInicio) r.amigoInicio = fecha;
         if (!r.colchonLleno && colchon >= meta - 0.005) r.colchonLleno = fecha;
       }
+      Object.keys(saldos).forEach(id => {
+        if (!(id in ceros) && saldos[id] <= 0.005 && planHasta[id] !== "nunca")
+          ceros[id] = planHasta[id] && planHasta[id] > fecha ? planHasta[id] : fecha;
+      });
       if (!r.rentaCero && r.hayRenta && saldos.deudaRenta <= 0.005 && acuerdoHasta !== "nunca")
         r.rentaCero = acuerdoHasta && acuerdoHasta > fecha ? acuerdoHasta : fecha;
       if (!r.amigoCero && r.hayAmigo && saldos.deudaAmigo <= 0.005 && planHasta.deudaAmigo !== "nunca")
         r.amigoCero = planHasta.deudaAmigo && planHasta.deudaAmigo > fecha ? planHasta.deudaAmigo : fecha;
     });
+    // El préstamo semanal termina con su último pago en la cuenta
+    const pagosPrestamo = pr.lineas.filter(l => l.id === "prestamo" && l.monto < 0);
+    if (Datos.deudas().some(d => d.id === Plan.ID_DEUDA_PRESTAMO))
+      ceros[Plan.ID_DEUDA_PRESTAMO] = Datos.saldoDeuda(Plan.ID_DEUDA_PRESTAMO) <= 0.005 ? "ya"
+        : pagosPrestamo.length ? pagosPrestamo[pagosPrestamo.length - 1].fecha : null;
+    r.ceros = ceros;
+    const todas = Object.values(ceros);
+    r.libre = Object.keys(saldos).every(id => id in ceros) && todas.every(x => x)
+      ? (todas.every(x => x === "ya") ? "ya" : todas.filter(x => x !== "ya").sort().slice(-1)[0]) : null;
     return r;
   },
 
