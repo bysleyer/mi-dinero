@@ -72,6 +72,9 @@ const Prestamo = {
     if (!(datos.monto > 0)) return { error: "Escribe cuánto recibirías." };
     if (!(datos.pago > 0)) return { error: "Escribe el pago por semana." };
     if (!(datos.semanas > 0) || !(datos.total > 0)) return { error: "Escribe el número de semanas o el total a devolver." };
+    // El último pago ajusta al total: el total tiene que caber en esos pagos (si no, los primeros pagarían de más)
+    if (datos.total > datos.pago * datos.semanas + 0.005 || datos.total <= datos.pago * (datos.semanas - 1) + 0.005)
+      return { error: `El total a devolver (${dinero(datos.total)}) no cuadra con ${datos.semanas} pagos de ${dinero(datos.pago)}: tendría que ser más de ${dinero(datos.pago * (datos.semanas - 1))} y hasta ${dinero(datos.pago * datos.semanas)}.` };
     if (!datos.fecha) return { error: "Elige la fecha en que lo recibirías." };
     if (datos.fecha < hoy()) return { error: "La fecha en que lo recibirías tiene que ser hoy o después." };
     if (datos.para === "planeado" && !datos.planeadoId) return { error: "No tienes gastos planeados para elegir." };

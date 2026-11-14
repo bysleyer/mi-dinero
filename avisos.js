@@ -66,7 +66,7 @@ const Avisos = {
       }).filter(Boolean).join("; ") + ".", acciones: [["Ver próximos pagos", "pagos"]] });
 
     // 3a) Lo que venció hace poco y sigue sin pagarse: la cuenta lo cuenta como pago de hoy (Proyeccion)
-    const vencidos = Vencimientos.entre(Jornadas.sumarDias(hoyClave, -Vencimientos.DIAS_ATRAS), Jornadas.sumarDias(hoyClave, -1))
+    const vencidos = Vencimientos.entre(Vencimientos.desdeVencidos(hoyClave), Jornadas.sumarDias(hoyClave, -1))
       .filter(i => !i.alerta && !i.inmediato && !i.planeado && !["renta", "recargo", "plandeuda"].includes(i.id))
       .map(i => ({ nombre: i.nombre.replace(/\s*\(.*\)\s*$/, "").trim(), dias: -Vencimientos.diasHasta(i.fecha),
                    monto: redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0)), clave: i.claveMov, id: i.id }))

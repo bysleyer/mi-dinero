@@ -34,7 +34,9 @@ const Escenarios = {
     const esperado = Proyeccion.chequeEsperado(Jornadas.periodoProximoCheque().cobro).monto;
     return {
       menos: e.menos ?? Datos.actual.ingresos.semanaMala.netoMinimo,
-      mas: e.mas ?? redondear(esperado * 1.2)
+      // "Más" nunca por debajo de lo esperado (tus datos decían 1,100 y una semana normal ya da más):
+      // si queda abajo, se usa lo esperado + 20 % (más o menos un viernes de horas extra)
+      mas: e.mas != null && e.mas > esperado ? e.mas : redondear(esperado * 1.2)
     };
   },
 

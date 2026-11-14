@@ -153,10 +153,11 @@ const Acuerdo = {
       const facturas = suma(l => l.monto < 0 && esFactura(l));
       const gastos = suma(l => l.monto < 0 && l.tipo !== "simulado" && !esFactura(l));
       const nombresFacturas = lineas.filter(l => l.monto < 0 && esFactura(l)).map(l => l.nombre);
-      const libre = redondear(Math.max(0, (minDesde[v] ?? 0) - yaLibre));
+      // La primera fila empieza hoy: si antes del viernes hay un día apretado, también cuenta (antes solo miraba desde el viernes)
+      const libre = redondear(Math.max(0, (minDesde[desde] ?? 0) - yaLibre));
       yaLibre = redondear(yaLibre + libre);
       const bajo = Math.min(...fechas.filter(x => x >= desde && x <= hasta).map(x => pr.porDia[x].saldoFin));
-      return { viernes: v, desde, cheque, gastos, acuerdo: pagoDe[v] || 0, facturas, nombresFacturas, libre,
+      return { viernes: v, desde, inicial: i === 0 ? pr.inicial : null, cheque, gastos, acuerdo: pagoDe[v] || 0, facturas, nombresFacturas, libre,
                faltan: bajo < -0.005 ? redondear(-bajo) : 0 };
     });
 
@@ -191,7 +192,8 @@ const Acuerdo = {
       <li class="ac-semana ${x.faltan > 0 ? "rojo" : ""}">
         <div class="ac-semana-fecha">${Jornadas.textoDia(x.viernes)}${x.desde < x.viernes ? ` <span class="opcional">(incluye desde hoy, ${Futuro.diaCorto(x.desde)})</span>` : ""}</div>
         <div class="ac-semana-datos">
-          <span>Cheque esperado</span><span class="ok">+${dinero(x.cheque)}</span>
+          ${x.inicial != null ? `<span>Dinero que tienes hoy</span><span>${Futuro.plata(x.inicial)}</span>` : ""}
+          ${x.cheque > 0.005 || x.inicial == null ? `<span>Cheque esperado</span><span class="ok">+${dinero(x.cheque)}</span>` : ""}
           <span>Gastos de la semana</span><span>−${dinero(Math.abs(x.gastos))}</span>
           <span>Pago del acuerdo</span><span>−${dinero(x.acuerdo)}</span>
           <span>Facturas${x.nombresFacturas.length ? ` (${escapar(x.nombresFacturas.join(", "))})` : ""}</span><span>−${dinero(Math.abs(x.facturas))}</span>

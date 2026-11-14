@@ -269,9 +269,9 @@ const Proyeccion = {
     }
 
     // Vencimientos sin pagar (con las fechas movidas)
-    // Lo que venció hace poco (hasta DIAS_ATRAS días) y sigue sin pagarse NO desaparece: se cuenta como pago de hoy,
+    // Lo que venció (hasta 35 días, desde que usas la app) y sigue sin pagarse NO desaparece: se cuenta como pago de hoy,
     // marcado "vencido" (antes se olvidaba al día siguiente y la cuenta quedaba con ese dinero de más).
-    const atras = Jornadas.sumarDias(hoyClave, -Vencimientos.DIAS_ATRAS);
+    const atras = Vencimientos.desdeVencidos(hoyClave);
     Vencimientos.entre(atras, fin).forEach(item => {
       const vencido = item.fecha < hoyClave;
       if (vencido && (item.planeado || item.inmediato)) return; // lo planeado y lo atrasado sin fecha no se arrastran

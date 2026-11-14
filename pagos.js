@@ -30,7 +30,19 @@ const Recibos = {
 
 const Vencimientos = {
   DIAS_ADELANTE: 14, // tarjeta: lo que vence en los siguientes 14 días
-  DIAS_ATRAS: 5,     // y lo que venció hace poco y sigue sin pagar
+  DIAS_ATRAS: 35,    // lo vencido sin pagar sigue contando hasta que lo pagues (hasta 35 días: después ya llegó la factura siguiente)
+
+  // Desde qué fecha se busca lo vencido sin pagar: 35 días atrás, pero no mucho antes de que empezaras a usar la app. Antes eran 5 días y luego la factura desaparecía
+  // de la cuenta aunque no estuviera pagada.
+  desdeVencidos(hoyClave = hoy()) {
+    const atras = Jornadas.sumarDias(hoyClave, -this.DIAS_ATRAS);
+    const di = Almacen.leerDineroInicial();
+    const fechas = Almacen.leerTodosLosMovimientos().map(m => m.fecha).filter(Boolean);
+    if (di && di.fecha) fechas.push(di.fecha);
+    // 5 días antes de tu primer registro (o de hoy, si recién empiezas): lo de antes ya no se sabe si se pagó
+    const inicio = Jornadas.sumarDias(fechas.sort()[0] || hoyClave, -5);
+    return inicio > atras ? inicio : atras;
+  },
 
   gasto(id) {
     return Datos.actual.gastosFijos.find(g => g.id === id);
@@ -322,7 +334,9 @@ const Vencimientos = {
       const diaCobro = Calendario.diaDeCobro();
       // Desde el día de cobro de hace poco (DIAS_ATRAS): un pago del viernes que no hiciste sigue pendiente (vencido)
       // en vez de desaparecer el sábado. El total de pagos no cambia: se calcula con el saldo de la deuda.
-      const atras = Jornadas.sumarDias(hoyClave, -this.DIAS_ATRAS);
+      // Solo el viernes de hace poco (5 días): el saldo de la deuda ya dice cuántos pagos faltan, y un pago de antes de
+      // registrarlo con "Ya lo pagué" no se puede saber si se hizo (se pondría de más). Lo que no pagues pasa al final.
+      const atras = [Jornadas.sumarDias(hoyClave, -5), this.desdeVencidos(hoyClave)].sort()[1];
       let f = Jornadas.sumarDias(atras, (diaCobro - Jornadas.aFecha(atras).getDay() + 7) % 7);
       for (; f <= hasta; f = Jornadas.sumarDias(f, 7)) {
         const clave = `prestamo-0@${f}`;
@@ -374,7 +388,7 @@ const Vencimientos = {
   // ---------- Tarjeta "Próximos pagos" ----------
   mostrar() {
     const hoyClave = hoy();
-    const desde = Jornadas.sumarDias(hoyClave, -this.DIAS_ATRAS);
+    const desde = this.desdeVencidos(hoyClave);
     const hasta = Jornadas.sumarDias(hoyClave, this.DIAS_ADELANTE);
     const filas = [];
     this.entre(desde, hasta).forEach(item => item.partes.forEach(p => {

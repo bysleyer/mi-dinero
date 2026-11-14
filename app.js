@@ -294,7 +294,18 @@ const Formularios = {
         const monto = Number($("f-monto").value), fecha = $("f-fecha").value;
         const factura = Plan.CATEGORIAS_SERVICIOS.includes($("f-categoria").value);
         if (formularioExtra || !(monto > 0) || !fecha || factura) { caja.hidden = true; return; }
-        const e = Planeados.efectoRapido(monto, fecha);
+        // Comida y transporte ya están apartados en la cuenta: solo cuenta lo que pasa de lo apartado
+        // (antes, registrar la comida de la semana decía "te faltan $X más" aunque ya estaba prevista)
+        const cat = $("f-categoria").value;
+        let previsto = 0;
+        if (cat === "Transporte" || cat === "Comida") {
+          const pr = Proyeccion.calcular({ horizonte: 10 });
+          previsto = redondear(-pr.lineas.filter(l => l.id === cat.toLowerCase() && l.monto < 0 &&
+            (cat === "Transporte" ? l.fecha === hoy() && fecha === hoy() : l.fecha <= fecha && l.fecha >= Jornadas.sumarDias(fecha, -2)))
+            .reduce((x, l) => x + l.monto, 0));
+        }
+        const extraReal = redondear(Math.max(0, monto - previsto));
+        const e = extraReal > 0.005 ? Planeados.efectoRapido(extraReal, fecha) : { agrega: 0 };
         const vig = typeof Vigilante !== "undefined"
           ? Vigilante.previa({ tipo: "gasto", monto, fecha, categoria: $("f-categoria").value, nota: $("f-nota").value }) : "";
         caja.hidden = false;
@@ -302,6 +313,8 @@ const Formularios = {
         caja.innerHTML = (vig ? vig + "<br>" : "") + (e.agrega > 0
           ? `Con este gasto, el ${Futuro.dia(e.diaAgrega)} te faltan <strong>${dinero(e.agrega)}</strong> más para tus pagos.
              <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver qué hacer</button>`
+          : previsto > 0.005 && extraReal <= 0.005 ? `Este gasto ya estaba apartado en tu cuenta (${escapar(cat.toLowerCase())}: ${dinero(previsto)}).
+             <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver detalle</button>`
           : `Con lo que ya tienes previsto, este gasto no deja ningún día sin dinero.
              <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver detalle</button>`);
       }, 300);

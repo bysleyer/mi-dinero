@@ -189,7 +189,7 @@ const PagosFijos = {
   // ---------- Recibos (pagos que varían: pagos.js → Recibos) ----------
   // Mes del próximo vencimiento sin pagar de ese pago (o este mes)
   mesProximo(pagoId) {
-    const it = Vencimientos.entre(Jornadas.sumarDias(hoy(), -Vencimientos.DIAS_ATRAS), Jornadas.sumarDias(hoy(), 45))
+    const it = Vencimientos.entre(Vencimientos.desdeVencidos(), Jornadas.sumarDias(hoy(), 45))
       .find(i => i.id === pagoId && i.partes.some(p => !p.pagado));
     return it ? it.fecha.slice(0, 7) : hoy().slice(0, 7);
   },

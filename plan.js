@@ -27,13 +27,18 @@ const Plan = {
   },
 
   gastosFijos() {
-    const lineas = Datos.actual.gastosFijos.map(g => {
-      // Si hay un "monto de después" (ej.: teléfono), usa ese
-      let base = g.montoDespues ?? g.monto;
-      // Bloque 9: si el monto cambia desde una fecha (ej.: internet), usa el vigente
-      if (g.cambio && hoy() >= g.cambio.desde) base = g.cambio.monto;
+    // Promedio de un mes normal: los montos que valdrán en 30 días (con los cambios que pusiste en Datos fijos y
+    // los que ya tienes anotados, como el internet desde diciembre). Antes usaba montos viejos (teléfono $250).
+    const en30 = Jornadas.sumarDias(hoy(), 30);
+    const fijos = Datos.conFecha(en30, () => Datos.actual.gastosFijos.map(g => ({ ...g })));
+    const lineas = fijos.map(g => {
+      const base = g.frecuencia === "mensual" ? Vencimientos.montoEn(g, en30) : g.monto;
       const monto = g.frecuencia === "mensual" ? this.semanal(base) : base;
-      const detalle = g.frecuencia === "mensual" ? `${dinero(base)} al mes` : "";
+      let detalle = g.frecuencia === "mensual" ? `${dinero(base)} al mes` : "";
+      if (g.id === this.ID_GASTO_PRESTAMO && g.monto > 0) {
+        const n = Math.ceil(Math.max(0, Datos.saldoDeuda(this.ID_DEUDA_PRESTAMO)) / g.monto - 0.001);
+        detalle = `quedan ${n} ${n === 1 ? "pago" : "pagos"}`;
+      }
       return { id: g.id, nombre: g.nombre, monto, detalle };
     }).filter(l =>
       // El préstamo desaparece cuando su saldo llega a 0

@@ -127,8 +127,9 @@ const Resumen = {
     }).join("");
 
     $("r-totales").innerHTML = `
-      <li><span>Pagos de deudas atrasadas</span><span>${dinero(c.pagosDeudas)}</span></li>
-      <li class="total"><span>Total gastado</span><span>${dinero(c.totalGastado)}</span></li>
+      <li class="total"><span>Total en gastos</span><span>${dinero(c.totalGastado)}</span></li>
+      <li><span>Pagos a deudas (renta, préstamo, planes de pago)</span><span>${dinero(c.pagosDeudas)}</span></li>
+      <li class="total"><span>Total que salió</span><span>${dinero(redondear(c.totalGastado + c.pagosDeudas))}</span></li>
       <li><span>Ingreso del período</span><span class="ok">${dinero(c.ingresos)}</span></li>`;
 
     this.mostrarUltimaRevision();

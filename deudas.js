@@ -77,7 +77,11 @@ const Deudas = {
     const todoPagado = () => prestamo <= this.CERO && orden.every(d => saldos[d.id] <= this.CERO);
     if (todoPagado()) { resultado.libre = "ya"; return resultado; }
 
-    const fecha = this.proximoViernes();
+    // Primera semana: el próximo cheque SIN cobrar (si hoy ya cobraste y pagaste, empieza el viernes que sigue).
+    // Antes empezaba hoy aunque ya hubieras cobrado: contaba dos veces el pago del préstamo de hoy.
+    const fecha = Jornadas.aFecha(Jornadas.periodoProximoCheque().cobro);
+    // Lo libre que ya tienes hoy (misma cuenta que el Plan) también va a deudas desde la primera semana
+    let libreHoy = Math.max(0, Plan.semanaReal().libre);
     for (let semana = 1; semana <= this.MAX_SEMANAS; semana++) {
       // Préstamo semanal: se cobra solo mientras tenga saldo
       const cuota = Math.min(cuotaPrestamo, prestamo);
@@ -87,11 +91,13 @@ const Deudas = {
       const gastos = gastosBase + cuota;
       const sobrante = neto - gastos;
       // Extra de la semana: renta e internet atrasados → colchón (% hasta la meta fija) → demás deudas
-      const extra = Math.max(0, sobrante) + extraSemanal;
+      const deHoy = libreHoy;
+      const extra = Math.max(0, sobrante) + extraSemanal + deHoy;
+      libreHoy = 0;
       const r = Plan.repartirExtra(extra, { pct, colchon, meta, saldos, orden });
       colchon += r.aColchon;
       if (!resultado.fechaColchon && colchon >= meta - this.CERO) resultado.fechaColchon = new Date(fecha);
-      const paraDeudas = extra - r.aColchon;
+      const paraDeudas = extra - r.aColchon - deHoy; // el ritmo es por semana (sin lo libre de hoy)
 
       if (cuota > 0 && resultado.ritmoConPrestamo == null) resultado.ritmoConPrestamo = paraDeudas;
       if (cuota === 0 && resultado.ritmoSinPrestamo == null) resultado.ritmoSinPrestamo = paraDeudas;
