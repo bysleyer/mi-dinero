@@ -28,15 +28,21 @@ const Escenarios = {
   },
 
   // Montos iniciales de "Menos" y "Más": de mis datos (reglasDePrioridad.escenarios);
-  // si no están, la semana mala de mis datos y 20% más que el cheque esperado
+  // si no están, la semana mala de mis datos y una semana con un día extra de horas
+  semanaConDiaExtra(esperado) {
+    const c = Jornadas.config();
+    const normal = (c.diasDeTrabajo || []).length * c.horasPorDia;
+    return redondear(Math.max(esperado, Jornadas.netoDeHoras(normal + c.horasPorDia)));
+  },
+
   porDefecto() {
     const e = (Datos.actual.reglasDePrioridad || {}).escenarios || {};
     const esperado = Proyeccion.chequeEsperado(Jornadas.periodoProximoCheque().cobro).monto;
     return {
       menos: e.menos ?? Datos.actual.ingresos.semanaMala.netoMinimo,
-      // "Más" nunca por debajo de lo esperado (tus datos decían 1,100 y una semana normal ya da más):
-      // si queda abajo, se usa lo esperado + 20 % (más o menos un viernes de horas extra)
-      mas: e.mas != null && e.mas > esperado ? e.mas : redondear(esperado * 1.2)
+      // "Más" = una semana de verdad buena: tus días de siempre + un día más de horas extra (ej.: lunes a jueves + el viernes).
+      // Si el cheque esperado ya trae ese día extra, "Más" es ese mismo cheque (no se inventan horas que no hay).
+      mas: e.mas != null && e.mas > esperado ? e.mas : this.semanaConDiaExtra(esperado)
     };
   },
 

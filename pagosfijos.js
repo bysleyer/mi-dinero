@@ -77,8 +77,13 @@ const PagosFijos = {
 
   // La próxima versión con fecha futura (un cambio de precio programado), o null
   cambioFuturo(p) {
-    if (p.deDatos) return null;
     const f = hoy();
+    // Los de tus datos (internet): el cambio de precio anotado ("Fecha en que cambia el precio" y "Monto nuevo").
+    // Antes no se veía aquí aunque la cuenta ya lo usaba (internet $106.99 desde el 7 dic).
+    if (p.deDatos) {
+      const g = Vencimientos.gasto(p.id);
+      return g && g.cambio && g.cambio.desde > f && g.cambio.monto != null ? { desde: g.cambio.desde, monto: g.cambio.monto, confirmar: !!g.cambio.confirmar } : null;
+    }
     return (p.versiones || []).filter(v => v.desde > f).sort((a, b) => a.desde.localeCompare(b.desde))[0] || null;
   },
 
@@ -143,7 +148,7 @@ const PagosFijos = {
     const faltaRecibo = d && !d.recibo;
     const extra = [];
     if (faltaRecibo) extra.push(`<span class="pf-sub pf-alerta">${d.promedio ? `estimado (promedio de ${d.promedio}) · ` : ""}falta el recibo de ${this.nombreMes(d.mes).split(" ")[0]}</span>`);
-    if (futuro) extra.push(`<span class="pf-sub pf-alerta">Desde el ${this.diaCorto(futuro.desde)}: ${dineroCorto(futuro.monto)} al mes</span>`);
+    if (futuro) extra.push(`<span class="pf-sub pf-alerta">Desde el ${this.diaCorto(futuro.desde)}: ${dineroCorto(futuro.monto)} al mes${futuro.confirmar ? " (por confirmar)" : ""}</span>`);
     const sig = this.primeroDelMesQueViene();
     const acciones = faltaRecibo ? `<button class="boton-chico lleno pf-accion-fila" data-rc-abrir="${escapar(p.id)}">Llegó el recibo</button>`
       : p.estado === "pausado" ? `<div class="pf-acciones-fila">
