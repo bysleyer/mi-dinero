@@ -1642,6 +1642,9 @@ details.mas-detalles > summary .opcional { display: none; }
 .hoja-error { margin: 6px 0 0; font-weight: 600; }
 .hoja-error:empty { display: none; }
 .campo.con-error { border-color: var(--error) !important; }
+/* Con el teclado abierto, el hueco entre la hoja y el teclado (barra ^ v ✓ de iOS) se rellena con el color de la hoja, sin dejar ver la página */
+.hoja.escribiendo .hoja-caja { box-shadow: 0 140px 0 0 var(--tarjeta); }
+.hoja.escribiendo { background-color: rgba(0,0,0,.8); }
 .hoja.escribiendo .hoja-nota, .hoja.escribiendo .hoja-etiqueta, .hoja.escribiendo .hoja-atajos { display: none; }
 /* "Antes de guardar" (v48): ámbar (informa, no es un error) y el enlace en su propia línea */
 #f-efecto.negativo { background: #2d2411; border: 1px solid #5a4a25; color: #ffe2a8; }

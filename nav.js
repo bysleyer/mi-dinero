@@ -76,8 +76,7 @@ const Nav = {
     $("hoja-avisos").hidden = cual !== "avisos";
     if (cual === "avisos") { try { if (typeof Xp !== "undefined") Xp.revisoAvisos(); } catch (e) { /* el XP nunca debe romper los avisos */ } }
     $("hoja-titulo-barra").textContent = { registrar: "Registrar", mas: "Más", avisos: "Avisos" }[cual] || "";
-    // El monto listo para escribir (en el iPhone abre el teclado porque viene de un toque)
-    if (cual === "registrar") $("hoja-monto").focus({ preventScroll: true });
+    // Ya no se enfoca el monto solo: el teclado se abre cuando tocas el campo (así no tapa la hoja al abrir el +)
   },
 
   // ---------- Hoja del +: con "Gasté" se elige la categoría aquí mismo y se guarda de una vez ----------
