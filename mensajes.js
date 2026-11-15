@@ -41,8 +41,7 @@ const Mensajes = {
       : `Hoy vencen ${Proyeccion.lista(nuevos.map(v => v.nombre))}: ${dinero(total)} en total. Págalos hoy, o muévelos si ya acordaste otra fecha.`;
   },
 
-  // Las reglas de las que se puede hablar: el tren y el taxi al trabajo no se comentan nunca
-  _reglas() { return Vigilante.reglas().filter(r => !(r.categorias || []).some(c => Vigilante.normal(c) === "transporte")); },
+  _reglas() { return Vigilante.comentables(); },
 
   _regla() {
     const cerca = this._reglas()

@@ -83,6 +83,26 @@ const Patrones = {
       .slice(0, 4).map(g => ({ nota: g.nota, categoria: g.categoria, monto: g.monto, veces: g.veces }));
   },
 
+  /* B4 · Cierre de la semana que acaba de terminar (lunes a domingo anteriores).
+     Con menos de 2 semanas con gastos (sin contar la actual) devuelve null.
+     { desde, hasta, gastado, promedio (de las semanas anteriores a esa, o null), reglas: { cumplidas, rotas } (las de "semana"), pagoDeudas } */
+  cierreSemana() {
+    return this._con("cierre", movs => {
+      try {
+        const s = this.porSemana();
+        if (s.error || s.semanasAnterioresConDatos < 2) return null;
+        const i = s.lunes.length - 2; // la semana cerrada
+        const gastado = s.total.semanas[i];
+        const antes = s.total.semanas.slice(0, i).filter(x => x > 0);
+        const promedio = antes.length ? redondear(antes.reduce((a, x) => a + x, 0) / antes.length) : null;
+        const desde = s.lunes[i], hasta = Jornadas.sumarDias(desde, 6);
+        const rs = Vigilante.comentables().filter(r => (r.periodo || "semana") === "semana").map(r => Vigilante.estado(r, desde));
+        const pagoDeudas = redondear(movs.filter(m => m.tipo === "pagoDeuda" && m.fecha >= desde && m.fecha <= hasta).reduce((a, m) => a + m.monto, 0));
+        return { desde, hasta, gastado, promedio, reglas: { cumplidas: rs.filter(e => !e.pasado).length, rotas: rs.filter(e => e.pasado).length }, pagoDeudas };
+      } catch (e) { return null; }
+    });
+  },
+
   /* Hora (0 a 23) en la que sueles registrar tu primer movimiento del día: la mediana de los últimos 28 días.
      Solo cuentan los movimientos anotados el mismo día de su fecha (no los que pasas después). Con menos de 5 días: null. */
   horaHabitual() {

@@ -102,6 +102,17 @@ const Resumen = {
     return `<p class="presupuesto ${color}">${texto}</p>`;
   },
 
+  // A4 · Bajo cada categoría (solo en "Esta semana"): tu promedio por semana contra lo de esta semana.
+  // Se marca en ámbar solo cuando de verdad sube (más de 20 % o $100, con 2 o más semanas anteriores). Nunca en Transporte.
+  lineaTendencia(nombre) {
+    if (this.periodo !== "semana" || nombre === "Transporte") return "";
+    const s = Patrones.porSemana();
+    const f = s && !s.error && s.categorias.find(x => x.categoria === nombre);
+    if (!f || f.promedioAnteriores == null) return "";
+    this._hayTendencia = true;
+    return `<p class="tendencia ${f.marca ? "marca" : ""}">Promedio ${dineroCorto(f.promedioAnteriores)} por semana · esta semana ${dineroCorto(f.actual)}${f.marca ? ` · va ${f.porcentaje} % más alto` : ""}</p>`;
+  },
+
   mostrar() {
     if ($("pantalla-resumen").hidden) return;
     document.querySelectorAll("[data-periodo]").forEach(b =>
@@ -110,6 +121,7 @@ const Resumen = {
     const c = this.calcular(this.periodo);
     $("r-rango").textContent = `Del ${fechaCorta(c.rango.inicio)} al ${fechaCorta(c.rango.fin)}`;
 
+    this._hayTendencia = false;
     $("r-categorias").innerHTML = c.porCategoria.map(cat => {
       const parte = c.totalGastado > 0 ? cat.total / c.totalGastado : 0;
       const semanal = this.presupuestoSemanal(cat.nombre);
@@ -122,10 +134,14 @@ const Resumen = {
             <span class="deuda-saldo neutro">${dineroCorto(cat.total)}${tope != null ? ` <small>de ${dineroCorto(tope)}</small>` : ""}</span>
           </div>
           <div class="barra fina ${estado}"><div class="barra-relleno" style="--p:${tope ? Math.min(1, cat.total / tope) : parte}"></div></div>
+          ${this.lineaTendencia(cat.nombre)}
           ${tope != null && cat.total > tope + 0.005 ? `<p class="presupuesto rojo">Te pasaste por ${dinero(cat.total - tope)}</p>` : ""}
         </li>`;
     }).join("");
 
+    const dow = new Date().getDay(), dias = dow === 0 ? 7 : dow;
+    $("r-tendencia-nota").hidden = !this._hayTendencia;
+    $("r-tendencia-nota").textContent = dias < 7 ? `La semana va por el día ${dias} de 7: lo de esta semana todavía crece.` : "";
     $("r-totales").innerHTML = `
       <li class="total"><span>Total en gastos</span><span>${dinero(c.totalGastado)}</span></li>
       <li><span>Pagos a deudas (renta, préstamo, planes de pago)</span><span>${dinero(c.pagosDeudas)}</span></li>

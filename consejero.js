@@ -48,6 +48,9 @@ const Vigilante = {
 
   reglas() { const c = Consejero.leer(); return (c && Array.isArray(c.reglas)) ? c.reglas : []; },
 
+  // Las reglas de las que se puede hablar en mensajes y cierres: el tren y el taxi al trabajo no se comentan nunca
+  comentables() { return this.reglas().filter(r => !(r.categorias || []).some(c => this.normal(c) === "transporte")); },
+
   // ¿Este gasto entra en la regla? (por categoría y/o por palabras de la nota)
   entra(regla, m) {
     if (m.tipo !== "gasto") return false;

@@ -469,8 +469,35 @@ const Inicio = {
         <span class="kpi-etq">Para después</span><strong>${dinero(sem.guardar)}</strong></button>`;
     this.ajustarCifras();
     if (typeof Avisos !== "undefined") Avisos.mostrar(); // primero: el mensaje de "Hoy" no repite lo que ya dice un aviso urgente
+    this.mostrarCierre();
     this.mostrarHoy();
     if (typeof Consejero !== "undefined") Consejero.tarjetaInicio();
+  },
+
+  // Cierre de la semana (B4): los lunes, martes y miércoles, una vez por semana, con "Listo" para quitarla
+  mostrarCierre(ahora = new Date()) {
+    const caja = $("inicio-cierre");
+    if (!caja) return;
+    caja.hidden = true;
+    try {
+      const dow = ahora.getDay();
+      if (!(dow >= 1 && dow <= 3)) return; // lunes a miércoles
+      const c = Patrones.cierreSemana();
+      if (!c || Avisos.vistos()["cierre-semana"] === c.desde) return;
+      const lineas = [];
+      if (c.promedio != null) {
+        const dif = redondear(c.gastado - c.promedio);
+        lineas.push(`Gastaste ${dineroCorto(c.gastado)} (tu promedio: ${dineroCorto(c.promedio)}). ${dif < -0.005 ? `Bajaste ${dineroCorto(-dif)}: bien.` : dif > 0.005 ? `Subiste ${dineroCorto(dif)}.` : "Igual que siempre."}`);
+      } else lineas.push(`Gastaste ${dineroCorto(c.gastado)}.`);
+      const total = c.reglas.cumplidas + c.reglas.rotas;
+      if (total) lineas.push(`Reglas: ${c.reglas.cumplidas} ${c.reglas.cumplidas === 1 ? "cumplida" : "cumplidas"}${c.reglas.rotas ? `, ${c.reglas.rotas} ${c.reglas.rotas === 1 ? "rota" : "rotas"}` : ""}.`);
+      if (c.pagoDeudas > 0.005) lineas.push(`Pagaste ${dineroCorto(c.pagoDeudas)} a tus deudas: tu deuda bajó eso.`);
+      caja.dataset.semana = c.desde;
+      caja.innerHTML = `<h2>Cierre de la semana · ${Futuro.diaCorto(c.desde).split(" ").slice(1).join(" ")} al ${Futuro.diaCorto(c.hasta).split(" ").slice(1).join(" ")}</h2>
+        ${lineas.map(l => `<p class="cierre-linea">${escapar(l)}</p>`).join("")}
+        <div class="cierre-botones"><button type="button" class="boton-chico lleno" data-cierre="detalle">Ver detalle</button><button type="button" class="boton-chico" data-cierre="listo">Listo</button></div>`;
+      caja.hidden = false;
+    } catch (e) { /* el cierre nunca debe romper el inicio */ }
   },
 
   // Tarjeta "Hoy": lo que registraste hoy, o la invitación a registrar
@@ -520,6 +547,14 @@ const Inicio = {
     new MutationObserver(() => this.ajustarCifras()).observe($("inicio-semana"), { childList: true, subtree: true, characterData: true });
     new MutationObserver(() => this.ajustarPagos()).observe($("proximos-pagos"), { childList: true });
     $("pagos-ver-todos").addEventListener("click", () => { this._pagosTodos = !this._pagosTodos; this.ajustarPagos(); });
+    $("inicio-cierre").addEventListener("click", e => {
+      const b = e.target.closest("[data-cierre]");
+      if (!b) return;
+      const desde = $("inicio-cierre").dataset.semana;
+      const v = Avisos.vistos(); v["cierre-semana"] = desde; Almacen.guardar("avisosVistos", v);
+      $("inicio-cierre").hidden = true;
+      if (b.dataset.cierre === "detalle") { Nav.ir("resumen"); Resumen.periodo = "cuatro"; Resumen.mostrar(); }
+    });
     $("inicio-hoy").addEventListener("click", e => { if (e.target.closest("#inicio-hoy-registrar")) Nav.abrirHoja("registrar"); });
     // Cada pago es una fila limpia: al tocarla aparecen "Ya lo pagué" y "Mover"
     const abrirFila = e => {
