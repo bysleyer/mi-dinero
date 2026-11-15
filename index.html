@@ -415,9 +415,10 @@
     </section>
     <section class="tarjeta" data-sec="notas">
       <h2>¿Una duda ya?</h2>
-      <p class="ayuda">Se abre tu app de Claude con tu situación y tu pregunta ya escritas.</p>
+      <p class="ayuda">La app contesta sola las preguntas simples (¿puedo gastar $80?, ¿cuánto llevo en comida?, ¿cuándo quedo libre?, ¿qué vence?). Si no, se abre tu app de Claude con tu situación y tu pregunta ya escritas.</p>
       <div class="campo"><label for="cj-pregunta" class="oculto">Tu pregunta</label><textarea id="cj-pregunta" rows="2" maxlength="300" placeholder="Ej.: ¿me alcanza para unos zapatos de $80?"></textarea></div>
-      <button id="cj-preguntar" class="boton-mediano">Preguntar en Claude</button>
+      <button id="cj-preguntar" class="boton-mediano">Preguntar</button>
+      <div id="cj-respuesta-local" class="cj-respuesta-local" role="status" hidden></div>
       <p id="cj-pregunta-ayuda" class="ayuda" hidden>Si no aparece escrito, pégalo: ya está copiado.</p>
     </section>
   </main>

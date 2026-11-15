@@ -182,7 +182,7 @@ Object.assign(Consejero, {
     const reciente = com && com.momento > (c.actualizadoInforme || "") ? com : null;
     caja.innerHTML = `<h2>🧑‍💼 Tu consejero</h2>
       ${reciente ? `<p class="cj-comentario">${escapar(reciente.texto)}</p>` : ""}
-      ${c.proximoPaso ? `<p><strong>👉 ${escapar(c.proximoPaso)}</strong></p>` : ""}
+      ${c.proximoPaso ? `<p><strong>👉 ${escapar(c.proximoPaso)}</strong></p>${this.botonesPaso(c.proximoPaso)}` : ""}
       ${this.lineaReglas()}
       ${c.informe && c.informe.titulo ? `<p class="ayuda">${escapar(c.informe.titulo)}</p>` : ""}
       <button class="enlace" data-abrir-consejero>Ver todo ›</button>`;
@@ -226,13 +226,13 @@ Object.assign(Consejero, {
     const inf = c && c.informe;
     $("cj-informe").innerHTML = inf
       ? `${inf.titulo ? `<h3>${escapar(inf.titulo)}</h3>` : ""}${inf.resumen ? this.lineasResumen(inf.resumen) : ""}
-         ${(inf.puntos || []).length ? `<details class="cj-mas"><summary>Ver todo el informe (${inf.puntos.length})</summary><ul class="cj-puntos">${inf.puntos.map(p => `<li><span aria-hidden="true">${this.ICONOS[p.tipo] || "•"}</span> ${escapar(p.texto)}</li>`).join("")}</ul></details>` : ""}
+         ${(inf.puntos || []).length ? `<details class="cj-mas"><summary>Ver todo el informe (${inf.puntos.length})</summary><ul class="cj-puntos">${inf.puntos.map(p => `<li><span aria-hidden="true">${this.ICONOS[p.tipo] || "•"}</span> ${escapar(p.texto)}${p.tipo === "paso" ? this.botonesPaso(p.texto) : ""}</li>`).join("")}</ul></details>` : ""}
          ${c.actualizadoInforme ? `<p class="opcional">Informe del ${this.cuando(c.actualizadoInforme)}</p>` : ""}`
       : `<p class="ayuda">Aquí aparece el informe de cada noche.</p>`;
     // Próximo paso, día de libertad y prioridades
     const pasos = [];
     // El paso de hoy solo se muestra si no hay lista de prioridades (la lista ya lo trae, como en el concepto)
-    if (c && c.proximoPaso && !(c.prioridades && c.prioridades.length)) pasos.push(`<p class="cj-paso-hoy"><strong>${escapar(c.proximoPaso)}</strong></p>`);
+    if (c && c.proximoPaso && !(c.prioridades && c.prioridades.length)) pasos.push(`<p class="cj-paso-hoy"><strong>${escapar(c.proximoPaso)}</strong></p>${this.botonesPaso(c.proximoPaso)}`);
     /* día de libertad: va al final */
     if (c && c.prioridades && c.prioridades.length) pasos.push(`<ol class="cj-prioridades">${c.prioridades.map((p, i) => `<li><span class="cj-num" aria-hidden="true">${i + 1}</span><span>${escapar(p)}</span></li>`).join("")}</ol>`);
     if (c && c.diaLibertad && c.diaLibertad.fecha) pasos.push(`<details class="cj-mas cj-libertad"><summary>Tu día de libertad: ${escapar(Futuro.diaCorto ? Futuro.diaCorto(c.diaLibertad.fecha) : c.diaLibertad.fecha)}</summary><p>${escapar(c.diaLibertad.texto || "")}</p></details>`);
@@ -276,6 +276,42 @@ Object.assign(Consejero, {
 
   // ---------- Notas para el consejero (se sincronizan) ----------
   notas() { return (Almacen.leer("notasConsejero") || []).filter(n => !n.borrado); },
+
+  // C1 · Contestar con un toque: "Hecho", "No pude" o "Después" bajo el próximo paso y bajo cada punto tipo "paso".
+  // Cada toque deja UNA nota con { ref, estado } (viaja con la sincronización); tocar otro botón cambia esa misma nota.
+  ESTADOS: { hecho: "Hecho", nopude: "No pude", despues: "Después" },
+  _refs: {},
+
+  refDe(texto) { // identificador corto y estable del texto de un paso
+    const t = Vigilante.normal(texto).replace(/\s+/g, " ").trim();
+    let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
+    return "p" + h.toString(36);
+  },
+
+  estadoDe(ref) { const n = this.notas().filter(x => x.ref === ref).pop(); return n ? n.estado : null; },
+
+  botonesPaso(texto) {
+    if (!texto || Sync.soloVer()) return "";
+    const ref = this.refDe(texto);
+    this._refs[ref] = texto;
+    const est = this.estadoDe(ref);
+    return `<div class="cj-resp" role="group" aria-label="¿Cómo te fue con este paso?">${Object.entries(this.ESTADOS).map(([k, t]) =>
+      `<button type="button" class="chip" data-cj-resp="${k}" data-cj-ref="${ref}" aria-pressed="${est === k}">${t}</button>`).join("")}</div>`;
+  },
+
+  responderPaso(ref, estado) {
+    const texto = this._refs[ref];
+    if (!texto || !this.ESTADOS[estado]) return;
+    const lista = Almacen.leer("notasConsejero") || [];
+    const ahora = Almacen.ahora();
+    const nota = `${this.ESTADOS[estado]}: ${texto}`.slice(0, 400);
+    const i = lista.map(n => !n.borrado && n.ref === ref).lastIndexOf(true);
+    if (i >= 0) lista[i] = { ...lista[i], texto: nota, estado, modificado: ahora };
+    else lista.push({ id: Almacen.nuevoId(), texto: nota, ref, estado, creado: ahora, modificado: ahora });
+    Almacen.guardar("notasConsejero", lista);
+    Pantalla.aviso(`Anotado: ${this.ESTADOS[estado]}`, 2500);
+    this.mostrar();
+  },
 
   guardarNota() {
     const texto = $("cj-nota").value.trim();
@@ -333,6 +369,18 @@ Object.assign(Consejero, {
     return L.join("\n");
   },
 
+  // C3 · Antes de abrir Claude, la app contesta sola 4 preguntas simples (sin internet y sin IA)
+  async preguntar() {
+    const pregunta = $("cj-pregunta").value.trim();
+    if (!pregunta) { $("cj-pregunta").focus(); return; }
+    const r = typeof Mensajes !== "undefined" ? Mensajes.contestar(pregunta) : null;
+    const caja = $("cj-respuesta-local");
+    if (!r) { caja.hidden = true; return this.preguntarAClaude(); }
+    if (r.abrir) { caja.hidden = true; return r.abrir(); }
+    caja.hidden = false;
+    caja.innerHTML = `<p>${escapar(r.texto)}</p><button type="button" class="enlace" data-cj-igual>Preguntar igual en Claude</button>`;
+  },
+
   async preguntarAClaude() {
     const pregunta = $("cj-pregunta").value.trim();
     if (!pregunta) { $("cj-pregunta").focus(); return; }
@@ -345,7 +393,9 @@ Object.assign(Consejero, {
   iniciar() {
     $("volver-consejero").addEventListener("click", () => this.cerrar());
     $("cj-enviar").addEventListener("click", () => this.guardarNota());
-    $("cj-preguntar").addEventListener("click", () => this.preguntarAClaude());
+    document.addEventListener("click", e => { const b = e.target.closest("[data-cj-resp]"); if (b) this.responderPaso(b.dataset.cjRef, b.dataset.cjResp); });
+    $("cj-preguntar").addEventListener("click", () => this.preguntar());
+    document.addEventListener("click", e => { if (e.target.closest("[data-cj-igual]")) this.preguntarAClaude(); });
     document.addEventListener("click", e => { if (e.target.closest("[data-abrir-consejero]")) { if (typeof Nav !== "undefined" && Nav.cerrarHoja) Nav.cerrarHoja(); this.abrir(); } });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
     // Con la app abierta: revisa cada 10 minutos si el consejero dejó algo nuevo

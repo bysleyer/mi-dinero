@@ -2069,3 +2069,8 @@ html, body { overscroll-behavior: none; }
 .ex-lista li span:last-child { font-variant-numeric: tabular-nums; }
 #hoja-explica .detalle { display: block; font-size: .78rem; color: var(--suave); font-weight: 400; }
 .ex-corregir { background: transparent; border: 1px solid var(--menta); color: var(--menta); }
+
+.cj-resp { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; }
+.cj-resp .chip { min-height: 36px; margin: 0; padding: 0 12px; font-size: .8125rem; }
+.cj-respuesta-local { margin-top: 10px; padding: 12px; border-radius: 12px; background: #16231f; }
+.cj-respuesta-local p { margin: 0 0 6px; font-size: .9375rem; }
