@@ -74,14 +74,27 @@ const Vigilante = {
     return { veces: movs.length, monto: redondear(movs.reduce((s, m) => s + m.monto, 0)), per };
   },
 
+  // La cuenta de una regla, escrita una sola vez: pasado / cerca / cuánto queda. `l` = lo que devuelve llevas().
+  medir(regla, l) {
+    const pasado = (regla.maxVeces != null && l.veces > regla.maxVeces) || (regla.maxMonto != null && l.monto > regla.maxMonto + 0.005);
+    const cerca = !pasado && ((regla.maxVeces > 0 && l.veces >= regla.maxVeces) || (regla.maxMonto > 0 && l.monto >= regla.maxMonto * 0.8));
+    return {
+      veces: l.veces, monto: l.monto, per: l.per, pasado, cerca,
+      quedanVeces: regla.maxVeces != null ? Math.max(0, regla.maxVeces - l.veces) : null,
+      quedaMonto: regla.maxMonto != null ? Math.max(0, redondear(regla.maxMonto - l.monto)) : null,
+      pct: regla.maxMonto ? l.monto / regla.maxMonto : regla.maxVeces ? l.veces / regla.maxVeces : (l.veces > 0 ? 1 : 0)
+    };
+  },
+
+  // Cómo va una regla hoy (o en el periodo de `fecha`)
+  estado(regla, fecha = hoy()) { return this.medir(regla, this.llevas(regla, fecha)); },
+
   // Las reglas que este gasto rompe
   revisar(mov) {
     return this.reglas().map(regla => {
       if (!this.entra(regla, mov)) return null;
       const l = this.llevas(regla, mov.fecha, mov);
-      const porVeces = regla.maxVeces != null && l.veces > regla.maxVeces;
-      const porMonto = regla.maxMonto != null && l.monto > regla.maxMonto + 0.005;
-      if (!porVeces && !porMonto) return null;
+      if (!this.medir(regla, l).pasado) return null;
       const partes = [];
       if (regla.maxVeces != null) partes.push(`${l.veces} de ${regla.maxVeces} ${regla.maxVeces === 1 ? "vez" : "veces"}`);
       if (regla.maxMonto != null) partes.push(`${dinero(l.monto)} de ${dinero(regla.maxMonto)}`);
@@ -198,13 +211,10 @@ Object.assign(Consejero, {
     // Reglas de la semana (lo que llevas)
     const reglas = Vigilante.reglas();
     $("cj-reglas").innerHTML = reglas.length ? reglas.map(r => {
-      const l = Vigilante.llevas(r);
-      const pasado = (r.maxVeces != null && l.veces > r.maxVeces) || (r.maxMonto != null && l.monto > r.maxMonto + 0.005);
-      const cerca = !pasado && ((r.maxVeces > 0 && l.veces >= r.maxVeces) || (r.maxMonto > 0 && l.monto >= r.maxMonto * 0.8));
+      const l = Vigilante.estado(r), { pasado, cerca, pct } = l;
       const partes = [];
       if (r.maxVeces != null) partes.push(`${l.veces} de ${r.maxVeces} ${r.maxVeces === 1 ? "vez" : "veces"}`);
       if (r.maxMonto != null) partes.push(`${dinero(l.monto)} de ${dinero(r.maxMonto)}`);
-      const pct = r.maxMonto ? l.monto / r.maxMonto : r.maxVeces ? l.veces / r.maxVeces : (l.veces > 0 ? 1 : 0);
       return `<li class="${pasado ? "negativo" : cerca ? "cerca" : ""}">
         <div class="cj-regla"><span>${escapar(r.nombre)}</span><span>${partes.join(" · ")} <span class="opcional">${l.per.texto}</span></span></div>
         <div class="cj-barra"><span style="transform:scaleX(${Math.min(1, pct)})"></span></div>
@@ -212,11 +222,8 @@ Object.assign(Consejero, {
     }).join("") : `<li class="ayuda">Todavía no hay reglas. Las pone tu consejero en su primera revisión.</li>`;
     // Metas de la semana (en "Hoy"): lo mismo que las reglas, en corto
     $("cj-metas").innerHTML = reglas.length ? reglas.map(r => {
-      const l = Vigilante.llevas(r);
-      const pasado = (r.maxVeces != null && l.veces > r.maxVeces) || (r.maxMonto != null && l.monto > r.maxMonto + 0.005);
-      const cerca = !pasado && ((r.maxVeces > 0 && l.veces >= r.maxVeces) || (r.maxMonto > 0 && l.monto >= r.maxMonto * 0.8));
+      const l = Vigilante.estado(r), { pasado, cerca, pct } = l;
       const valor = r.maxVeces != null && r.maxVeces > 0 ? `${l.veces} de ${r.maxVeces}` : r.maxMonto != null ? `${dinero(l.monto)} de ${dinero(r.maxMonto)}` : `${l.veces} de ${r.maxVeces}`;
-      const pct = r.maxMonto ? l.monto / r.maxMonto : r.maxVeces ? l.veces / r.maxVeces : (l.veces > 0 ? 1 : 0);
       return `<li class="${pasado ? "negativo" : cerca ? "cerca" : ""}"><div class="cj-regla"><span>${escapar(r.nombre.replace(/\s*\(.*\)\s*$/, ""))}</span><strong>${valor}</strong></div>
         <div class="cj-barra"><span style="transform:scaleX(${Math.min(1, pct)})"></span></div></li>`;
     }).join("") : `<li class="ayuda">Todavía no hay metas.</li>`;

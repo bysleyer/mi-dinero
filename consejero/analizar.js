@@ -75,38 +75,13 @@ const { chromium } = require("playwright");
       avisos = { afuera: a.afuera.map(t), campana: a.campana.map(t) };
     } catch (e) { avisos = { error: e.message }; }
     const movs = Almacen.leerMovimientos();
-    // 1) Gasto por semana y categoría (últimas 8 semanas, lunes a domingo) con promedio y marcas.
-    //    Promedio = semanas ANTERIORES que tienen gastos. Marca si lo de esta semana sube más de 20 % o más de $100
-    //    (solo con 2 o más semanas anteriores). La semana en curso está incompleta: se avisa con "diasTranscurridos".
-    const gastosPorSemana = (() => {
-      try {
-        const lunesActual = Plan.claveSemana();
-        const lunes = Array.from({ length: 8 }, (_, i) => Jornadas.sumarDias(lunesActual, -7 * (7 - i)));
-        const g = Almacen.leerMovimientos().filter(m => m.tipo === "gasto");
-        const total = (cat, l) => red(g.filter(m => Plan.claveSemana(new Date(m.fecha + "T12:00:00")) === l && (cat == null || (m.categoria || "Otros") === cat))
-          .reduce((s, m) => s + m.monto, 0));
-        const cats = [...new Set(g.map(m => m.categoria || "Otros"))].sort();
-        const conDatos = lunes.slice(0, -1).filter(l => total(null, l) > 0);
-        const fila = cat => {
-          const semanas = lunes.map(l => total(cat, l));
-          const actual = semanas[semanas.length - 1];
-          const previas = conDatos.map(l => total(cat, l));
-          const promedio = previas.length ? red(previas.reduce((s, x) => s + x, 0) / previas.length) : null;
-          const dif = promedio == null ? null : red(actual - promedio);
-          const pct = promedio ? Math.round((actual / promedio - 1) * 100) : null;
-          const marca = previas.length >= 2 && dif > 0 && (dif > 100 || (pct != null && pct > 20));
-          return { categoria: cat ?? "TOTAL", semanas, actual, promedioAnteriores: promedio, diferencia: dif, porcentaje: pct, marca };
-        };
-        const dow = new Date(hoyClave + "T12:00:00").getDay(); // 0 = domingo
-        return { lunes, semanasAnterioresConDatos: conDatos.length, diasTranscurridos: dow === 0 ? 7 : dow,
-                 total: fila(null), categorias: cats.map(fila).sort((x, y) => y.actual - x.actual) };
-      } catch (e) { return { error: e.message }; }
-    })();
+    // 1) Gasto por semana y categoría (últimas 8 semanas) con promedio y marcas: la cuenta vive en la app (Patrones.porSemana)
+    const gastosPorSemana = Patrones.porSemana();
     // 2) Cómo van las reglas del consejero (veces y monto vs. su límite, periodo anterior, razones dadas)
     const reglasEstado = (() => {
       try {
         return Vigilante.reglas().map(r => {
-          const l = Vigilante.llevas(r);
+          const l = Vigilante.estado(r);
           const per = r.periodo || "semana";
           const fAnt = per === "dia" ? Jornadas.sumarDias(hoyClave, -1)
             : per === "mes" ? (() => { const d = new Date(hoyClave.slice(0, 7) + "-01T12:00:00"); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })()
@@ -117,7 +92,7 @@ const { chromium } = require("playwright");
             .map(m => ({ fecha: m.fecha, monto: m.monto, nota: m.nota, razon: m.razonFueraPlan }));
           return { id: r.id, nombre: r.nombre, periodo: per, desde: l.per.desde, hasta: l.per.hasta,
                    veces: l.veces, maxVeces: r.maxVeces ?? null, monto: l.monto, maxMonto: r.maxMonto ?? null,
-                   rota: (r.maxVeces != null && l.veces > r.maxVeces) || (r.maxMonto != null && l.monto > r.maxMonto + 0.005),
+                   rota: l.pasado,
                    periodoAnterior: { veces: ant.veces, monto: ant.monto }, razones };
         });
       } catch (e) { return { error: e.message }; }
