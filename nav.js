@@ -160,6 +160,9 @@ const Nav = {
     });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && this.menuAbierto()) { this.cerrarMenuReg(); $("nav-registrar").focus(); } });
     $("hoja-monto").addEventListener("input", () => {
+      // El punto se corre solo, como en una calculadora de caja: 1 → 0.01 · 12 → 0.12 · 123 → 1.23
+      const digitos = $("hoja-monto").value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9);
+      $("hoja-monto").value = digitos === "" ? "" : digitos.padStart(3, "0").replace(/(\d{2})$/, ".$1");
       $("hoja-monto").closest(".campo").classList.remove("con-error");
       if (/monto/.test($("hoja-error").textContent)) $("hoja-error").textContent = "";
       this.textoBotonHoja();
