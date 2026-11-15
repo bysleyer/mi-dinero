@@ -91,6 +91,7 @@ const Nav = {
       this.ponerCategoriasHoja();
     }
     $("hoja").hidden = false;
+    this.bloquearFondo();
     $("aviso").hidden = true;
     $("hoja-registrar").hidden = cual !== "registrar";
     $("hoja-mas").hidden = cual !== "mas";
@@ -274,7 +275,33 @@ const Nav = {
     else abrirFormulario(que, ["gasto", "ingreso", "pagoDeuda"].includes(que) ? { selector: true } : {});
   },
 
-  cerrarHoja() { if ($("hoja")) $("hoja").hidden = true; },
+  // volver = true (Cerrar, tocar afuera o arrastrar): desde una hoja de registrar se vuelve al menú del + abierto
+  cerrarHoja(volver) {
+    if (!$("hoja")) return;
+    const deRegistro = !$("hoja").hidden && !$("hoja-registrar").hidden;
+    $("hoja").hidden = true;
+    this.liberarFondo();
+    if (volver && deRegistro) this.abrirMenuReg();
+  },
+
+  // Mientras hay una hoja abierta, la página de atrás queda quieta (no se puede mover).
+  // Así el iPhone no la desplaza al abrir el teclado (eso empujaba la hoja de Colchón debajo del teclado).
+  bloquearFondo() {
+    if (this._fondoY != null) return;
+    const y = window.scrollY;
+    this._fondoY = y;
+    document.documentElement.style.setProperty("--hoja-origen", `${y + 40}px`);
+    Object.assign(document.body.style, { position: "fixed", top: `-${y}px`, left: "0", right: "0", width: "100%" });
+    document.body.classList.add("hoja-abierta");
+  },
+  liberarFondo() {
+    if (this._fondoY == null) return;
+    const y = this._fondoY;
+    this._fondoY = null;
+    Object.assign(document.body.style, { position: "", top: "", left: "", right: "", width: "" });
+    document.body.classList.remove("hoja-abierta");
+    window.scrollTo(0, y);
+  },
 
   // Como en el iPhone: se arrastra desde la barra de arriba; un tirón rápido o pasar un tercio la cierra
   arrastreHoja() {
@@ -286,7 +313,7 @@ const Nav = {
       inicio = null;
       caja.style.transition = "";
       caja.style.transform = "";
-      if (dy > 8 && (dy > caja.offsetHeight / 3 || vel > 0.11)) this.cerrarHoja();
+      if (dy > 8 && (dy > caja.offsetHeight / 3 || vel > 0.11)) this.cerrarHoja(true);
     };
     barra.addEventListener("pointerdown", e => {
       if (e.target.closest("button") || window.innerWidth >= 900 || e.button > 0) return;
@@ -387,11 +414,6 @@ const Nav = {
       this.textoBotonHoja();
     });
     // El fondo se encoge mientras hay una hoja abierta (como en el iPhone), desde donde estás mirando
-    new MutationObserver(() => {
-      const abierta = !$("hoja").hidden;
-      if (abierta) document.documentElement.style.setProperty("--hoja-origen", `${window.scrollY + 40}px`);
-      document.body.classList.toggle("hoja-abierta", abierta);
-    }).observe($("hoja"), { attributes: true, attributeFilter: ["hidden"] });
     this.arrastreHoja();
     // Teclado abierto: la hoja queda pegada al teclado.
     // - Instalada, el iPhone achica la pantalla solo: basta con quitar el margen de la rayita de abajo (lo tapa el teclado).
@@ -408,7 +430,7 @@ const Nav = {
       if (vv && conTeclado) { h.style.top = `${vv.offsetTop}px`; h.style.height = `${vv.height}px`; h.style.bottom = "auto"; }
       else { h.style.top = ""; h.style.height = ""; h.style.bottom = ""; }
       $("hoja").classList.toggle("con-teclado", conTeclado);
-      $("hoja").classList.toggle("escribiendo", conTeclado && document.activeElement === $("hoja-monto"));
+      // (ya no se esconde la nota mientras escribes: al quitar el foco todo saltaba y el toque caía en otro lado)
       this.diagTeclado();
     };
     // Modo diagnóstico del teclado (temporal): tocar 3 veces el título de la hoja lo prende o lo apaga
@@ -430,7 +452,7 @@ const Nav = {
     $("hoja").addEventListener("focusin", e => { ajustar(); if (e.target.matches && e.target.matches("input")) this.muestrearTeclado(); });
     $("hoja").addEventListener("focusout", () => setTimeout(ajustar, 60));
     $("hoja").addEventListener("click", e => {
-      if (e.target.id === "hoja" || e.target.closest("#hoja-cerrar")) return this.cerrarHoja();
+      if (e.target.id === "hoja" || e.target.closest("#hoja-cerrar")) return this.cerrarHoja(true);
       const b = e.target.closest("[data-nav]");
       if (b) return this.ir(b.dataset.nav);
       const c = e.target.closest("[data-hoja-cat]");

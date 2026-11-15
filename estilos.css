@@ -2077,3 +2077,5 @@ html, body { overscroll-behavior: none; }
 /* Diagnóstico del teclado (temporal) */
 .hoja-diag { margin: 0 0 8px; padding: 6px 8px; border-radius: 8px; background: #2a1f0a; color: #f5b942; font: 600 .72rem/1.35 ui-monospace, Menlo, monospace; -webkit-user-select: text; user-select: text; }
 .hoja-diag[hidden] { display: none; }
+/* v73: con el teclado abierto el fondo se oscurece igual que antes */
+.hoja.con-teclado { background-color: rgba(0,0,0,.8); }
