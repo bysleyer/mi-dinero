@@ -1642,6 +1642,9 @@ details.mas-detalles > summary .opcional { display: none; }
 .hoja-error { margin: 6px 0 0; font-weight: 600; }
 .hoja-error:empty { display: none; }
 .campo.con-error { border-color: var(--error) !important; }
+/* Con el teclado abierto, el hueco entre la hoja y el teclado (barra ^ v ✓ de iOS) se rellena con el color de la hoja, sin dejar ver la página */
+.hoja.escribiendo .hoja-caja { box-shadow: 0 140px 0 0 var(--tarjeta); }
+.hoja.escribiendo { background-color: rgba(0,0,0,.8); }
 .hoja.escribiendo .hoja-nota, .hoja.escribiendo .hoja-etiqueta, .hoja.escribiendo .hoja-atajos { display: none; }
 /* "Antes de guardar" (v48): ámbar (informa, no es un error) y el enlace en su propia línea */
 #f-efecto.negativo { background: #2d2411; border: 1px solid #5a4a25; color: #ffe2a8; }
@@ -1912,3 +1915,39 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
 /* Transporte: cierre del día */
 .transporte-cierre { margin-top: 10px; display: grid; gap: 6px; }
 .transporte-cierre .ayuda { margin: 0; }
+
+/* ---------- Menú del +: 3 opciones que salen sobre el botón ---------- */
+.menu-reg { position: fixed; inset: 0; z-index: 8; pointer-events: none; }
+.menu-reg-fondo { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background-color 220ms ease; }
+.menu-reg.abierto { pointer-events: auto; }
+.menu-reg.abierto .menu-reg-fondo { background: rgba(0,0,0,.5); }
+.menu-reg-lista { position: absolute; left: 50%; bottom: calc(112px + env(safe-area-inset-bottom)); translate: -50% 0;
+  display: flex; flex-direction: column-reverse; align-items: stretch; gap: 10px; width: min(260px, calc(100vw - 48px)); }
+.menu-reg-op { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 20px; border-radius: 28px;
+  border: 1px solid var(--borde-fuerte, #2c3a42); background: var(--tarjeta); color: var(--texto); font: inherit; font-size: 1.1rem; font-weight: 700;
+  box-shadow: 0 10px 24px rgba(0,0,0,.4); cursor: pointer; touch-action: manipulation;
+  opacity: 0; transform: translateY(24px) scale(.85); transform-origin: bottom center; pointer-events: none;
+  transition: opacity 120ms ease, transform 160ms var(--ease-out); }
+.menu-reg-op span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; font-size: 1.3rem; line-height: 1; color: #06201a; background: var(--menta, #4fd1b5); }
+.menu-reg-op.gasto span { background: #ff8f7a; }
+.menu-reg-op.deuda span { background: #f5b942; }
+.menu-reg.abierto .menu-reg-op { opacity: 1; transform: none; pointer-events: auto;
+  transition: opacity 200ms ease, transform 320ms var(--ease-drawer); }
+/* salen una tras otra, de abajo hacia arriba (Gasté, Me pagaron, Deuda) */
+.menu-reg.abierto .menu-reg-op:nth-child(1) { transition-delay: 0ms; }
+.menu-reg.abierto .menu-reg-op:nth-child(2) { transition-delay: 45ms; }
+.menu-reg.abierto .menu-reg-op:nth-child(3) { transition-delay: 90ms; }
+.menu-reg-op:active { transform: scale(.97) !important; }
+/* El + gira y se vuelve × mientras el menú está abierto */
+.nav-registrar .nav-ico svg { transition: transform 250ms var(--ease-drawer); }
+.nav-registrar[aria-expanded="true"] .nav-ico svg { transform: rotate(135deg); }
+@media (min-width: 900px) {
+  .menu-reg { z-index: 10; }
+  .menu-reg-fondo { left: 240px; } /* la barra de la izquierda queda a la vista y se puede tocar */
+  .menu-reg-lista { left: 10px; right: auto; bottom: auto; top: 128px; translate: none; width: 220px; flex-direction: column; }
+  .menu-reg-op { transform-origin: top center; transform: translateY(-12px) scale(.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-reg-op, .menu-reg.abierto .menu-reg-op { transform: none !important; transition: opacity 150ms ease !important; transition-delay: 0ms !important; }
+  .nav-registrar .nav-ico svg { transition: none; }
+}

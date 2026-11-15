@@ -62,11 +62,29 @@ const Nav = {
   },
 
   // ---------- Hojas: "＋ Registrar" y "Más" ----------
-  abrirHoja(cual) {
-    if (cual === "registrar") { // cada vez empieza limpia: sin monto, sin categoría y con "Gasté" elegido
+  // ---------- Menú del +: salen Gasté, Me pagaron y Deuda ----------
+  menuAbierto() { return $("menu-reg").classList.contains("abierto"); },
+  abrirMenuReg() {
+    $("menu-reg").classList.add("abierto");
+    $("menu-reg").setAttribute("aria-hidden", "false");
+    $("nav-registrar").setAttribute("aria-expanded", "true");
+    document.querySelectorAll(".menu-reg-op").forEach(b => { b.tabIndex = 0; });
+  },
+  cerrarMenuReg() {
+    if (!$("menu-reg")) return;
+    $("menu-reg").classList.remove("abierto");
+    $("menu-reg").setAttribute("aria-hidden", "true");
+    $("nav-registrar").setAttribute("aria-expanded", "false");
+    document.querySelectorAll(".menu-reg-op").forEach(b => { b.tabIndex = -1; });
+  },
+
+  abrirHoja(cual, tipo) {
+    this.cerrarMenuReg();
+    if (cual === "registrar") { // cada vez empieza limpia: sin monto, sin categoría y con el tipo elegido (por defecto "Gasté")
       $("hoja-monto").value = "";
       this.categoriaHoja = "";
-      document.querySelectorAll("[data-tipo-hoja]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tipoHoja === "gasto"));
+      const t = tipo || "gasto";
+      document.querySelectorAll("[data-tipo-hoja]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tipoHoja === t));
       this.ponerCategoriasHoja();
     }
     $("hoja").hidden = false;
@@ -76,8 +94,7 @@ const Nav = {
     $("hoja-avisos").hidden = cual !== "avisos";
     if (cual === "avisos") { try { if (typeof Xp !== "undefined") Xp.revisoAvisos(); } catch (e) { /* el XP nunca debe romper los avisos */ } }
     $("hoja-titulo-barra").textContent = { registrar: "Registrar", mas: "Más", avisos: "Avisos" }[cual] || "";
-    // El monto listo para escribir (en el iPhone abre el teclado porque viene de un toque)
-    if (cual === "registrar") $("hoja-monto").focus({ preventScroll: true });
+    // Ya no se enfoca el monto solo: el teclado se abre cuando tocas el campo (así no tapa la hoja al abrir el +)
   },
 
   // ---------- Hoja del +: con "Gasté" se elige la categoría aquí mismo y se guarda de una vez ----------
@@ -131,10 +148,17 @@ const Nav = {
     $("campana").hidden = false;
     $("nav").addEventListener("click", e => {
       const b = e.target.closest("[data-nav]");
+      if (e.target.closest("#nav-registrar")) { this.menuAbierto() ? this.cerrarMenuReg() : this.abrirMenuReg(); return; }
+      this.cerrarMenuReg();
       if (b) this.ir(b.dataset.nav);
-      if (e.target.closest("#nav-registrar")) this.abrirHoja("registrar");
       if (e.target.closest("#nav-mas")) this.abrirHoja("mas");
     });
+    $("menu-reg").addEventListener("click", e => {
+      const op = e.target.closest("[data-reg-tipo]");
+      if (op) return this.abrirHoja("registrar", op.dataset.regTipo);
+      this.cerrarMenuReg(); // toque en el fondo
+    });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && this.menuAbierto()) { this.cerrarMenuReg(); $("nav-registrar").focus(); } });
     $("hoja-monto").addEventListener("input", () => {
       $("hoja-monto").closest(".campo").classList.remove("con-error");
       if (/monto/.test($("hoja-error").textContent)) $("hoja-error").textContent = "";
