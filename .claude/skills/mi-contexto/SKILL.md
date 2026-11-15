@@ -91,6 +91,9 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
 - `Nav.ir` abre cada pantalla llamando directo a su función (`Futuro.abrir()`, etc.); ya no hay botones ocultos en el inicio ni
   diagnóstico del teclado (v76). Los `<script>` de `index.html` y `ARCHIVOS` de `sw.js` deben listar los mismos archivos
   (lo revisa `pruebas/j-archivos.js`).
+- `patrones.js` (cerebro local: gasto por semana, gastos frecuentes, categoría sugerida, cargos que se repiten, cierre de la semana; solo lee y
+  guarda en memoria) y `mensajes.js` (la frase del momento en "Hoy" y las preguntas que la app contesta sola). Las reglas del consejero se miden
+  siempre con `Vigilante.estado`. En `consejero.json`, `pasos` es opcional.
 - `consejero/analizar.js`: corre la app sin pantalla con `datos.json` y devuelve los números en JSON (lo usa el consejero).
 - Reglas fijas del usuario que la app respeta: el tren y el taxi para ir a trabajar no se tocan; horas extra solo
   "si hay"; la app no asume pagos; las deudas atrasadas no llevan recargos inventados; las sugerencias de mover solo
