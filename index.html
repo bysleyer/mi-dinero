@@ -57,6 +57,14 @@
           <label for="hoja-monto">Monto</label>
           <div class="monto-caja"><span class="monto-signo" aria-hidden="true">$</span><input id="hoja-monto" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0.00"></div>
         </div>
+        <div class="campo" id="hoja-deuda-campo" hidden>
+          <label for="hoja-deuda">¿A cuál deuda?</label>
+          <select id="hoja-deuda"></select>
+        </div>
+        <div class="campo" id="hoja-renta-campo" hidden>
+          <label for="hoja-renta-para">¿Para qué es?</label>
+          <select id="hoja-renta-para"></select>
+        </div>
         <div id="hoja-tipos" class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
           <button class="chip" data-tipo-hoja="gasto" aria-pressed="true">Gasté</button>
           <button class="chip" data-tipo-hoja="ingreso" aria-pressed="false" hidden>Me pagaron</button>

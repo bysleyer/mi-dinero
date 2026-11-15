@@ -111,7 +111,10 @@ const Nav = {
     document.querySelectorAll("#hoja-registrar .hoja-etiqueta, #hoja-registrar .hoja-atajos").forEach(x => { x.hidden = !gasto; }); // los atajos son de gastos
     $("hoja-titulo-barra").textContent = this.tituloHoja();
     $("hoja-nota").placeholder = { ingreso: "Ej.: sueldo, propina, venta", pagoDeuda: "Ej.: renta, préstamo, tarjeta" }[t] || "Ej.: Uber Eats, súper, taxi";
-    $("hoja-nota").closest(".campo").hidden = this.tipoHoja() === "colchon";
+    $("hoja-nota").closest(".campo").hidden = t === "colchon" || t === "pagoDeuda";
+    $("hoja-deuda-campo").hidden = t !== "pagoDeuda";
+    $("hoja-renta-campo").hidden = true;
+    if (t === "pagoDeuda") this.llenarDeudasHoja();
     const caja = $("hoja-categorias");
     caja.hidden = !gasto;
     caja.classList.remove("con-error");
@@ -120,10 +123,48 @@ const Nav = {
     this.textoBotonHoja();
   },
 
+  // Hoja de Deuda: monto y deuda en la misma pantalla
+  llenarDeudasHoja() {
+    $("hoja-deuda").innerHTML = '<option value="">Elige una…</option>' +
+      Datos.deudas().map(d => `<option value="${d.id}">${escapar(d.nombre)} (debes ${dinero(Datos.saldoDeuda(d.id))})</option>`).join("");
+    $("hoja-deuda").closest(".campo").classList.remove("con-error");
+  },
+
+  // La renta: hay que saber si es la del mes que viene o lo atrasado
+  alCambiarDeudaHoja() {
+    $("hoja-deuda").closest(".campo").classList.remove("con-error");
+    if (/deuda/.test($("hoja-error").textContent)) $("hoja-error").textContent = "";
+    const renta = $("hoja-deuda").value === Plan.ID_DEUDA_RENTA;
+    if (renta) {
+      $("hoja-renta-para").innerHTML = '<option value="">Elige…</option>' +
+        Proyeccion.rentaMeses(hoy(), Jornadas.sumarDias(hoy(), 62)).filter(c => c.pendiente > 0.005).slice(0, 2).map(c => {
+          const mes = Jornadas.aFecha(c.fecha).toLocaleDateString("es", { month: "long" });
+          return `<option value="${c.fecha}">Renta de ${mes} (vence el ${fechaCorta(c.fecha)})</option>`;
+        }).join("") + '<option value="atrasada">Renta atrasada (lo que ya debías)</option>';
+    }
+    $("hoja-renta-campo").hidden = !renta;
+  },
+
+  guardarDeudaDesdeHoja() {
+    const monto = Number($("hoja-monto").value);
+    if (!(monto > 0)) return this.errorHoja("Escribe el monto.", "monto");
+    const deudaId = $("hoja-deuda").value;
+    if (!deudaId) return this.errorHoja("Elige a cuál deuda le pagaste.", "deuda");
+    const renta = !$("hoja-renta-campo").hidden ? $("hoja-renta-para").value : "";
+    if (!$("hoja-renta-campo").hidden && !renta) return this.errorHoja("Elige para qué es: la renta del mes que viene o la renta atrasada.", "renta");
+    const saldo = Datos.saldoDeuda(deudaId);
+    if (monto > saldo) return this.errorHoja(`El monto es mayor que lo que debes en esa deuda (${dinero(saldo)}).`, "monto");
+    this.cerrarHoja();
+    abrirFormulario("pagoDeuda", { selector: true, monto, deudaId });
+    if (renta && $("f-renta-para")) $("f-renta-para").value = renta;
+    $("formulario").requestSubmit(); // el mismo guardado de siempre (con su pregunta "¿ya estaba incluido?")
+  },
+
   textoBotonHoja() {
     const m = Number($("hoja-monto").value);
     const b = $("hoja-continuar");
     if (this.tipoHoja() === "colchon") { b.textContent = m > 0 ? `Poner ${dinero(m)} en el colchón` : "Poner en el colchón"; return; }
+    if (this.tipoHoja() === "pagoDeuda") { b.textContent = m > 0 ? `Guardar ${dinero(m)}` : "Guardar"; return; }
     if (this.tipoHoja() !== "gasto") { b.textContent = "Continuar"; return; }
     b.textContent = m > 0 && this.categoriaHoja ? `Guardar ${dinero(m)} en ${this.categoriaHoja}` : m > 0 ? `Guardar ${dinero(m)}` : "Guardar";
   },
@@ -132,7 +173,10 @@ const Nav = {
     $("hoja-error").textContent = texto;
     $("hoja-categorias").classList.toggle("con-error", donde === "categoria");
     $("hoja-monto").closest(".campo").classList.toggle("con-error", donde === "monto");
-    (donde === "monto" ? $("hoja-monto") : $("hoja-categorias").querySelector("button")).focus({ preventScroll: true });
+    $("hoja-deuda").closest(".campo").classList.toggle("con-error", donde === "deuda");
+    $("hoja-renta-para").closest(".campo").classList.toggle("con-error", donde === "renta");
+    const foco = { monto: $("hoja-monto"), deuda: $("hoja-deuda"), renta: $("hoja-renta-para") }[donde] || $("hoja-categorias").querySelector("button");
+    if (foco) foco.focus({ preventScroll: true });
   },
 
   // Guardar desde la hoja: el mismo camino que el formulario Gasté (consejero, "¿ya estaba incluido?"), sin otra pantalla
@@ -167,6 +211,8 @@ const Nav = {
       this.cerrarMenuReg(); // toque en el fondo
     });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && this.menuAbierto()) { this.cerrarMenuReg(); $("nav-registrar").focus(); } });
+    $("hoja-deuda").addEventListener("change", () => this.alCambiarDeudaHoja());
+    $("hoja-renta-para").addEventListener("change", () => $("hoja-renta-para").closest(".campo").classList.remove("con-error"));
     $("hoja-monto").addEventListener("input", () => {
       // El punto se corre solo, como en una calculadora de caja: 1 → 0.01 · 12 → 0.12 · 123 → 1.23
       const digitos = $("hoja-monto").value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9);
@@ -211,6 +257,7 @@ const Nav = {
         return this.cerrarHoja();
       }
       if (e.target.closest("#hoja-continuar") && this.tipoHoja() === "gasto") return this.guardarDesdeHoja();
+      if (e.target.closest("#hoja-continuar") && this.tipoHoja() === "pagoDeuda") return this.guardarDeudaDesdeHoja();
       if (e.target.closest("#hoja-continuar")) { // Me pagaron / Deuda: abre el formulario con el monto ya escrito
         const tipo = document.querySelector("[data-tipo-hoja][aria-pressed='true']").dataset.tipoHoja;
         const txt = $("hoja-monto").value.trim();
