@@ -614,16 +614,11 @@ const Almacen = {
     };
   },
 
-  // ---------- Sincronización en la nube (todavía NO activa) ----------
+  // ---------- Resto de una idea anterior (sin uso) ----------
   /*
-   * sincronizar() es el único lugar donde se conectaría un servicio en la nube.
-   * Idea para más adelante:
-   *   1. Enviar exportarTodo() al servicio elegido.
-   *   2. Recibir los cambios de otros dispositivos.
-   *   3. Unir por "id": gana el registro con "modificado" más reciente;
-   *      los movimientos con "borrado: true" se borran en todos lados.
-   *   4. Guardar el resultado con guardar(...).
-   * Hoy no hace nada: la app no envía datos a ningún servidor.
+   * Esta función no hace nada y nadie la llama. La sincronización real (con un repositorio privado
+   * de GitHub, solo si el usuario la activa) está en sincronizar.js (objeto Sync).
+   * Sin esa activación, la app no envía datos a ningún servidor.
    */
   sincronizar() {
     return Promise.resolve({ activo: false });

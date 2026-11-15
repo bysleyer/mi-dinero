@@ -1,6 +1,6 @@
 # Mi dinero
 
-App sencilla para manejar mi dinero. Funciona sin internet y **no envía nada a ningún servidor**: tus datos se quedan en el dispositivo.
+App sencilla para manejar mi dinero. Funciona sin internet y, **mientras no actives la sincronización, no envía nada a ningún servidor**: tus datos se quedan en el dispositivo. Si la activas (Respaldo → Sincronizar), la app sube y baja un solo archivo de **tu propio repositorio privado de GitHub**, con una llave que se guarda solo en ese aparato.
 
 ## Archivos importantes
 
@@ -70,7 +70,7 @@ Después de abrirla una vez con internet, funciona sin internet.
 
 ## 5. Muy importante: dónde quedan los datos
 
-- Los datos quedan guardados **por dispositivo y por dirección web**. La computadora y el celular no se comparten nada entre sí.
+- Los datos quedan guardados **por dispositivo y por dirección web**. La computadora y el celular no se comparten nada entre sí, salvo que actives la sincronización (ver arriba).
 - Si abres la app desde **otra dirección**, la app empieza vacía:
   - con doble clic en vez de la página web, o al revés;
   - de github.io a netlify.app;

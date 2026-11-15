@@ -1,7 +1,7 @@
 /*
  * MI DINERO - lógica de la app
  *  - Almacen (almacen.js): guarda/lee en el dispositivo.
- *  - Datos: cifras de datos.js + cálculos con los movimientos.
+ *  - Datos: cifras de mis-datos.json (o datos-ejemplo.js) + cálculos con los movimientos.
  *  - Formularios: "Me pagaron", "Gasté", "Pagué una deuda".
  *  - Pantalla: dibuja lo que se ve.
  */

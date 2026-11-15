@@ -3,7 +3,8 @@
  * - Descargar / cargar respaldo (archivo JSON con todo).
  * - Primera vez en un dispositivo: cargar mis-datos.json o usar datos de ejemplo.
  * - Avisos en la pantalla principal (respaldo viejo, datos de ejemplo).
- * Todo pasa por Almacen (almacen.js). Nada se envía a ningún servidor.
+ * Todo pasa por Almacen (almacen.js). Los respaldos no se envían a ningún servidor
+ * (la sincronización con GitHub es aparte: sincronizar.js, solo si se activa).
  */
 const Respaldo = {
   DIAS_AVISO: 7,
