@@ -110,6 +110,7 @@ const Nav = {
     $("hoja-tipos").hidden = t === "ingreso" || t === "pagoDeuda"; // solo Gasté ↔ Colchón comparten hoja
     document.querySelectorAll("#hoja-registrar .hoja-etiqueta, #hoja-registrar .hoja-atajos").forEach(x => { x.hidden = !gasto; }); // los atajos son de gastos
     $("hoja-titulo-barra").textContent = this.tituloHoja();
+    $("hoja-nota").placeholder = { ingreso: "Ej.: sueldo, propina, venta", pagoDeuda: "Ej.: renta, préstamo, tarjeta" }[t] || "Ej.: Uber Eats, súper, taxi";
     $("hoja-nota").closest(".campo").hidden = this.tipoHoja() === "colchon";
     const caja = $("hoja-categorias");
     caja.hidden = !gasto;
