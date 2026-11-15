@@ -304,6 +304,18 @@ const Nav = {
     barra.addEventListener("pointercancel", fin);
   },
 
+  // Muestra las medidas reales de la pantalla y del teclado (para corregir la hoja en el iPhone)
+  diagTeclado() {
+    const d = $("hoja-diag");
+    if (!d || d.hidden) return;
+    const vv = window.visualViewport, r = x => Math.round(x);
+    const h = $("hoja").getBoundingClientRect(), c = document.querySelector(".hoja-caja").getBoundingClientRect(), b = $("hoja-continuar").getBoundingClientRect();
+    const cs = getComputedStyle(document.querySelector(".hoja-caja"));
+    d.textContent = `pantalla ${r(window.innerHeight)} · visible ${vv ? r(vv.height) : "?"} desde ${vv ? r(vv.offsetTop) : "?"} · scroll ${r(window.scrollY)} · ` +
+      `hoja ${r(h.top)}–${r(h.bottom)} · caja ${r(c.top)}–${r(c.bottom)} (máx ${cs.maxHeight}, abajo ${cs.paddingBottom}) · botón ${r(b.top)}–${r(b.bottom)} · ` +
+      `${$("hoja").className.replace("hoja", "").trim() || "sin teclado"} · ${navigator.standalone ? "instalada" : "navegador"}`;
+  },
+
   iniciar() {
     document.body.classList.add("con-nav");
     $("nav").hidden = false;
@@ -356,7 +368,23 @@ const Nav = {
       else { h.style.top = ""; h.style.height = ""; h.style.bottom = ""; }
       $("hoja").classList.toggle("con-teclado", conTeclado);
       $("hoja").classList.toggle("escribiendo", conTeclado && document.activeElement === $("hoja-monto"));
+      this.diagTeclado();
     };
+    // Modo diagnóstico del teclado (temporal): tocar 3 veces el título de la hoja lo prende o lo apaga
+    let toques = [];
+    document.querySelector(".hoja-barra").addEventListener("click", e => {
+      if (e.target.closest("button")) return;
+      const ahora = Date.now();
+      toques = toques.filter(t => ahora - t < 1200).concat(ahora);
+      if (toques.length < 3) return;
+      toques = [];
+      let on = false;
+      try { on = localStorage.getItem("diagTeclado") !== "1"; localStorage.setItem("diagTeclado", on ? "1" : "0"); } catch (e) { on = $("hoja-diag").hidden; }
+      $("hoja-diag").hidden = !on;
+      this.diagTeclado();
+    });
+    try { $("hoja-diag").hidden = localStorage.getItem("diagTeclado") !== "1"; } catch (e) { /* sin almacenamiento: queda apagado */ }
+    setInterval(() => { if (!$("hoja").hidden && !$("hoja-diag").hidden) this.diagTeclado(); }, 400);
     if (window.visualViewport) { window.visualViewport.addEventListener("resize", ajustar); window.visualViewport.addEventListener("scroll", ajustar); }
     $("hoja").addEventListener("focusin", ajustar);
     $("hoja").addEventListener("focusout", () => setTimeout(ajustar, 60));

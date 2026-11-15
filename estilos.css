@@ -2073,3 +2073,7 @@ html, body { overscroll-behavior: none; }
 #hoja-continuar.falta { box-shadow: 0 0 0 10px var(--tarjeta), 0 60px 0 10px var(--tarjeta); }
 /* Mientras escribes el monto en Deuda, el título "¿A cuál deuda?" no se esconde */
 .hoja.escribiendo #hoja-deudas-etq { display: block; }
+
+/* Diagnóstico del teclado (temporal) */
+.hoja-diag { margin: 0 0 8px; padding: 6px 8px; border-radius: 8px; background: #2a1f0a; color: #f5b942; font: 600 .72rem/1.35 ui-monospace, Menlo, monospace; -webkit-user-select: text; user-select: text; }
+.hoja-diag[hidden] { display: none; }
