@@ -21,6 +21,8 @@
  *   futuro         "Mi futuro": escenario y vista elegidos { escenario, vista }
  *   consejero      lo último que dejó tu consejero (consejero.json del repositorio de datos; no se sincroniza de vuelta)
  *   notasConsejero tus notas para el consejero: { id, texto, creado, modificado }
+ *   acuerdos       bitácora de acuerdos y conversaciones por deuda (acuerdos.js): { id, deudaId, con, fecha, dijo, detalle,
+ *                  estado: "espera" | "acordado" | "no", hasta, porEscrito, respondido, creado, modificado, borrado? }
  *   cambiosDatos   "Datos fijos": { id, campo, valor, anterior, desde, creado, deshecho }
  *   prioridad      orden de prioridad editable (campos.js: Prioridad) { n1, n2, n3 } sin la renta
  *   recibos        lo que dijo el recibo de un pago que varía (luz...): { id, pagoId, mes, monto }
@@ -326,6 +328,31 @@ const Almacen = {
       d.id === id ? { ...d, borrado: true, modificado: this.ahora() } : d));
   },
 
+  // ---------- Acuerdos y conversaciones por deuda (acuerdos.js) ----------
+  leerTodosLosAcuerdos() {
+    return this.leer("acuerdos") || [];
+  },
+
+  leerAcuerdos() {
+    return this.leerTodosLosAcuerdos().filter(a => !a.borrado);
+  },
+
+  // Nuevo (sin id) o cambiado (con id): devuelve el acuerdo guardado, o null si no se pudo guardar
+  guardarAcuerdo(acuerdo) {
+    const lista = this.leerTodosLosAcuerdos();
+    const momento = this.ahora();
+    const i = acuerdo.id ? lista.findIndex(a => a.id === acuerdo.id) : -1;
+    const nuevo = i >= 0 ? { ...lista[i], ...acuerdo, modificado: momento }
+                         : { ...acuerdo, id: acuerdo.id || `ac-${this.nuevoId()}`, creado: momento, modificado: momento };
+    if (i >= 0) lista[i] = nuevo; else lista.push(nuevo);
+    return this.guardar("acuerdos", lista) ? nuevo : null;
+  },
+
+  borrarAcuerdo(id, borrado = true) {
+    return this.guardar("acuerdos", this.leerTodosLosAcuerdos().map(a =>
+      a.id === id ? { ...a, borrado, modificado: this.ahora() } : a));
+  },
+
   // ---------- Pagos fijos que agrego yo (Más → Pagos fijos: esenciales y suscripciones) ----------
   leerTodosLosPagosPropios() {
     return this.leer("pagosPropios") || [];
@@ -511,6 +538,7 @@ const Almacen = {
       pagosPropios: this.leerTodosLosPagosPropios(),
       recibos: this.leerTodosLosRecibos(),
       notasConsejero: this.leer("notasConsejero") || [],
+      acuerdos: this.leerTodosLosAcuerdos(),
       rentaCargosDesde: this.leer("rentaCargosDesde"),
       prioridad: this.leer("prioridad"),
       acuerdoRenta: this.leer("acuerdoRenta") || [],
@@ -549,6 +577,7 @@ const Almacen = {
     guardar("pagosPropios", respaldo.pagosPropios || []);
     guardar("recibos", respaldo.recibos || []);
     guardar("notasConsejero", respaldo.notasConsejero || []);
+    guardar("acuerdos", respaldo.acuerdos || []);
     // Respaldo viejo con acuerdo de renta: se pasa a "Planear pagos" al leerlo
     if (respaldo.planesDeuda) guardar("planesDeuda", respaldo.planesDeuda);
     else { this.borrar("planesDeuda"); if (respaldo.acuerdoRenta && respaldo.acuerdoRenta.length) guardar("acuerdoRenta", respaldo.acuerdoRenta); }

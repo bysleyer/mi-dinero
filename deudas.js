@@ -162,7 +162,9 @@ const Deudas = {
           ${d.automatico ? "" : `<button class="boton-chico ${esRenta ? "" : ""}" data-planear="${d.id}">Planear pagos</button>`}
           <button class="${esRenta ? "enlace d-ajustar" : "boton-chico"}" data-ajustar="${d.id}">Ajustar saldo</button>
           ${d.propia ? `<button class="boton-chico" data-borrar-propia="${d.id}">Borrar deuda</button>` : ""}
+          ${Acuerdos.botonTarjeta(d)}
         </div>
+        ${Acuerdos.ultimoTarjeta(d)}
       </li>`;
   },
 

@@ -2094,3 +2094,30 @@ html, body { overscroll-behavior: none; }
 .libertad .mas { margin: 14px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--fondo); font-size: .95rem; }
 .libertad .mas b { color: var(--ok); }
 .libertad .est { margin: 12px 0 0; font-size: .82rem; color: var(--suave); }
+
+/* v85 · Acuerdos y conversaciones por deuda */
+.ac-item { border: 1px solid var(--borde); border-radius: 14px; padding: 12px; margin-top: 10px; background: var(--fondo); overflow-wrap: anywhere; }
+.ac-item p { margin: 6px 0 0; font-size: .95rem; }
+.ac-con { font-weight: 700; }
+.ac-fecha { color: var(--suave); font-size: .85rem; white-space: nowrap; }
+.ac-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.ac-pill { font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+.ac-esp { background: #3b2f14; color: var(--aviso); }
+.ac-ok { background: #14302b; color: var(--ok); }
+.ac-no { background: #3a1f1c; color: var(--error); }
+.ac-neutro { background: var(--borde); color: var(--suave); }
+.ac-aviso { color: var(--aviso); }
+.ac-ultimo { overflow-wrap: anywhere; }
+.ac-rojo { color: var(--error); font-weight: 700; }
+.ac-ambar { color: var(--aviso); }
+#ac-form textarea { width: 100%; padding: 10px; border: 1px solid var(--borde); border-radius: 10px; background: var(--fondo); color: var(--texto); font: inherit; font-size: 16px; resize: vertical; }
+#ac-form input[type="text"] { width: 100%; }
+.ac-chk { display: flex; gap: 10px; align-items: center; margin: 4px 0 14px; }
+.ac-chk input { width: 22px; height: 22px; flex: none; }
+#ac-lista > .boton-grande { margin-bottom: 4px; }
+/* v85 · el formulario de acuerdos usa el aspecto de los campos de la hoja, con letra normal (no la de monto) */
+#ac-form .campo input { font-size: 1rem; font-weight: 500; min-height: 36px; }
+#ac-form .campo textarea { border: 0; background: transparent; padding: 0; outline: none; min-height: 72px; width: 100%; }
+#ac-form .chips { margin-top: 6px; }
+#ac-form .error { margin: 0 0 10px; }
+.ac-item .pl-botones .boton-borrar { width: auto; margin: 0; }

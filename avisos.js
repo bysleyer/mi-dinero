@@ -42,6 +42,12 @@ const Avisos = {
     const faltan = Deudas.diasParaDia(diaLegal);
     if (atr > 0.005 && faltan > 7) campana.push({ id: "renta-atrasada", firma: String(atr), texto: `Renta atrasada (aparte de la del mes): ${dinero(atr)}. Se paga con lo que sobra o con un plan de pagos.`, acciones: [["Mis deudas", "deudas"]] });
 
+    // Acuerdos que "quedaron en responder" y pasó su fecha (bitácora de acuerdos)
+    Acuerdos.vencidos().forEach(a => campana.push({ id: `acuerdo-${a.id}`, firma: a.hasta, clave: a.deudaId,
+      texto: `${a.con} quedó en responder el ${Acuerdos.dia(a.hasta)} y todavía no anotaste respuesta.` +
+        (a.deudaId === Plan.ID_DEUDA_RENTA && atr > 0.005 ? " Lo del día 15 sigue en pie: insiste por escrito." : ""),
+      acciones: [["Ver acuerdos", "acuerdos"]] }));
+
     // 3) Pagos que vencen hoy o mañana sin pagar
     const vencen = Vencimientos.entre(hoyClave, manana).filter(i => !i.alerta && !(i.inmediato && !i.movido))
       .map(i => ({ fecha: i.fecha, nombre: i.nombre, monto: redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0)) }))
@@ -245,6 +251,7 @@ const Avisos = {
       Nav.ir("pagosfijos");
       return PagosFijos.abrirEditor(null, acc.slice(3), x ? { nombre: x.nota, monto: x.monto, dia: x.dia } : undefined);
     }
+    if (acc === "acuerdos" && clave) { Nav.ir("deudas"); return Acuerdos.abrir(clave); }
     if (acc === "cubrir") return Cubrir.abrir();
     if (acc === "futuro") return Nav.ir("futuro");
     if (acc === "deudas") return Nav.ir("deudas");

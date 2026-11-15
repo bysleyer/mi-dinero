@@ -100,9 +100,10 @@ const Nav = {
     $("hoja-registrar").hidden = cual !== "registrar";
     $("hoja-mas").hidden = cual !== "mas";
     $("hoja-avisos").hidden = cual !== "avisos";
+    $("hoja-acuerdos").hidden = cual !== "acuerdos";
     $("hoja-explica").hidden = cual !== "explica";
     if (cual === "avisos") { try { if (typeof Xp !== "undefined") Xp.revisoAvisos(); } catch (e) { /* el XP nunca debe romper los avisos */ } }
-    $("hoja-titulo-barra").textContent = cual === "registrar" ? this.tituloHoja() : cual === "explica" ? tipo : { mas: "Más", avisos: "Avisos" }[cual] || "";
+    $("hoja-titulo-barra").textContent = cual === "registrar" ? this.tituloHoja() : cual === "explica" ? tipo : { mas: "Más", avisos: "Avisos", acuerdos: "Acuerdos" }[cual] || "";
     // No se enfoca el monto solo: el teclado se abre cuando tocas el campo
   },
 
