@@ -48,6 +48,65 @@ const Patrones = {
                  total: fila(null), categorias: cats.map(fila).sort((x, y) => y.actual - x.actual) };
       } catch (e) { return { error: e.message }; }
     });
+  },
+
+  /* A1 · Gastos que repites: "Nota · $monto" para registrar con un toque.
+     Agrupa los gastos por nota (sin acentos ni mayúsculas) + categoría. Aparece con 3 o más repeticiones.
+     Monto típico = la mediana de los últimos 5. Orden: más repetido primero, con ventaja a los que sueles hacer a esta hora.
+     Devuelve hasta 4: [{ nota, categoria, monto, veces }]. */
+  frecuentes(hora = new Date().getHours()) {
+    const grupos = this._con("frecuentes", movs => {
+      const m = {};
+      movs.filter(x => x.tipo === "gasto" && (x.nota || "").trim()).sort((a, b) => (a.fecha + a.creado).localeCompare(b.fecha + b.creado)).forEach(x => {
+        const cat = x.categoria || "Otros";
+        const k = Vigilante.normal(x.nota).trim() + "|" + cat;
+        (m[k] = m[k] || { nota: x.nota.trim(), categoria: cat, montos: [], horas: [] });
+        const g = m[k];
+        g.nota = x.nota.trim(); // el más reciente manda (cómo la escribiste la última vez)
+        g.montos.push(x.monto);
+        if (x.creado) { const h = new Date(x.creado).getHours(); if (!isNaN(h)) g.horas.push(h); }
+      });
+      return Object.values(m).filter(g => g.montos.length >= 3).map(g => {
+        const ult = g.montos.slice(-5).sort((a, b) => a - b);
+        const mitad = Math.floor(ult.length / 2);
+        const mediana = ult.length % 2 ? ult[mitad] : (ult[mitad - 1] + ult[mitad]) / 2;
+        const hs = g.horas.slice().sort((a, b) => a - b);
+        return { nota: g.nota, categoria: g.categoria, monto: redondear(mediana), veces: g.montos.length, horaTipica: hs.length ? hs[Math.floor(hs.length / 2)] : null };
+      });
+    });
+    const puntos = g => {
+      if (g.horaTipica == null) return g.veces;
+      const d = Math.abs(g.horaTipica - hora); // distancia en el reloj de 24 horas (0 a 12)
+      return g.veces * (1 - 0.5 * Math.min(d, 24 - d) / 12);
+    };
+    return grupos.slice().sort((a, b) => puntos(b) - puntos(a) || b.veces - a.veces || a.nota.localeCompare(b.nota))
+      .slice(0, 4).map(g => ({ nota: g.nota, categoria: g.categoria, monto: g.monto, veces: g.veces }));
+  },
+
+  /* A2 · Categoría que más has usado con esa nota (o null). Igual de la nota completa; si estás escribiendo
+     (4 letras o más), vale el comienzo de una nota conocida solo si todas esas notas usan la misma categoría. */
+  categoriaDe(nota) {
+    const q = Vigilante.normal(nota).trim();
+    if (!q) return null;
+    const lista = this._con("categorias", movs => {
+      const m = {};
+      movs.filter(x => x.tipo === "gasto" && (x.nota || "").trim()).sort((a, b) => (a.fecha + a.creado).localeCompare(b.fecha + b.creado)).forEach(x => {
+        const n = Vigilante.normal(x.nota).trim();
+        const c = x.categoria || "Otros";
+        (m[n] = m[n] || {});
+        m[n][c] = { veces: (m[n][c] ? m[n][c].veces : 0) + 1, ultimo: x.fecha + x.creado };
+      });
+      return m;
+    });
+    const elegir = cats => Object.entries(cats).sort((a, b) => b[1].veces - a[1].veces || b[1].ultimo.localeCompare(a[1].ultimo))[0][0];
+    if (lista[q]) return elegir(lista[q]);
+    if (q.length < 4) return null;
+    const unidas = {};
+    Object.keys(lista).filter(n => n.startsWith(q)).forEach(n => Object.entries(lista[n]).forEach(([c, v]) => {
+      unidas[c] = { veces: (unidas[c] ? unidas[c].veces : 0) + v.veces, ultimo: unidas[c] && unidas[c].ultimo > v.ultimo ? unidas[c].ultimo : v.ultimo };
+    }));
+    const cs = Object.keys(unidas);
+    return cs.length === 1 ? cs[0] : null;
   }
 };
 

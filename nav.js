@@ -88,6 +88,7 @@ const Nav = {
       $("hoja-nota").value = "";
       $("hoja-horas").value = "";
       this.categoriaHoja = "";
+      this.categoriaAuto = false;
       this.deudaHoja = "";
       this.ingresoHoja = "cheque";
       this.ponerCategoriasHoja();
@@ -107,6 +108,7 @@ const Nav = {
 
   tipoActual: "gasto",
   categoriaHoja: "",
+  categoriaAuto: false, // true = la categoría la puso la app según la nota (se puede cambiar); false = la elegiste tú
   deudaHoja: "",
   ingresoHoja: "cheque",
   tipoHoja() { return this.tipoActual || "gasto"; },
@@ -140,6 +142,33 @@ const Nav = {
     $("hoja-error").textContent = "";
     caja.innerHTML = CATEGORIAS.map(c => `<button type="button" class="chip cat-tile" data-hoja-cat="${c}" aria-pressed="${c === this.categoriaHoja}">` +
       `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${this.ICONOS_CAT[c] || this.ICONOS_CAT.Otros}</svg><span>${c}</span></button>`).join("");
+    this.ponerFrecuentesHoja();
+    this.textoBotonHoja();
+  },
+
+  // Hasta 4 gastos que repites ("Uber Eats · $24.86"): un toque llena monto, categoría y nota (no guarda solo)
+  ponerFrecuentesHoja() {
+    const caja = $("hoja-frecuentes");
+    let lista = [];
+    try { if (this.tipoHoja() === "gasto" && typeof Patrones !== "undefined") lista = Patrones.frecuentes(); } catch (e) { /* los atajos nunca deben romper la hoja */ }
+    caja.hidden = !lista.length;
+    caja.innerHTML = lista.map(f => `<button type="button" class="chip" data-frec-nota="${escapar(f.nota)}" data-frec-cat="${escapar(f.categoria)}" data-frec-monto="${f.monto.toFixed(2)}">${escapar(f.nota)} · ${dinero(f.monto)}</button>`).join("");
+  },
+
+  elegirCategoriaHoja(cat, auto) {
+    this.categoriaHoja = cat;
+    this.categoriaAuto = !!auto;
+    document.querySelectorAll("[data-hoja-cat]").forEach(x => x.setAttribute("aria-pressed", x.dataset.hojaCat === cat));
+    $("hoja-categorias").classList.remove("con-error"); $("hoja-error").textContent = "";
+  },
+
+  // Al escribir la nota, se marca la categoría que más usaste con ella (solo si no elegiste otra tú)
+  sugerirCategoriaHoja() {
+    if (this.tipoHoja() !== "gasto" || (this.categoriaHoja && !this.categoriaAuto)) return;
+    let cat = null;
+    try { cat = typeof Patrones !== "undefined" ? Patrones.categoriaDe($("hoja-nota").value) : null; } catch (e) { /* sin sugerencia */ }
+    if (cat && CATEGORIAS.includes(cat)) this.elegirCategoriaHoja(cat, true);
+    else if (this.categoriaAuto) this.elegirCategoriaHoja("", false);
     this.textoBotonHoja();
   },
 
@@ -356,6 +385,7 @@ const Nav = {
     document.addEventListener("keydown", e => { if (e.key === "Escape" && this.menuAbierto()) { this.cerrarMenuReg(); $("nav-registrar").focus(); } });
     $("hoja-renta-para").addEventListener("change", () => { $("hoja-renta-para").closest(".campo").classList.remove("con-error"); this.textoBotonHoja(); });
     $("hoja-horas").addEventListener("input", () => { $("hoja-horas-campo").classList.remove("con-error"); if (/horas/.test($("hoja-error").textContent)) $("hoja-error").textContent = ""; });
+    $("hoja-nota").addEventListener("input", () => this.sugerirCategoriaHoja());
     $("hoja-monto").addEventListener("input", () => {
       // El punto se corre solo, como en una calculadora de caja: 1 → 0.01 · 12 → 0.12 · 123 → 1.23
       const digitos = $("hoja-monto").value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9);
@@ -392,9 +422,14 @@ const Nav = {
       if (b) return this.ir(b.dataset.nav);
       const c = e.target.closest("[data-hoja-cat]");
       if (c) {
-        this.categoriaHoja = c.dataset.hojaCat;
-        document.querySelectorAll("[data-hoja-cat]").forEach(x => x.setAttribute("aria-pressed", x === c));
-        $("hoja-categorias").classList.remove("con-error"); $("hoja-error").textContent = "";
+        this.elegirCategoriaHoja(c.dataset.hojaCat, false);
+        return this.textoBotonHoja();
+      }
+      const fr = e.target.closest("[data-frec-nota]");
+      if (fr) {
+        $("hoja-monto").value = fr.dataset.frecMonto; $("hoja-monto").dispatchEvent(new Event("input"));
+        $("hoja-nota").value = fr.dataset.frecNota;
+        this.elegirCategoriaHoja(fr.dataset.frecCat, false);
         return this.textoBotonHoja();
       }
       const ing = e.target.closest("[data-ing]");

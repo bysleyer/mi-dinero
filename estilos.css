@@ -1991,11 +1991,11 @@ html, body { overscroll-behavior: none; }
 .hoja-seg .chip[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); background: #11302a; }
 #hoja .hoja-horas { margin: 10px 0 0; }
 #hoja .hoja-horas input { font-size: 1.05rem; font-weight: 400; min-height: 32px; }
-#hoja-ingreso[hidden], #hoja-horas-campo[hidden], #hoja-deuda-campo[hidden], #hoja-rapidos[hidden] { display: none; }
+#hoja-ingreso[hidden], #hoja-horas-campo[hidden], #hoja-deuda-campo[hidden], #hoja-rapidos[hidden], #hoja-frecuentes[hidden] { display: none; }
 
 /* Deuda: montos rápidos y lista de deudas para elegir con un toque */
 .hoja-rapidos { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
-.hoja-rapidos .chip { min-height: 40px; margin: 0; padding: 0 12px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.hoja-rapidos .chip, .hoja-frecuentes .chip { min-height: 40px; margin: 0; padding: 0 12px; font-size: .85rem; font-variant-numeric: tabular-nums; }
 .hoja-deudas { display: grid; gap: 8px; }
 .deu-fila { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 8px 14px;
   border: 1px solid var(--borde); border-radius: 14px; background: #0a0f12; color: var(--texto); font: inherit; text-align: left; cursor: pointer;
