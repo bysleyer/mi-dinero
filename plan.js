@@ -294,7 +294,7 @@ const Plan = {
       const q = Proyeccion.quienFalta(pr, despues.fecha);
       hueco = { fecha: despues.fecha, falta: redondear(-despues.saldo), pago: Proyeccion.lista(q.cortos) + (q.rentaCubierta ? "; la renta sí se cubre" : "") };
     }
-    return { pr, lunes, domingo, desde, inicial: pr.inicial, entra, gastos,
+    return { pr, lunes, domingo, desde, inicial: pr.inicial, entra, gastos, apretado: todo,
              totalGastos: redondear(-gastos.reduce((s, l) => s + l.monto, 0)), finSemana, libre, llegaLibre, libreCheque, guardar,
              para, cobertura, coberturaHasta: hasta, chequeSig, hueco,
              huecoAntes: antes && antes.saldo < -0.005 ? { fecha: antes.fecha, falta: redondear(-antes.saldo) } : null };

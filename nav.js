@@ -91,13 +91,15 @@ const Nav = {
       this.ponerCategoriasHoja();
     }
     $("hoja").hidden = false;
+    document.querySelector(".hoja-caja").scrollTop = 0; // cada hoja empieza arriba
     this.bloquearFondo();
     $("aviso").hidden = true;
     $("hoja-registrar").hidden = cual !== "registrar";
     $("hoja-mas").hidden = cual !== "mas";
     $("hoja-avisos").hidden = cual !== "avisos";
+    $("hoja-explica").hidden = cual !== "explica";
     if (cual === "avisos") { try { if (typeof Xp !== "undefined") Xp.revisoAvisos(); } catch (e) { /* el XP nunca debe romper los avisos */ } }
-    $("hoja-titulo-barra").textContent = cual === "registrar" ? this.tituloHoja() : { mas: "Más", avisos: "Avisos" }[cual] || "";
+    $("hoja-titulo-barra").textContent = cual === "registrar" ? this.tituloHoja() : cual === "explica" ? tipo : { mas: "Más", avisos: "Avisos" }[cual] || "";
     // No se enfoca el monto solo: el teclado se abre cuando tocas el campo
   },
 
@@ -492,10 +494,10 @@ const Inicio = {
     const kpis = caja.querySelector(".kpis"), tengo = $("dinero-tengo");
     if (tengo && tengo.parentElement !== kpis) kpis.prepend(tengo);
     $("kpi-semana").innerHTML = `
-      <button class="kpi kpi-libre" data-nav-ir="plan" aria-label="Libre para lo que quieras: ${dinero(sem.libre)}${sem.llegaLibre > 0.005 ? `, y ${dinero(sem.llegaLibre)} más cuando cobres el ${Futuro.dia(sem.desde)}` : ""}. Ver el plan">
+      <button class="kpi kpi-libre" data-explica="libre" aria-label="Libre para lo que quieras: ${dinero(sem.libre)}${sem.llegaLibre > 0.005 ? `, y ${dinero(sem.llegaLibre)} más cuando cobres el ${Futuro.dia(sem.desde)}` : ""}. Ver de dónde sale">
         <span class="kpi-etq">Libre esta semana</span><strong>${dinero(sem.libre)}</strong>${sem.llegaLibre > 0.005
           ? `<span class="kpi-nota">+${dineroCorto(sem.llegaLibre)} el ${Futuro.diaCorto(sem.desde).split(" ")[0]}</span>` : ""}</button>
-      <button class="kpi kpi-guardar" data-nav-ir="plan" aria-label="Guárdalo para más adelante: ${dinero(sem.guardar)}. Ver el plan">
+      <button class="kpi kpi-guardar" data-explica="despues" aria-label="Para después: ${dinero(sem.guardar)}. Ver de dónde sale">
         <span class="kpi-etq">Para después</span><strong>${dinero(sem.guardar)}</strong></button>`;
     this.ajustarCifras();
     this.mostrarHoy();
@@ -574,6 +576,7 @@ const Inicio = {
     $("pl-lista").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("li.pl-item")) { e.preventDefault(); abrirPlaneado(e); } });
     $("inicio-semana").addEventListener("click", e => {
       if (e.target.closest("[data-nav-ir]")) Nav.ir(e.target.closest("[data-nav-ir]").dataset.navIr);
+      if (e.target.closest("[data-explica]")) Explica.abrir(e.target.closest("[data-explica]").dataset.explica);
     });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
     window.addEventListener("jornadas-cambiaron", () => this.mostrar());

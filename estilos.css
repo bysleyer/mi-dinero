@@ -2079,3 +2079,26 @@ html, body { overscroll-behavior: none; }
 .hoja-diag[hidden] { display: none; }
 /* v73: con el teclado abierto el fondo se oscurece igual que antes */
 .hoja.con-teclado { background-color: rgba(0,0,0,.8); }
+
+/* ---------- ¿De dónde sale? (v75): la cuenta completa de Tengo, Libre y Para después ---------- */
+#hoja-explica[hidden] { display: none; }
+#hoja-explica { display: grid; gap: 12px; padding-bottom: 8px; }
+.ex-formula { display: grid; gap: 0; border: 1px solid var(--borde); border-radius: 14px; background: #0a0f12; overflow: hidden; }
+.ex-formula > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--borde); font-size: .95rem; }
+.ex-formula > div:first-child { border-top: 0; }
+.ex-formula span { color: var(--suave); min-width: 0; }
+.ex-formula b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ex-formula .ex-total { background: #11302a; font-size: 1.1rem; }
+.ex-formula .ex-total span { color: var(--texto); font-weight: 700; }
+.ex-formula .ex-total b { color: var(--menta); }
+.ex-entra { color: var(--menta); }
+.ex-sale { color: var(--error); }
+.ex-ayuda { margin: 0; font-size: .9rem; color: var(--suave); line-height: 1.45; }
+.ex-ayuda b { color: var(--texto); }
+.ex-sub { margin: 6px 0 0; font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); }
+.ex-dia { display: flex; justify-content: space-between; margin: 6px 0 0; font-size: .8rem; color: var(--suave); font-weight: 700; }
+.ex-dia span:last-child { font-variant-numeric: tabular-nums; }
+.ex-lista li { font-size: .92rem; }
+.ex-lista li span:last-child { font-variant-numeric: tabular-nums; }
+#hoja-explica .detalle { display: block; font-size: .78rem; color: var(--suave); font-weight: 400; }
+.ex-corregir { background: transparent; border: 1px solid var(--menta); color: var(--menta); }

@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 74, fecha: "15 nov 2026" };
+const VERSION_APP = { numero: 75, fecha: "15 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -966,7 +966,13 @@ try {
   });
   $("version-app").textContent = `Versión ${VERSION_APP.numero} · ${VERSION_APP.fecha}`;
   $("rapido-transporte").addEventListener("click", () => abrirFormulario("transporte"));
-  $("dinero-tengo").addEventListener("click", () => abrirFormulario("corregirDinero", { monto: Dinero.actual() }));
+  // Tocar "Tengo" muestra de dónde sale; desde ahí se puede corregir
+  $("dinero-tengo").addEventListener("click", () => Explica.abrir("tengo"));
+  document.addEventListener("click", e => {
+    if (!e.target.closest('[data-explica-accion="corregir"]')) return;
+    Nav.cerrarHoja();
+    abrirFormulario("corregirDinero", { monto: Dinero.actual() });
+  });
   $("form-campos").addEventListener("click", e => {
     const t = e.target.closest("[data-tipo-form]");
     if (t && t.dataset.tipoForm !== formularioAbierto) {
