@@ -93,7 +93,7 @@ const Nav = {
     $("hoja-mas").hidden = cual !== "mas";
     $("hoja-avisos").hidden = cual !== "avisos";
     if (cual === "avisos") { try { if (typeof Xp !== "undefined") Xp.revisoAvisos(); } catch (e) { /* el XP nunca debe romper los avisos */ } }
-    $("hoja-titulo-barra").textContent = { registrar: "Registrar", mas: "Más", avisos: "Avisos" }[cual] || "";
+    $("hoja-titulo-barra").textContent = cual === "registrar" ? this.tituloHoja() : { mas: "Más", avisos: "Avisos" }[cual] || "";
     // Ya no se enfoca el monto solo: el teclado se abre cuando tocas el campo (así no tapa la hoja al abrir el +)
   },
 
@@ -101,8 +101,15 @@ const Nav = {
   categoriaHoja: "",
   tipoHoja() { return (document.querySelector("[data-tipo-hoja][aria-pressed='true']") || {}).dataset?.tipoHoja || "gasto"; },
 
+  // Cada tipo tiene su hoja con su título; "Me pagaron" y "Deuda" no repiten los botones de tipo (ya se eligieron en el menú del +)
+  tituloHoja() { return { gasto: "Gasté", ingreso: "Me pagaron", pagoDeuda: "Deuda", colchon: "Colchón" }[this.tipoHoja()] || "Registrar"; },
+
   ponerCategoriasHoja() {
-    const gasto = this.tipoHoja() === "gasto";
+    const t = this.tipoHoja();
+    const gasto = t === "gasto";
+    $("hoja-tipos").hidden = t === "ingreso" || t === "pagoDeuda"; // solo Gasté ↔ Colchón comparten hoja
+    document.querySelectorAll("#hoja-registrar .hoja-etiqueta, #hoja-registrar .hoja-atajos").forEach(x => { x.hidden = !gasto; }); // los atajos son de gastos
+    $("hoja-titulo-barra").textContent = this.tituloHoja();
     $("hoja-nota").closest(".campo").hidden = this.tipoHoja() === "colchon";
     const caja = $("hoja-categorias");
     caja.hidden = !gasto;

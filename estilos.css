@@ -1962,3 +1962,7 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
 
 /* Con el teclado abierto: la hoja queda pegada a la barra del teclado (sin el margen de abajo de la pantalla del iPhone) */
 .hoja.escribiendo .hoja-caja { padding-bottom: 8px; }
+
+/* Hoja del +: cada tipo con su hoja (se ocultan los botones y atajos que no corresponden) */
+.hoja-tipos[hidden], .hoja-tipos .chip[hidden], .hoja-etiqueta[hidden], .hoja-atajos[hidden] { display: none; }
+#hoja-continuar { margin-top: 16px; }

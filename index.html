@@ -57,10 +57,10 @@
           <label for="hoja-monto">Monto</label>
           <div class="monto-caja"><span class="monto-signo" aria-hidden="true">$</span><input id="hoja-monto" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0.00"></div>
         </div>
-        <div class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
+        <div id="hoja-tipos" class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
           <button class="chip" data-tipo-hoja="gasto" aria-pressed="true">Gasté</button>
-          <button class="chip" data-tipo-hoja="ingreso" aria-pressed="false">Me pagaron</button>
-          <button class="chip" data-tipo-hoja="pagoDeuda" aria-pressed="false">Deuda</button>
+          <button class="chip" data-tipo-hoja="ingreso" aria-pressed="false" hidden>Me pagaron</button>
+          <button class="chip" data-tipo-hoja="pagoDeuda" aria-pressed="false" hidden>Deuda</button>
           <button class="chip" data-tipo-hoja="colchon" aria-pressed="false">Colchón</button>
         </div>
         <div id="hoja-categorias" class="chips hoja-cats" role="group" aria-label="Categoría"></div>
