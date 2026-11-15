@@ -25,7 +25,7 @@
     <button class="nav-item" data-nav="inicio"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span id="nav-inicio-num" class="badge" hidden></span></span><span class="nav-txt">Inicio</span></button>
     <button id="nav-avisos" class="nav-item solo-pc"><span class="nav-ico" aria-hidden="true">🔔</span><span class="nav-txt">Avisos <span id="nav-avisos-num" class="badge-txt" hidden></span></span></button>
     <button class="nav-item" data-nav="futuro"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5"/><path d="M9 5h10v10"/></svg></span><span class="nav-txt"><span class="nav-largo">Mi futuro</span><span class="nav-corto">Futuro</span></span></button>
-    <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span class="nav-txt">Registrar</span></button>
+    <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar" aria-haspopup="menu" aria-expanded="false"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span class="nav-txt">Registrar</span></button>
     <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span><span class="nav-txt">Plan</span></button>
     <button class="nav-item solo-pc" data-nav="consejero"><span class="nav-ico" aria-hidden="true">🧑‍💼</span><span class="nav-txt">Tu consejero</span></button>
     <button class="nav-item solo-pc" data-nav="deudas"><span class="nav-ico" aria-hidden="true">💳</span><span class="nav-txt">Mis deudas</span></button>
@@ -37,6 +37,16 @@
     <button class="nav-item solo-pc" data-nav="respaldo"><span class="nav-ico" aria-hidden="true">☁️</span><span class="nav-txt">Respaldo</span></button>
     <button id="nav-mas" class="nav-item solo-tel"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span><span class="nav-txt">Más</span></button>
   </nav>
+
+  <!-- Menú del +: salen 3 opciones con animación -->
+  <div id="menu-reg" class="menu-reg" aria-hidden="true">
+    <div class="menu-reg-fondo" id="menu-reg-fondo"></div>
+    <div class="menu-reg-lista" role="menu" aria-label="Qué vas a registrar">
+      <button type="button" role="menuitem" data-reg-tipo="gasto" class="menu-reg-op gasto" tabindex="-1"><span aria-hidden="true">−</span>Gasté</button>
+      <button type="button" role="menuitem" data-reg-tipo="ingreso" class="menu-reg-op ingreso" tabindex="-1"><span aria-hidden="true">+</span>Me pagaron</button>
+      <button type="button" role="menuitem" data-reg-tipo="pagoDeuda" class="menu-reg-op deuda" tabindex="-1"><span aria-hidden="true">↓</span>Deuda</button>
+    </div>
+  </div>
 
   <div id="hoja" class="hoja" hidden>
     <div class="hoja-caja" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo-barra">
