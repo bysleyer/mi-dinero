@@ -86,6 +86,7 @@ const Nav = {
 
   ponerCategoriasHoja() {
     const gasto = this.tipoHoja() === "gasto";
+    $("hoja-nota").closest(".campo").hidden = this.tipoHoja() === "colchon";
     const caja = $("hoja-categorias");
     caja.hidden = !gasto;
     caja.classList.remove("con-error");
@@ -97,6 +98,7 @@ const Nav = {
   textoBotonHoja() {
     const m = Number($("hoja-monto").value);
     const b = $("hoja-continuar");
+    if (this.tipoHoja() === "colchon") { b.textContent = m > 0 ? `Poner ${dinero(m)} en el colchón` : "Poner en el colchón"; return; }
     if (this.tipoHoja() !== "gasto") { b.textContent = "Continuar"; return; }
     b.textContent = m > 0 && this.categoriaHoja ? `Guardar ${dinero(m)} en ${this.categoriaHoja}` : m > 0 ? `Guardar ${dinero(m)}` : "Guardar";
   },
@@ -165,6 +167,13 @@ const Nav = {
         $("hoja-categorias").classList.remove("con-error"); $("hoja-error").textContent = "";
         this.textoBotonHoja();
         return;
+      }
+      if (e.target.closest("#hoja-continuar") && this.tipoHoja() === "colchon") {
+        const txt = $("hoja-monto").value.trim();
+        if (txt === "" || !(Number(txt) > 0)) return this.errorHoja("Escribe el monto.", "monto");
+        const error = Plan.aColchon(Number(txt));
+        if (error) return this.errorHoja(error, "monto");
+        return this.cerrarHoja();
       }
       if (e.target.closest("#hoja-continuar") && this.tipoHoja() === "gasto") return this.guardarDesdeHoja();
       if (e.target.closest("#hoja-continuar")) { // Me pagaron / Deuda: abre el formulario con el monto ya escrito

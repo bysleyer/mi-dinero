@@ -186,6 +186,29 @@ const Plan = {
     return redondear(Math.min(mov.monto, Almacen.leerPlan().sobres.renta));
   },
 
+  // Poner dinero en el colchón desde el +. No cambia "Tengo": es el mismo dinero, solo se aparta (y deja de contar como libre).
+  // Devuelve un texto de error, o null si se guardó.
+  aColchon(monto) {
+    monto = redondear(monto);
+    if (!(monto > 0)) return "Escribe el monto.";
+    const plan = Almacen.leerPlan();
+    const fuera = redondear(Dinero.actual() - plan.sobres.colchon);
+    if (monto > fuera + 0.005) return `Solo tienes ${dinero(Math.max(0, fuera))} fuera del colchón.`;
+    plan.sobres.colchon = redondear(plan.sobres.colchon + monto);
+    Almacen.guardarPlan(plan);
+    Pantalla.actualizar();
+    avisarCambioMovimientos();
+    Pantalla.aviso(`Colchón: +${dineroCorto(monto)}. Ahora tienes ${dineroCorto(plan.sobres.colchon)} en el colchón.`, 6000, {
+      texto: "Deshacer", fn: () => {
+        const p = Almacen.leerPlan();
+        p.sobres.colchon = redondear(Math.max(0, p.sobres.colchon - monto));
+        Almacen.guardarPlan(p);
+        Pantalla.actualizar();
+        avisarCambioMovimientos();
+      } });
+    return null;
+  },
+
   moverSobreRenta(cantidad) {
     if (!cantidad) return;
     const plan = Almacen.leerPlan();
