@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 85, fecha: "15 nov 2026" };
+const VERSION_APP = { numero: 86, fecha: "15 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -763,6 +763,28 @@ Formularios.corregirDinero = {
 // ---------- Pantalla ----------
 const NOMBRES_TIPO = { ingreso: "Ingreso", gasto: "Gasto", pagoDeuda: "Pago de deuda", ajuste: "Ajuste de saldo" };
 
+// Una fila de movimiento (la usan "Últimos movimientos" del inicio y la pantalla Movimientos: así no pueden diferir)
+function filaMovimiento(m) {
+  const esIngreso = m.tipo === "ingreso";
+  const esAjuste = m.tipo === "ajuste";
+  const esOtro = esIngreso && !esCheque(m);
+  const titulo = m.tipo === "gasto" ? `Gasto · ${m.categoria}` : esOtro ? "Otro ingreso" : NOMBRES_TIPO[m.tipo];
+  const detalle = [fechaCorta(m.fecha), m.nota, m.estimado != null && !esOtro ? textoComparacion(m) : ""]
+    .filter(Boolean).map(escapar).join(" · ");
+  return `
+            <li>
+              <div class="mov-info">
+                <div class="mov-tipo">${escapar(titulo)}</div>
+                <div class="mov-detalle">${detalle}</div>
+                ${esIngreso ? `<button class="enlace cambiar-tipo" data-cambiar-tipo="${m.id}">${esOtro ? "Cambiar a Cheque" : "Cambiar a Otro ingreso"}</button>` : ""}
+              </div>
+              <span class="mov-monto ${esAjuste ? "neutro" : esIngreso ? "positivo" : "negativo"}">
+                ${esAjuste ? "Saldo: " : esIngreso ? "+" : "−"}${dinero(m.monto)}
+              </span>
+              <button class="borrar" data-borrar="${m.id}" aria-label="Borrar">✕</button>
+            </li>`;
+}
+
 const Pantalla = {
   actualizar() {
     $("deuda-total").textContent = dinero(Datos.deudaTotal());
@@ -782,26 +804,7 @@ const Pantalla = {
 
     $("movimientos").innerHTML = ultimos.length === 0
       ? `<p class="vacio">Todavía no hay movimientos.</p>`
-      : ultimos.map(m => {
-          const esIngreso = m.tipo === "ingreso";
-          const esAjuste = m.tipo === "ajuste";
-          const esOtro = esIngreso && !esCheque(m);
-          const titulo = m.tipo === "gasto" ? `Gasto · ${m.categoria}` : esOtro ? "Otro ingreso" : NOMBRES_TIPO[m.tipo];
-          const detalle = [fechaCorta(m.fecha), m.nota, m.estimado != null && !esOtro ? textoComparacion(m) : ""]
-            .filter(Boolean).map(escapar).join(" · ");
-          return `
-            <li>
-              <div class="mov-info">
-                <div class="mov-tipo">${escapar(titulo)}</div>
-                <div class="mov-detalle">${detalle}</div>
-                ${esIngreso ? `<button class="enlace cambiar-tipo" data-cambiar-tipo="${m.id}">${esOtro ? "Cambiar a Cheque" : "Cambiar a Otro ingreso"}</button>` : ""}
-              </div>
-              <span class="mov-monto ${esAjuste ? "neutro" : esIngreso ? "positivo" : "negativo"}">
-                ${esAjuste ? "Saldo: " : esIngreso ? "+" : "−"}${dinero(m.monto)}
-              </span>
-              <button class="borrar" data-borrar="${m.id}" aria-label="Borrar">✕</button>
-            </li>`;
-        }).join("");
+      : ultimos.map(filaMovimiento).join("");
   },
 
   // Aviso oscuro sobre la barra: dice qué pasó y, si se puede, trae "Deshacer" (accion = { texto, fn })

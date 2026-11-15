@@ -33,6 +33,7 @@
     <button class="nav-item solo-pc" data-nav="planeados"><span class="nav-ico" aria-hidden="true">🛍️</span><span class="nav-txt">Gastos planeados</span></button>
     <button class="nav-item solo-pc" data-nav="calendario"><span class="nav-ico" aria-hidden="true">📅</span><span class="nav-txt">Calendario</span></button>
     <button class="nav-item solo-pc" data-nav="resumen"><span class="nav-ico" aria-hidden="true">📊</span><span class="nav-txt">A dónde va · ¿Cuadra?</span></button>
+    <button class="nav-item solo-pc" data-nav="movimientos"><span class="nav-ico" aria-hidden="true">🔎</span><span class="nav-txt">Movimientos</span></button>
     <button class="nav-item solo-pc" data-nav="datosfijos"><span class="nav-ico" aria-hidden="true">⚙️</span><span class="nav-txt">Datos fijos</span></button>
     <button class="nav-item solo-pc" data-nav="respaldo"><span class="nav-ico" aria-hidden="true">☁️</span><span class="nav-txt">Respaldo</span></button>
     <button id="nav-mas" class="nav-item solo-tel"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span><span class="nav-txt">Más</span></button>
@@ -104,6 +105,7 @@
           <button data-nav="datosfijos"><span class="tile-ico" aria-hidden="true">⚙️</span><b>Datos fijos</b><small>Tu sueldo, horas y colchón</small></button>
           <button data-nav="progreso"><span class="tile-ico" aria-hidden="true">🏅</span><b>Mi progreso</b><small>Nivel, íconos y temas</small></button>
           <button data-nav="logros"><span class="tile-ico" aria-hidden="true">🎮</span><b>Logros</b><small>20 medallas por hábitos</small></button>
+          <button data-nav="movimientos"><span class="tile-ico" aria-hidden="true">🔎</span><b>Movimientos</b><small>Todos, con búsqueda</small></button>
           <button data-nav="respaldo" class="tile-ancho"><span class="tile-ico" aria-hidden="true">☁️</span><span><b>Respaldo y sincronizar</b><small>Guardar y compartir entre aparatos</small></span></button>
         </div>
       </div>
@@ -195,7 +197,7 @@
     </section>
 
     <section class="tarjeta">
-      <h2>Últimos movimientos</h2>
+      <div class="mv-cabeza"><h2>Últimos movimientos</h2><button id="ver-todos-mov" class="enlace">Ver todos</button></div>
       <ul id="movimientos" class="movimientos"></ul>
     </section>
     </details>
@@ -961,6 +963,27 @@
     </section>
   </main>
 
+  <!-- Pantalla: Todos mis movimientos, con búsqueda (Plan 2, 2.1) -->
+  <main id="pantalla-movimientos" class="contenedor" hidden>
+    <button id="volver-movimientos" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Todo lo registrado</p>
+    <h1>Movimientos</h1>
+    <div class="mv-busca">
+      <span aria-hidden="true">🔍</span>
+      <input id="mv-q" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="60" placeholder="Buscar nota, categoría o monto" aria-label="Buscar en los movimientos">
+      <button id="mv-limpiar" class="mv-x" aria-label="Borrar la búsqueda" hidden>✕</button>
+    </div>
+    <div id="mv-tipos" class="chips" role="group" aria-label="Tipo de movimiento">
+      <button type="button" class="chip" data-mv-tipo="todos" aria-pressed="true">Todos</button>
+      <button type="button" class="chip" data-mv-tipo="gasto" aria-pressed="false">Gastos</button>
+      <button type="button" class="chip" data-mv-tipo="ingreso" aria-pressed="false">Ingresos</button>
+      <button type="button" class="chip" data-mv-tipo="deuda" aria-pressed="false">Deudas</button>
+    </div>
+    <div class="campo mv-mes"><label for="mv-mes">Mes</label><select id="mv-mes"></select></div>
+    <div id="mv-resumen" class="mv-resumen" aria-live="polite"></div>
+    <div id="mv-lista"></div>
+  </main>
+
   <!-- Pantalla: A dónde se va mi dinero (Bloque 5) -->
   <main id="pantalla-resumen" class="contenedor" hidden>
     <button id="volver-resumen" class="volver volver-principal">← Volver</button>
@@ -1036,7 +1059,7 @@
   </div>
 
   <!-- Orden (el de arriba, comparten nombres globales: no lo cambies). Debe coincidir con ARCHIVOS de sw.js:
-       arranque, datos-ejemplo, almacen, campos, app, plan, proyeccion, jornadas, patrones, deudas, acuerdos, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, explica, cubrir, avisos, consejero, mensajes, logros, xp -->
+       arranque, datos-ejemplo, almacen, campos, app, plan, proyeccion, jornadas, patrones, deudas, acuerdos, movimientos, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, respaldo, sincronizar, nav, explica, cubrir, avisos, consejero, mensajes, logros, xp -->
 
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
@@ -1048,6 +1071,7 @@
   <script src="patrones.js"></script>
   <script src="deudas.js"></script>
   <script src="acuerdos.js"></script>
+  <script src="movimientos.js"></script>
   <script src="resumen.js"></script>
   <script src="calendario.js"></script>
   <script src="planeados.js"></script>
