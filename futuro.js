@@ -370,7 +370,6 @@ const Futuro = {
   },
 
   iniciar() {
-    $("abrir-futuro").addEventListener("click", () => this.abrir());
     $("volver-futuro").addEventListener("click", () => this.cerrar());
     $("pantalla-futuro").addEventListener("click", e => {
       const esc = e.target.closest("[data-fu-escenario]");

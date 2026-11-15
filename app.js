@@ -804,7 +804,7 @@ const Pantalla = {
 
   mostrarError(mensaje) {
     $("estado-carga").innerHTML = `<span class="error">✗ No se pudieron cargar los datos.</span> ${escapar(mensaje)}`;
-    document.querySelectorAll(".botones button").forEach(b => { b.disabled = true; });
+    this.sinDatos = true; // el menú no abre las pantallas que necesitan datos (ver Nav.NECESITAN_DATOS)
   }
 };
 
@@ -926,8 +926,6 @@ prepararInstalacion();
 try {
   // Primera vez en este dispositivo: respaldo.js muestra "Primera vez: cargar mis datos"
   if (!Datos.cargar()) throw "primera-vez";
-  document.querySelectorAll("[data-form]").forEach(b =>
-    b.addEventListener("click", () => abrirFormulario(b.dataset.form)));
   $("formulario").addEventListener("submit", guardarFormulario);
   // Tecla Esc (en el computador): cierra la ventana que esté encima
   document.addEventListener("keydown", e => {
@@ -965,7 +963,6 @@ try {
     $("campo-nota-ingreso").hidden = !otro;
   });
   $("version-app").textContent = `Versión ${VERSION_APP.numero} · ${VERSION_APP.fecha}`;
-  $("rapido-transporte").addEventListener("click", () => abrirFormulario("transporte"));
   // Tocar "Tengo" muestra de dónde sale; desde ahí se puede corregir
   $("dinero-tengo").addEventListener("click", () => Explica.abrir("tengo"));
   document.addEventListener("click", e => {
@@ -1003,7 +1000,6 @@ try {
       Planeados.abrirTemporal(monto, fecha < hoy() ? hoy() : fecha, pantalla ? pantalla.id : "pantalla-inicio");
     }
   });
-  $("rapido-transporte").textContent = "Transporte";
   Pantalla.actualizar();
 } catch (e) {
   if (e !== "primera-vez") Pantalla.mostrarError(e.message);

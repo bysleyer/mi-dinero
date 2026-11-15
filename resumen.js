@@ -195,7 +195,6 @@ const Resumen = {
   },
 
   iniciar() {
-    $("abrir-resumen").addEventListener("click", () => this.abrir());
     $("volver-resumen").addEventListener("click", () => this.cerrar());
     document.querySelectorAll("[data-periodo]").forEach(b =>
       b.addEventListener("click", () => { this.periodo = b.dataset.periodo; this.mostrar(); }));

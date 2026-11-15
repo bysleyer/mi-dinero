@@ -692,7 +692,6 @@ const Planeados = {
   },
 
   iniciar() {
-    $("abrir-planeados").addEventListener("click", () => this.abrirLista());
     $("volver-planeados").addEventListener("click", () => {
       $("pantalla-planeados").hidden = true;
       $("pantalla-inicio").hidden = false;

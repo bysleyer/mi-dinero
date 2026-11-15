@@ -1,15 +1,17 @@
 /*
  * MENÚ (barra abajo en el teléfono, menú a la izquierda en el computador) y PESTAÑAS
  * Es la misma app: se acomoda sola al tamaño de la pantalla (ver estilos.css).
- * El menú usa los mismos botones que ya abren cada pantalla, así cada una funciona igual que antes.
+ * Cada opción del menú llama directo a la función que abre su pantalla.
  */
 const Nav = {
-  // Sección del menú → botón que abre esa pantalla
+  // Sección del menú → función que abre esa pantalla
   SECCIONES: {
-    futuro: "abrir-futuro", plan: "abrir-plan", deudas: "abrir-deudas", planeados: "abrir-planeados",
-    calendario: "abrir-calendario", resumen: "abrir-resumen", datosfijos: "abrir-datosfijos", pagosfijos: "abrir-pagosfijos", respaldo: "abrir-respaldo",
-    consejero: "abrir-consejero", progreso: "abrir-progreso", logros: "abrir-logros"
+    futuro: () => Futuro.abrir(), plan: () => Plan.abrir(), deudas: () => Deudas.abrir(), planeados: () => Planeados.abrirLista(),
+    calendario: () => Calendario.abrir(), resumen: () => Resumen.abrir(), datosfijos: () => DatosFijos.abrir(), pagosfijos: () => PagosFijos.abrir(),
+    respaldo: () => Respaldo.abrir(), consejero: () => Consejero.abrir(), progreso: () => Xp.abrir(), logros: () => Logros.abrir()
   },
+  // Si los datos no cargaron (error), estas no abren nada; Datos fijos, Respaldo, Progreso y Logros sí (Respaldo permite recuperarse)
+  NECESITAN_DATOS: ["futuro", "plan", "deudas", "planeados", "calendario", "resumen", "pagosfijos", "consejero"],
   // Pantalla visible → sección marcada en el menú
   MARCA: {
     "pantalla-inicio": "inicio", "pantalla-futuro": "futuro", "pantalla-alcanza": "futuro", "pantalla-escenarios": "futuro",
@@ -32,7 +34,7 @@ const Nav = {
     $("pantalla-inicio").hidden = false;
     window.scrollTo(0, 0);
     if (seccion === "inicio") { Pantalla.actualizar(); this.marcar(); return; } // también arma el resumen
-    $(this.SECCIONES[seccion]).click(); // la pantalla se abre como siempre (y oculta el inicio)
+    if (!(Pantalla.sinDatos && this.NECESITAN_DATOS.includes(seccion))) this.SECCIONES[seccion](); // la pantalla se abre (y oculta el inicio)
     this.marcar();
   },
 
@@ -271,8 +273,8 @@ const Nav = {
 
   // Atajos: Transporte, Trabajé hoy, No trabajé hoy y ¿Y si gasto…? (desde el menú del +)
   atajo(que) {
-    if (que === "trabaje") $("trabaje-hoy").click();
-    else if (que === "no-trabaje") $("no-trabaje-hoy").click();
+    if (que === "trabaje") Jornadas.abrirFormulario();
+    else if (que === "no-trabaje") Jornadas.noTrabajeHoy();
     else if (que === "ysigasto") Planeados.abrirTemporal(null, hoy(), this.visible());
     else abrirFormulario(que, ["gasto", "ingreso", "pagoDeuda"].includes(que) ? { selector: true } : {});
   },

@@ -561,7 +561,6 @@ const PagosFijos = {
   },
 
   iniciar() {
-    $("abrir-pagosfijos").addEventListener("click", () => this.abrir());
     $("volver-pagosfijos").addEventListener("click", () => this.cerrar());
     $("pantalla-pagosfijos").addEventListener("click", e => {
       const ra = e.target.closest("[data-rc-abrir]"); if (ra) return this.abrirRecibo(ra.dataset.rcAbrir);

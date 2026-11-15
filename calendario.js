@@ -306,7 +306,6 @@ const Calendario = {
   },
 
   iniciar() {
-    $("abrir-calendario").addEventListener("click", () => this.abrir());
     $("abrir-libres").addEventListener("click", () => this.abrirLibre());
     $("cal-libres").addEventListener("click", e => {
       const ed = e.target.closest("[data-editar-libre]");

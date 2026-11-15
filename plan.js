@@ -590,7 +590,6 @@ const Plan = {
   },
 
   iniciar() {
-    $("abrir-plan").addEventListener("click", () => this.abrir());
     $("p-cobre-guardar").addEventListener("click", () => this.cobre());
     $("p-ingreso-origen").addEventListener("click", e => {
       if (e.target.closest("#p-usar-estimacion")) this.usarEstimacion(true);

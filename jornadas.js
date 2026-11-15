@@ -256,8 +256,6 @@ const Jornadas = {
   },
 
   iniciar() {
-    $("trabaje-hoy").addEventListener("click", () => this.abrirFormulario());
-    $("no-trabaje-hoy").addEventListener("click", () => this.noTrabajeHoy());
     $("jornadas-lista").addEventListener("click", e => {
       const editar = e.target.closest("[data-editar-jornada]");
       if (editar) {

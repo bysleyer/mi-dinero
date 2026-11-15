@@ -310,7 +310,6 @@ Object.assign(Consejero, {
     $("cj-enviar").addEventListener("click", () => this.guardarNota());
     $("cj-preguntar").addEventListener("click", () => this.preguntarAClaude());
     document.addEventListener("click", e => { if (e.target.closest("[data-abrir-consejero]")) { if (typeof Nav !== "undefined" && Nav.cerrarHoja) Nav.cerrarHoja(); this.abrir(); } });
-    $("abrir-consejero").addEventListener("click", () => this.abrir());
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
     // Con la app abierta: revisa cada 10 minutos si el consejero dejó algo nuevo
     setInterval(() => { if (document.visibilityState === "visible") this.bajar(); }, 10 * 60 * 1000);

@@ -43,7 +43,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .aviso { color: var(--aviso); }
 
 /* Botones grandes */
-.botones { display: flex; flex-direction: column; gap: 14px; }
 .boton-grande {
   width: 100%;
   min-height: 72px;
@@ -55,8 +54,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
   cursor: pointer;
 }
 .boton-grande:active { transform: scale(.98); }
-.boton-grande.ingreso { background: var(--menta, #4fd1b5); }
-.boton-grande.gasto { background: #ff7a6b; }
 .boton-grande.deuda { background: var(--menta, #4fd1b5); }
 .boton-grande.guardar { background: var(--menta, #4fd1b5); margin-top: 8px; }
 .boton-grande.cancelar { background: #26313a; color: var(--texto); margin-top: 10px; min-height: 60px; }
@@ -186,8 +183,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
   background: #2d2411; color: var(--aviso); font-size: .95rem;
 }
 .aviso-hoy[hidden] { display: none; }
-.rapidos { display: flex; gap: 10px; }
-.rapidos .boton-chico { flex: 1; margin-top: 0; min-height: 52px; padding: 0 8px; }
 .ayuda {
   margin: 0 0 16px; padding: 10px 12px; border-radius: 10px;
   background: #11302a; font-size: .9rem; color: var(--texto);
@@ -226,8 +221,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 #usar-ejemplo { margin-top: 16px; }
 
 /* ---------- Bloque 7: Jornadas y próximo cheque ---------- */
-.jornada-botones .boton-mediano { flex: 2; min-height: 56px; }
-.jornada-botones .boton-chico { flex: 1; min-height: 56px; }
 .cheque-fecha { font-size: 1.3rem; font-weight: 700; margin: 0; }
 .cheque-cubre { margin: 2px 0 12px; color: var(--suave); font-size: .95rem; }
 .cheque-proyeccion {
@@ -397,7 +390,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .dinero-tengo.positivo .dinero-cifra { color: var(--ok); }
 .dinero-tengo.negativo { border-color: #5a3a35; background: #2e1f1c; }
 .dinero-tengo.negativo .dinero-cifra { color: var(--error); }
-.rapidos #rapido-transporte { min-height: 56px; }
 
 /* ---------- Bloque 12: Mover este pago ---------- */
 .mv-nombre { color: var(--texto); font-size: 1.3rem; }
@@ -448,7 +440,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .version-app { margin: 14px 0 0; text-align: center; font-size: .8rem; color: var(--suave); }
 
 /* ---------- Bloque 14: Mi futuro ---------- */
-.boton-grande.futuro { background: #b9a6ff; }
 .fu-frase { font-size: 1.45rem; font-weight: 800; line-height: 1.25; margin: 8px 0 4px; text-wrap: balance; }
 .fu-frase.negativo { color: var(--error); }
 .fu-frase.positivo { color: var(--ok); }
@@ -689,8 +680,6 @@ body.con-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 body.con-nav .aviso-flotante { bottom: calc(90px + env(safe-area-inset-bottom)); }
 body.con-nav .volver-principal { display: none; }
 /* En el inicio, las secciones ya están en el menú */
-body.con-nav #abrir-calendario, body.con-nav #abrir-futuro, body.con-nav #abrir-planeados,
-body.con-nav #abrir-plan, body.con-nav #abrir-deudas, body.con-nav #abrir-resumen, body.con-nav #abrir-consejero,
 body.con-nav .botones-final { display: none; }
 
 /* Hojas: "＋ Registrar" y "Más" */
@@ -755,10 +744,6 @@ body.con-nav .botones-final { display: none; }
 }
 @media (min-width: 900px) {
   body.con-nav .nav-item .nav-txt { text-align: left; }
-  body.con-nav #pantalla-inicio .botones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  body.con-nav #pantalla-inicio .botones .boton-grande { margin: 0; min-height: 64px; }
-  body.con-nav #pantalla-inicio .botones .rapidos { grid-column: span 3; display: flex; gap: 10px; margin: 0; }
-  body.con-nav #pantalla-inicio .botones .rapidos > * { flex: 1; margin: 0; }
 }
 
 /* ---------- iPhone: barra flotante que respeta las esquinas y la rayita de abajo ---------- */
@@ -775,7 +760,6 @@ body { padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-
   body.con-nav .aviso-flotante { bottom: calc(100px + env(safe-area-inset-bottom)); }
 }
 /* El inicio con el menú: un resumen (registrar está en ＋) */
-body.con-nav #pantalla-inicio .botones { display: none; }
 .renta-linea.parcial { background: #2d2411; color: #f5b84b; }
 
 /* ---------- Campana y avisos ---------- */
@@ -1147,7 +1131,7 @@ body.con-nav #volver-consejero { display: none; }
 
 /* ---------- Botones ---------- */
 .boton-grande { min-height: 48px; border-radius: 14px; font-size: 1rem; font-weight: 700; padding: 0 16px; }
-.boton-grande.guardar, .boton-grande.ingreso, .boton-grande.deuda, .boton-grande.futuro { background: var(--menta); color: #06201a; border: 0; }
+.boton-grande.guardar, .boton-grande.deuda { background: var(--menta); color: #06201a; border: 0; }
 .boton-grande.cancelar { background: transparent; color: var(--menta); border: 1px solid #2c5a4f; }
 .boton-mediano { min-height: 48px; border-radius: 14px; font-size: 1rem; font-weight: 700; background: transparent; color: var(--menta); border: 1px solid #2c5a4f; }
 .boton-chico { min-height: 44px; border-radius: 12px; font-size: .875rem; font-weight: 700; border: 1px solid #2c5a4f; background: transparent; color: var(--menta); padding: 0 14px; }

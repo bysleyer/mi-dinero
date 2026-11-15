@@ -356,7 +356,6 @@ const Deudas = {
   },
 
   iniciar() {
-    $("abrir-deudas").addEventListener("click", () => this.abrir());
     $("volver-deudas").addEventListener("click", () => this.cerrar());
     $("pantalla-deudas").addEventListener("click", e => {
       const ajustar = e.target.closest("[data-ajustar]");
