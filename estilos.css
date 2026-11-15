@@ -1987,3 +1987,10 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
 @media (prefers-reduced-motion: reduce) {
   .menu-reg-atajos, .menu-reg.abierto .menu-reg-atajos { transform: none !important; transition: opacity 150ms ease !important; transition-delay: 0ms !important; }
 }
+
+/* ¿Y si gasto…? / ¿Cuándo lo compro?: monto y fecha del mismo tamaño y dentro de la tarjeta (en el iPhone la fecha se salía) */
+.ps-dos { align-items: start; }
+.ps-dos .campo input { box-sizing: border-box; -webkit-appearance: none; appearance: none; display: block; width: 100%; max-width: 100%; min-width: 0; height: 60px; padding: 0 12px; font-size: 1.1rem; line-height: 1.2; }
+.ps-dos .campo input[type="date"] { text-align: left; }
+.ps-dos .campo input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; margin: 0; }
+#pantalla-cuando .volver { margin-bottom: 12px; }
