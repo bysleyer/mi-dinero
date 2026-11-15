@@ -105,7 +105,7 @@ const Futuro = {
     $("fu-frase").innerHTML = saldoBajo < 0
       ? `<strong>Te faltan ${dineroCorto(-saldoBajo)} el ${escapar(this.dia(bajo))}.</strong><span>Es tu día más apretado del mes.</span>${lineaLegal}`
       : legal
-      ? `<strong>${cheque ? `${cuandoCheque} cobras ${dineroCorto(cheque.monto)}.` : "Este mes no te quedas sin dinero."} La renta atrasada sigue pendiente.</strong>` +
+      ? `<strong>${cheque ? (cheque.origen === "real" ? `${cuandoCheque} cobras ${dineroCorto(cheque.monto)}.` : `${cuandoCheque} cobrarías ≈ ${dineroCorto(cheque.monto)} (estimado por ${redondear(cheque.horas)} h).`) : "Este mes no te quedas sin dinero."} La renta atrasada sigue pendiente.</strong>` +
         (renta ? `<span>${renta.falta > 0.005 ? `A la ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} le faltan ${dineroCorto(renta.falta)}.`
           : `La ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} queda cubierta el ${escapar(this.diaCorto(renta.fecha).toLowerCase())}.`}</span>` : "") + lineaLegal
       : `<strong>No te quedas sin dinero este mes.</strong><span>Punto más bajo: <b>${dineroCorto(saldoBajo)}</b> el ${escapar(this.dia(bajo))}.</span>`;

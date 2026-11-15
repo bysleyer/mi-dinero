@@ -44,10 +44,28 @@ const Jornadas = {
 
   // Proporción neto/bruto: promedio de los últimos 4 cheques reales (mis datos, ingresos.cheques).
   // Si hay menos de 2, usa la proporción de mis datos.
+  // Cheques reales con su bruto: los de Datos fijos y los que registras en "Me pagaron" con sus horas
+  // (el bruto de esas horas se calcula con tu sueldo; antes estos no contaban y la app nunca aprendía de lo que te pagan)
+  chequesReales() {
+    const deDatos = (Datos.actual?.ingresos?.cheques || []).filter(c => c.bruto > 0 && c.neto > 0)
+      .map(c => ({ fecha: c.fecha, bruto: c.bruto, neto: c.neto, horas: c.horas ?? null, enfermedad: c.enfermedad ?? 0, origen: "datos" }));
+    const fechas = new Set(deDatos.map(c => c.fecha));
+    const deMovs = (typeof Almacen !== "undefined" ? Almacen.leerMovimientos() : [])
+      .filter(m => m.tipo === "ingreso" && m.tipoIngreso === "cheque" && m.monto > 0 && !fechas.has(m.fecha))
+      .map(m => {
+        let horas = Number(m.horas);
+        if (!(horas > 0)) { const x = /(\d+(?:[.,]\d+)?)\s*h/i.exec(m.nota || ""); horas = x ? Number(x[1].replace(",", ".")) : NaN; }
+        if (!(horas > 0)) return null;
+        const bruto = this.bruto(horas, m.horasEnfermedad || 0);
+        return bruto > 0 ? { fecha: m.fecha, bruto: redondear(bruto), neto: m.monto, horas, enfermedad: m.horasEnfermedad || 0, origen: "me pagaron" } : null;
+      }).filter(Boolean);
+    return [...deDatos, ...deMovs].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  },
+
   proporcionNeto() {
-    const hist = (Datos.actual?.ingresos?.cheques || [])
-      .filter(c => c.bruto > 0 && c.neto > 0)
-      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    const hist = this.chequesReales()
+      // Una proporción fuera de lo normal (horas mal escritas) no se usa
+      .filter(c => c.neto / c.bruto > 0.5 && c.neto / c.bruto < 1.05)
       .slice(0, 4);
     if (hist.length >= 2) return hist.reduce((s, c) => s + c.neto / c.bruto, 0) / hist.length;
     return this.config().proporcionNeto;

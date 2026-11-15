@@ -170,7 +170,7 @@ const Cubrir = {
       const cuando = f => f === Jornadas.sumarDias(hoy(), 1) ? "Mañana" : f === hoy() ? "Hoy" : `El ${Futuro.diaCorto(f).toLowerCase()}`;
       $("cb-objetivo").innerHTML = `<p class="mensaje-sobrante positivo">✓ En los próximos 3 meses no te falta dinero (escenario ${escapar(esc.titulo)}).</p>
         <section class="tarjeta cb-nada"><p><strong>No hay nada que cubrir.</strong>
-          ${cheque ? `${cuando(cheque.fecha)} cobras ${dineroCorto(cheque.monto)}` : ""}${renta && renta.falta <= 0.005 ? `${cheque ? " y l" : "L"}a ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} queda pagada el ${escapar(Futuro.diaCorto(renta.fecha).toLowerCase())}` : ""}.</p>
+          ${cheque ? (cheque.origen === "real" ? `${cuando(cheque.fecha)} cobras ${dineroCorto(cheque.monto)}` : `${cuando(cheque.fecha)} cobrarías ≈ ${dineroCorto(cheque.monto)} (estimado)`) : ""}${renta && renta.falta <= 0.005 ? `${cheque ? " y l" : "L"}a ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} queda pagada el ${escapar(Futuro.diaCorto(renta.fecha).toLowerCase())}` : ""}.</p>
           ${atr > 0.005 ? `<p class="cb-nada-sub">Aparte: renta atrasada <strong>${dineroCorto(atr)}</strong>. Se paga con lo que sobra o con un plan de pagos.</p>` : ""}
           <button class="enlace cb-escenarios" data-cb-escenarios>Ver ¿Y si cobro…? ›</button></section>`;
       $("cb-plan").innerHTML = ""; $("cb-otra").hidden = true; $("cb-todas").innerHTML = "";
