@@ -1966,3 +1966,6 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
 /* Hoja del +: cada tipo con su hoja (se ocultan los botones y atajos que no corresponden) */
 .hoja-tipos[hidden], .hoja-tipos .chip[hidden], .hoja-etiqueta[hidden], .hoja-atajos[hidden] { display: none; }
 #hoja-continuar { margin-top: 16px; }
+/* Hoja de Deuda: los selectores se ven como los demás campos (sin doble caja) */
+.hoja-caja .campo select { border: 0; background: transparent; padding: 0; width: 100%; min-height: 32px; font-size: 1rem; color: var(--texto); box-shadow: none; outline: none; text-overflow: ellipsis; }
+#hoja-deuda-campo, #hoja-renta-campo { margin: 12px 0 0; }
