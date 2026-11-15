@@ -217,7 +217,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
   font: inherit; font-size: .95rem; cursor: pointer;
 }
 .aviso-boton[hidden] { display: none; }
-.boton-final { display: block; margin: 24px auto 0; }
 .boton-archivo { display: flex; align-items: center; justify-content: center; text-align: center; }
 .revision { margin-top: 16px; padding: 14px; border: 2px solid var(--borde); border-radius: 14px; }
 .revision[hidden] { display: none; }
@@ -519,7 +518,6 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 .pl-botones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .pl-botones .boton-chico { margin-top: 0; }
 .marca-planeado { font-size: .7rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: #b9a6ff; color: #171e23; vertical-align: middle; }
-.planeado-linea span:first-child { font-weight: 400; }
 .pc-chip { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: .8rem; font-weight: 700; border: 1px solid transparent; }
 .pc-problema { font-size: 1.05rem; }
 .pc-sub { font-size: .95rem; margin: 12px 0 4px; color: var(--texto); }
@@ -699,8 +697,6 @@ body.con-nav .botones-final { display: none; }
 .hoja { position: fixed; inset: 0; z-index: 12; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
 .hoja-caja { background: var(--tarjeta); width: 100%; max-width: 560px; border-radius: 20px 20px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 90vh; max-height: 90dvh; overflow-y: auto; overscroll-behavior: contain; }
 .hoja-caja h2 { color: var(--texto); font-size: 1.3rem; }
-.hoja-grilla { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-.hoja-grilla .boton-grande, .hoja-grilla .boton-mediano { width: 100%; margin: 0; min-height: 64px; font-size: 1.05rem; }
 .hoja-lista { display: grid; gap: 8px; margin-bottom: 12px; }
 .hoja-lista button { text-align: left; font-size: 1.1rem; font-weight: 700; padding: 14px; border: 1px solid var(--borde); border-radius: 12px; background: #171e23; color: var(--texto); cursor: pointer; }
 #hoja-cerrar { width: 100%; }
@@ -780,16 +776,6 @@ body { padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-
 }
 /* El inicio con el menú: un resumen (registrar está en ＋) */
 body.con-nav #pantalla-inicio .botones { display: none; }
-.inicio-libre {
-  width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; text-align: left; cursor: pointer;
-  border: 1px solid var(--borde); border-radius: 12px; background: #171e23; padding: 12px; margin-top: 4px; color: var(--texto); font: inherit;
-}
-.inicio-libre > span { display: flex; flex-direction: column; }
-.inicio-libre strong { font-size: 1.35rem; }
-.inicio-libre > span:first-child strong { color: #8fe3d0; }
-.inicio-libre > span:nth-child(2) strong { color: #f5b84b; }
-.inicio-etq { font-size: .8rem; color: var(--suave); font-weight: 700; }
-.inicio-ver { grid-column: 1 / -1; font-size: .9rem; color: var(--menta, #4fd1b5); font-weight: 700; }
 .renta-linea.parcial { background: #2d2411; color: #f5b84b; }
 
 /* ---------- Campana y avisos ---------- */
@@ -842,11 +828,11 @@ button, [role="button"], summary, .nav-item, .pestanas button {
 }
 /* Respuesta al tocar en todos los botones (antes solo en los grandes) */
 .boton-chico, .nav-item, .pestanas button, .hoja-lista button, button.dia, .enlace, .volver, .campana,
-.inicio-libre, .dinero-tengo, .cal-flecha, .selector button, .borrar {
+.dinero-tengo, .cal-flecha, .selector button, .borrar {
   transition: transform 120ms cubic-bezier(.23, 1, .32, 1), background-color 120ms;
 }
 .boton-chico:active, .nav-item:active, .pestanas button:active, .hoja-lista button:active, button.dia:active,
-.volver:active, .campana:active, .inicio-libre:active, .dinero-tengo:active, .cal-flecha:active,
+.volver:active, .campana:active, .dinero-tengo:active, .cal-flecha:active,
 .selector button:active, .borrar:active { transform: scale(.97); }
 .enlace:active { opacity: .6; }
 /* La ventana de los formularios deja espacio para la rayita del iPhone; su scroll no mueve la pantalla de atrás */
@@ -898,7 +884,7 @@ body { font-variant-numeric: tabular-nums; }
   .barra-relleno { transform: scaleX(var(--p, 0)) !important; }
   @starting-style { .hoja-caja, .ventana-caja, .aviso-flotante { transform: none !important; opacity: 0; } }
   .boton-grande:active, .boton-mediano:active, .boton-chico:active, .nav-item:active, .pestanas button:active,
-  .hoja-lista button:active, button.dia:active, .volver:active, .campana:active, .inicio-libre:active,
+  .hoja-lista button:active, button.dia:active, .volver:active, .campana:active,
   .dinero-tengo:active, .cal-flecha:active, .selector button:active, .borrar:active { transform: none; opacity: .7; }
 }
 
@@ -1088,21 +1074,13 @@ button.enlace { min-height: 44px; }
 .sy-estado.con-error { border-left-color: var(--error); background: #2e1f1c; color: #ffd0ca; }
 
 /* TABLERO — Registrar (+): tipos arriba y atajos del día a día en tarjetas */
-.hoja-tipos { display: flex; gap: 8px; margin: 8px 0 4px; }
-.hoja-tipos .chip { flex: 1 1 auto; padding: 0 6px; font-size: .9rem; white-space: nowrap; }
-.hoja-tipos .chip.ingreso, .hoja-tipos .chip.gasto, .hoja-tipos .chip.deuda { min-height: 56px; }
 .hoja-nota { margin: 12px 0 0; }
 .hoja-etiqueta { margin: 14px 0 8px; font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--suave); }
-.hoja-atajos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-.hoja-atajos button { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 14px; background: #1c262d; color: var(--texto); font: inherit; font-size: .95rem; font-weight: 700; text-align: left; cursor: pointer; touch-action: manipulation; }
-.hoja-atajos button span { font-size: 1.4rem; }
-.hoja-atajos button:active { transform: scale(.97); }
 .pl-simular { text-align: center; } .pl-simular .ayuda { margin: 0 0 4px; }
 
 /* TABLERO — Ajustes de concepto: franja única de avisos urgentes y hoja del + con monto */
 .avisos-mas { display: flex; align-items: center; min-height: 44px; border: 0; background: none; color: var(--menta, #4fd1b5); font: inherit; font-size: .9rem; font-weight: 700; padding: 0 4px; cursor: pointer; }
 .hoja-monto { margin: 4px 0 8px; }
-.hoja-tipos .chip[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); background: #11302a; }
 #hoja-continuar { margin-top: 4px; }
 
 /* TABLERO — Calendario: leyenda plegada y resumen de cada semana en una línea */
@@ -1643,9 +1621,6 @@ details.mas-detalles > summary .opcional { display: none; }
 .hoja-error:empty { display: none; }
 .campo.con-error { border-color: var(--error) !important; }
 /* Con el teclado abierto, el hueco entre la hoja y el teclado (barra ^ v ✓ de iOS) se rellena con el color de la hoja, sin dejar ver la página */
-.hoja.escribiendo .hoja-caja { box-shadow: 0 140px 0 0 var(--tarjeta); }
-.hoja.escribiendo { background-color: rgba(0,0,0,.8); }
-.hoja.escribiendo .hoja-nota, .hoja.escribiendo .hoja-etiqueta, .hoja.escribiendo .hoja-atajos { display: none; }
 /* "Antes de guardar" (v48): ámbar (informa, no es un error) y el enlace en su propia línea */
 #f-efecto.negativo { background: #2d2411; border: 1px solid #5a4a25; color: #ffe2a8; }
 #f-efecto .f-efecto-boton { display: flex; align-items: center; min-height: 44px; margin-top: 2px; padding: 0; color: var(--menta); font-weight: 700; }
@@ -1657,7 +1632,6 @@ details.mas-detalles > summary .opcional { display: none; }
 /* Íconos dibujados (v48): un solo trazo, en vez de emoji */
 .ico { width: 26px; height: 26px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .campana .ico { width: 24px; height: 24px; color: var(--texto); }
-.hoja-atajos .ico { color: var(--menta); margin-right: 2px; }
 /* "Tengo" se toca para corregirlo: el lápiz lo dice */
 #dinero-tengo { position: relative; }
 #dinero-tengo::after { content: ""; position: absolute; top: 12px; right: 12px; width: 16px; height: 16px; background: var(--suave);
@@ -1961,10 +1935,9 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
 }
 
 /* Con el teclado abierto: la hoja queda pegada a la barra del teclado (sin el margen de abajo de la pantalla del iPhone) */
-.hoja.escribiendo .hoja-caja { padding-bottom: 8px; }
 
 /* Hoja del +: cada tipo con su hoja (se ocultan los botones y atajos que no corresponden) */
-.hoja-tipos[hidden], .hoja-tipos .chip[hidden], .hoja-etiqueta[hidden], .hoja-atajos[hidden] { display: none; }
+.hoja-etiqueta[hidden] { display: none; }
 #hoja-continuar { margin-top: 16px; }
 /* Hoja de Deuda: los selectores se ven como los demás campos (sin doble caja) */
 .hoja-caja .campo select { border: 0; background: transparent; padding: 0; width: 100%; min-height: 32px; font-size: 1rem; color: var(--texto); box-shadow: none; outline: none; text-overflow: ellipsis; }
@@ -2072,7 +2045,6 @@ html, body { overscroll-behavior: none; }
 #hoja-continuar { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 0 0 10px var(--tarjeta), 0 60px 0 10px var(--tarjeta); }
 #hoja-continuar.falta { box-shadow: 0 0 0 10px var(--tarjeta), 0 60px 0 10px var(--tarjeta); }
 /* Mientras escribes el monto en Deuda, el título "¿A cuál deuda?" no se esconde */
-.hoja.escribiendo #hoja-deudas-etq { display: block; }
 
 /* Diagnóstico del teclado (temporal) */
 .hoja-diag { margin: 0 0 8px; padding: 6px 8px; border-radius: 8px; background: #2a1f0a; color: #f5b942; font: 600 .72rem/1.35 ui-monospace, Menlo, monospace; -webkit-user-select: text; user-select: text; }
