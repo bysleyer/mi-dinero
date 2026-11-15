@@ -188,6 +188,16 @@ Object.assign(Consejero, {
       <button class="enlace" data-abrir-consejero>Ver todo ›</button>`;
   },
 
+  // Lista de los pasos que dejó el consejero, con "Hecho / No pude / Después" y lo que ya contestaste
+  listaPasos(pasos) {
+    const items = pasos.filter(p => p && p.id && p.texto).slice(0, 8).map(p => {
+      const ref = "paso:" + p.id, est = this.estadoDe(ref);
+      const para = p.para ? (/^\d{4}-\d{2}-\d{2}$/.test(p.para) ? `Para el ${Futuro.diaCorto(p.para).toLowerCase()}` : `Para: ${p.para}`) : "";
+      return `<li class="cj-paso ${est === "hecho" ? "hecho" : ""}"><span class="cj-paso-texto">${est === "hecho" ? "✅ " : ""}${escapar(p.texto)}</span>${para ? `<span class="opcional"> · ${escapar(para)}</span>` : ""}${this.botonesPaso(p.texto, ref)}</li>`;
+    });
+    return items.length ? `<h3 class="cj-sub">Pasos</h3><ul class="cj-pasos-lista">${items.join("")}</ul>` : "";
+  },
+
   // Una línea compacta con lo que llevas en cada regla: "Bebidas 3 de 4 · Otros $28 de $40" (rojo si te pasaste, ámbar si estás cerca)
   lineaReglas() {
     const reglas = Vigilante.reglas();
@@ -234,6 +244,8 @@ Object.assign(Consejero, {
     // El paso de hoy solo se muestra si no hay lista de prioridades (la lista ya lo trae, como en el concepto)
     if (c && c.proximoPaso && !(c.prioridades && c.prioridades.length)) pasos.push(`<p class="cj-paso-hoy"><strong>${escapar(c.proximoPaso)}</strong></p>${this.botonesPaso(c.proximoPaso)}`);
     /* día de libertad: va al final */
+    // C2 · Pasos con seguimiento (campo opcional "pasos": [{ id, texto, para }]): cada uno con su estado. Sin el campo, no se ve nada.
+    if (c && Array.isArray(c.pasos) && c.pasos.length) pasos.push(this.listaPasos(c.pasos));
     if (c && c.prioridades && c.prioridades.length) pasos.push(`<ol class="cj-prioridades">${c.prioridades.map((p, i) => `<li><span class="cj-num" aria-hidden="true">${i + 1}</span><span>${escapar(p)}</span></li>`).join("")}</ol>`);
     if (c && c.diaLibertad && c.diaLibertad.fecha) pasos.push(`<details class="cj-mas cj-libertad"><summary>Tu día de libertad: ${escapar(Futuro.diaCorto ? Futuro.diaCorto(c.diaLibertad.fecha) : c.diaLibertad.fecha)}</summary><p>${escapar(c.diaLibertad.texto || "")}</p></details>`);
     $("cj-pasos").innerHTML = pasos.join("") || `<p class="ayuda">Todavía no hay plan.</p>`;
@@ -290,9 +302,9 @@ Object.assign(Consejero, {
 
   estadoDe(ref) { const n = this.notas().filter(x => x.ref === ref).pop(); return n ? n.estado : null; },
 
-  botonesPaso(texto) {
+  botonesPaso(texto, refPropio) {
     if (!texto || Sync.soloVer()) return "";
-    const ref = this.refDe(texto);
+    const ref = refPropio || this.refDe(texto);
     this._refs[ref] = texto;
     const est = this.estadoDe(ref);
     return `<div class="cj-resp" role="group" aria-label="¿Cómo te fue con este paso?">${Object.entries(this.ESTADOS).map(([k, t]) =>

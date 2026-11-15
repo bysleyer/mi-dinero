@@ -2074,3 +2074,7 @@ html, body { overscroll-behavior: none; }
 .cj-resp .chip { min-height: 36px; margin: 0; padding: 0 12px; font-size: .8125rem; }
 .cj-respuesta-local { margin-top: 10px; padding: 12px; border-radius: 12px; background: #16231f; }
 .cj-respuesta-local p { margin: 0 0 6px; font-size: .9375rem; }
+.cj-pasos-lista { list-style: none; padding: 0; margin: 0 0 10px; }
+.cj-pasos-lista .cj-paso { padding: 8px 0; border-bottom: 1px solid var(--borde); }
+.cj-pasos-lista .cj-paso.hecho .cj-paso-texto { color: var(--suave); }
+.cj-sub { font-size: .875rem; margin: 6px 0; color: var(--suave); }
