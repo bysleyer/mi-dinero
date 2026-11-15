@@ -1174,6 +1174,11 @@ body.con-nav #volver-consejero { display: none; }
 .avisos-afuera { margin: 10px 0 0; gap: 6px; }
 .avisos-afuera .aviso-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; }
 .avisos-afuera .aviso-item p { margin: 0; font-size: .875rem; font-weight: 600; line-height: 1.35; flex: 1; }
+.aviso-cuerpo { flex: 1; min-width: 0; }
+.aviso-detalle { margin-top: 2px; }
+.aviso-detalle summary { font-size: .8125rem; font-weight: 600; opacity: .85; cursor: pointer; padding: 6px 0; }
+.aviso-detalle-texto { display: block; font-size: .875rem; font-weight: 400; line-height: 1.4; padding-bottom: 4px; }
+.aviso-porque { font-size: .8125rem; font-weight: 600; color: inherit; text-decoration: underline; background: none; border: 0; padding: 8px 10px 8px 0; margin: 0; min-height: 0; cursor: pointer; }
 .avisos-afuera .aviso-item .pl-botones { flex: none; display: flex; margin: 0; }
 .avisos-afuera .aviso-item .pl-botones .boton-chico { margin: 0; padding: 0 14px; font-size: .875rem; background: transparent; border-color: #5a3a35; color: var(--error); }
 .avisos-afuera .aviso-item.amarillo .pl-botones .boton-chico { border-color: #5a4a25; color: var(--aviso); }

@@ -59,6 +59,55 @@ const Explica = {
     }).join("");
   },
 
+
+  // ---------- ¿Por qué? de los avisos de faltante y de renta (la misma cuenta que el aviso) ----------
+  _pr() { return Proyeccion.calcular({ chequeEscenario: Escenarios.config()[Futuro.estado().escenario], horizonte: 92 }); },
+
+  _tienes(pr) {
+    return pr.protegido && pr.colchon > 0.005
+      ? `<div><span>Tienes hoy</span><b>${this.signo(redondear(pr.inicial + pr.colchon))}</b></div>
+         <div><span>Menos tu colchón (está protegido)</span><b class="ex-sale">−${dinero(pr.colchon)}</b></div>
+         <div><span>Para la cuenta</span><b>${this.signo(pr.inicial)}</b></div>`
+      : `<div><span>Tienes hoy</span><b>${this.signo(pr.inicial)}</b></div>`;
+  },
+
+  faltante() {
+    const pr = this._pr(), f = Proyeccion.faltante(pr);
+    if (!f) return { titulo: "¿Por qué me falta?", html: '<p class="vacio">Ya no hay ningún faltante: la cuenta cambió desde que se mostró el aviso.</p>' };
+    return {
+      titulo: "¿Por qué me falta?",
+      html: `<p class="ex-ayuda">Esta es la cuenta día por día, con tus pagos y los cheques que esperas, desde hoy hasta el ${escapar(this.dia(f.peor).toLowerCase())}${f.peor !== f.fecha ? `, el día en que más te falta (empieza a faltar el ${escapar(this.dia(f.fecha).toLowerCase())})` : ""}.</p>
+        <div class="ex-formula">
+          ${this._tienes(pr)}
+          <div><span>El ${escapar(this.dia(f.peor).toLowerCase())} te quedan</span><b class="ex-sale">${this.signo(redondear(pr.porDia[f.peor].saldoFin))}</b></div>
+          <div class="ex-total"><span>Te faltan</span><b class="ex-sale">${dinero(f.falta)}</b></div>
+        </div>
+        <p class="ex-ayuda">Los cheques que todavía no llegan son estimados.</p>
+        <h3 class="ex-sub">Cómo llegas a ese día</h3>
+        ${this.camino(pr, f.peor)}`
+    };
+  },
+
+  renta() {
+    const pr = this._pr(), r = Proyeccion.estadoRenta(pr);
+    if (!r) return { titulo: "¿Por qué falta para la renta?", html: '<p class="vacio">No hay una renta próxima en la cuenta.</p>' };
+    const l = pr.lineas.filter(x => x.id === "renta" && x.fecha === r.fecha);
+    const saldo = l.length ? l[l.length - 1].saldo : 0;
+    return {
+      titulo: "¿Por qué falta para la renta?",
+      html: `<p class="ex-ayuda">Esta es la cuenta día por día, con tus pagos y los cheques que esperas, hasta el ${escapar(this.dia(r.fecha).toLowerCase())}, el día de la ${escapar(r.nombre.charAt(0).toLowerCase() + r.nombre.slice(1))}.</p>
+        <div class="ex-formula">
+          ${this._tienes(pr)}
+          <div><span>${escapar(r.nombre)}</span><b class="ex-sale">−${dinero(r.monto)}</b></div>
+          <div><span>Al pagarla te quedan</span><b class="${saldo < 0 ? "ex-sale" : ""}">${this.signo(redondear(saldo))}</b></div>
+          <div class="ex-total"><span>Te faltan</span><b class="ex-sale">${dinero(r.falta)}</b></div>
+        </div>
+        <p class="ex-ayuda">Los cheques que todavía no llegan son estimados.</p>
+        <h3 class="ex-sub">Cómo llegas a ese día</h3>
+        ${this.camino(pr, r.fecha)}`
+    };
+  },
+
   // ---------- Libre esta semana ----------
   libre() {
     const sem = Plan.semanaReal(), pr = sem.pr, ap = sem.apretado;

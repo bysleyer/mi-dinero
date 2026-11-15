@@ -358,11 +358,16 @@ const PagosFijos = {
   },
 
   // ---------- Formulario ----------
-  abrirEditor(id, grupoNuevo) {
+  // previo (solo para uno nuevo): { nombre, monto, dia } para llegar con el formulario ya lleno (aviso "Parece que pagas…")
+  abrirEditor(id, grupoNuevo, previo) {
     const deDatos = this.PROPIOS_DE_DATOS.find(x => x.id === id);
     const propio = id ? Almacen.leerPagosPropios().find(x => x.id === id) : null;
     this.editando = id ? { id, deDatos: !!deDatos } : { nuevo: true, grupo: grupoNuevo };
-    abrirFormulario("pagoFijo", propio ? { monto: (this.version(propio, hoy()) || propio.versiones[0]).monto } : {});
+    abrirFormulario("pagoFijo", propio ? { monto: (this.version(propio, hoy()) || propio.versiones[0]).monto } : previo && previo.monto ? { monto: previo.monto } : {});
+    if (previo && !propio && !deDatos) {
+      if ($("f-pf-nombre")) $("f-pf-nombre").value = previo.nombre || "";
+      if ($("f-pf-dia") && previo.dia) $("f-pf-dia").value = previo.dia;
+    }
     const etq = document.querySelector('label[for="f-monto"]');
     if (etq && !deDatos) etq.textContent = "Cuánto pagas al mes";
     const titulo = deDatos ? this.deDatos().find(x => x.id === id).nombre

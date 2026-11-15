@@ -25,7 +25,7 @@ const Avisos = {
 
     // 1) El faltante más cercano
     const f = Proyeccion.faltante(pr);
-    const avisoFaltante = f ? { id: "faltante", clase: "rojo", texto: Proyeccion.textoFaltante(f), acciones: [["¿Cómo lo cubro?", "cubrir"]] } : null;
+    const avisoFaltante = f ? { id: "faltante", clase: "rojo", texto: Proyeccion.textoFaltante(f), porque: "faltante", acciones: [["¿Cómo lo cubro?", "cubrir"]] } : null;
     if (avisoFaltante) afuera.push(avisoFaltante);
 
     // 2) La renta del mes
@@ -33,7 +33,7 @@ const Avisos = {
     if (r && r.falta > 0.005) {
       if (!f || f.fecha !== r.fecha) afuera.push({ id: "renta", clase: "rojo",
         texto: `${r.nombre}: faltan ${dinero(r.falta)} para el ${dia(r.fecha)}${r.vence ? ` (vence el ${Futuro.diaCorto(r.vence)})` : ""}.`,
-        acciones: [["¿Cómo lo cubro?", "cubrir"], ["Mover", "renta"]], clave: r.claveMov });
+        porque: "renta", acciones: [["¿Cómo lo cubro?", "cubrir"], ["Mover", "renta"]], clave: r.claveMov });
     } else if (r) campana.push({ id: "renta-ok", firma: `${r.fecha}|${r.monto}|${r.faltaDia}`,
       texto: `${r.nombre}: ${dinero(r.monto)} para el ${dia(r.fecha)} — queda cubierta` +
         (r.faltaDia > 0.005 ? `, pero ese día faltan ${dinero(r.faltaDia)} para ${Proyeccion.lista(r.cortosDia)}.` : "."), acciones: [["Ver en Mi futuro", "futuro"]] });
@@ -116,6 +116,12 @@ const Avisos = {
     const d = new Date().getDay();
     if (d >= 1 && d <= 5 && !Almacen.leerMovimientos().some(m => m.fecha === hoyClave))
       campana.push({ id: "hoy", firma: hoyClave, texto: "Hoy no has registrado nada.", acciones: [["Registrar", "registrar"]] });
+    // Cargos que parecen repetirse cada mes y no están en Pagos fijos (máximo 2 a la vez; "Entendido" lo quita hasta que cambie)
+    try {
+      Patrones.repetidos().slice(0, 2).forEach(x => campana.push({ id: `repetido-${x.clave}`, firma: `${x.monto}|${x.dia}`, clave: x.clave,
+        texto: `Parece que pagas ${x.nota} cada mes (unos ${dinero(x.monto)}, hacia el día ${x.dia}). ¿Lo agrego a Pagos fijos?`,
+        acciones: [["Agregar como esencial", "pf-esencial"], ["Agregar como suscripción", "pf-suscripcion"]] }));
+    } catch (e) { /* sin esta sugerencia */ }
     const sinFecha = Planeados.sinFecha();
     if (sinFecha) campana.push({ id: "sin-fecha", firma: String(sinFecha), texto: `Tienes ${sinFecha} ${sinFecha === 1 ? "gasto planeado" : "gastos planeados"} sin fecha.`, acciones: [["Ver", "planeados"]] });
     Datos.deudas().filter(x => x.venceInmediato && Datos.saldoDeuda(x.id) > 0.005 && !Almacen.leerPagosMovidos()[`${x.id}@inmediato`]).forEach(x =>
@@ -133,7 +139,30 @@ const Avisos = {
     // Lo más grave primero: el día 15 (acción legal), la renta que no se cubre, el faltante, lo que vence hoy o mañana…
     const peso = a => a.gravedad ?? { renta: 1, faltante: 2, vencen: 3, sync: 6 }[a.id] ?? (a.id.startsWith("pf-falta") ? 4 : 5);
     afuera.sort((x, y) => peso(x) - peso(y));
+    afuera.forEach(a => this.partir(a));
     return { afuera, campana };
+  },
+
+  // B7 · Un aviso urgente cabe en 3 líneas: la frase principal se ve; el resto va plegado en "Ver más".
+  // Nunca se pierde texto: principal + detalle = el texto de antes. No cambia cuándo sale cada aviso.
+  MAX_PRINCIPAL: 95,
+  partir(a) {
+    const t = a.texto || "";
+    if (t.length <= this.MAX_PRINCIPAL) return a;
+    // Fin de frase = signo + espacio (así "$1,655.09" no se corta)
+    const trozos = t.split(/([.!?])\s+/), frases = [];
+    for (let k = 0; k < trozos.length; k += 2) frases.push(trozos[k] + (trozos[k + 1] || ""));
+    let principal = frases[0], i = 1;
+    while (i < frases.length && (principal + " " + frases[i]).length <= this.MAX_PRINCIPAL) principal += " " + frases[i++];
+    let detalle = frases.slice(i).join(" ");
+    if (!detalle) { // una sola frase larga: se corta en el paréntesis, si lo hay ("… (la renta de diciembre sí se cubre).")
+      const k = t.indexOf(" (", 30);
+      if (k < 0) return a;
+      principal = t.slice(0, k).replace(/[,;]$/, "") + ".";
+      detalle = t.slice(k + 2).replace(/\)\.?$/, "").replace(/^./, c => c.toUpperCase()) + ".";
+    }
+    a.texto = principal; a.detalle = detalle;
+    return a;
   },
 
   // Botón corto de los avisos de afuera (cabe al lado del texto)
@@ -142,8 +171,10 @@ const Avisos = {
   html(a, enCampana, corto = false) {
     const botones = (a.acciones || []).slice(0, corto ? 1 : 9).map(([txt, acc]) =>
       `<button class="boton-chico ${acc === "cubrir" ? "lleno" : ""}" data-av-accion="${acc}" ${a.clave ? `data-av-clave="${escapar(a.clave)}"` : ""} ${corto ? `aria-label="${escapar(txt)}"` : ""}>${corto ? (this.CORTO[acc] || "Ver") : txt}</button>`).join("");
+    const porque = a.porque ? `<button type="button" class="enlace aviso-porque" data-av-accion="porque-${a.porque}">¿Por qué?</button>` : "";
+    const detalle = a.detalle ? `<details class="aviso-detalle"><summary>Ver más</summary><span class="aviso-detalle-texto">${escapar(a.detalle)}</span></details>` : "";
     return `<div class="aviso-item ${a.clase || ""}">
-      <p>${a.negrita && a.texto.startsWith(a.negrita) ? `<strong>${escapar(a.negrita)}</strong>${escapar(a.texto.slice(a.negrita.length))}` : escapar(a.texto)}</p>
+      <div class="aviso-cuerpo"><p>${a.negrita && a.texto.startsWith(a.negrita) ? `<strong>${escapar(a.negrita)}</strong>${escapar(a.texto.slice(a.negrita.length))}` : escapar(a.texto)}</p>${detalle}${porque}</div>
       <div class="pl-botones">${botones}${enCampana ? `<button class="boton-chico" data-av-entendido="${escapar(a.id)}" data-av-firma="${escapar(a.firma || "")}">Entendido</button>` : ""}</div>
     </div>`;
   },
@@ -179,6 +210,13 @@ const Avisos = {
     // Puntito en "Inicio" de la barra: lo urgente de afuera y lo nuevo de la campana
     const total = afuera.length + n;
     $("nav-inicio-num").textContent = total; $("nav-inicio-num").hidden = !total;
+    // B6 · Número en el ícono de la app (los avisos urgentes). En el iPhone solo se actualiza cuando abres la app.
+    try {
+      if ("setAppBadge" in navigator) {
+        const r = afuera.length ? navigator.setAppBadge(afuera.length) : navigator.clearAppBadge();
+        if (r && r.catch) r.catch(() => {});
+      }
+    } catch (e) { /* un navegador sin esta función no debe fallar */ }
     this._nuevos = nuevos;
     if (!$("hoja").hidden && !$("hoja-avisos").hidden) this.mostrarCampana();
   },
@@ -201,6 +239,12 @@ const Avisos = {
 
   accion(acc, clave) {
     Nav.cerrarHoja();
+    if (acc === "porque-faltante" || acc === "porque-renta") return Explica.abrir(acc.slice(7));
+    if (acc === "pf-esencial" || acc === "pf-suscripcion") {
+      const x = Patrones.repetidos().find(r => r.clave === clave);
+      Nav.ir("pagosfijos");
+      return PagosFijos.abrirEditor(null, acc.slice(3), x ? { nombre: x.nota, monto: x.monto, dia: x.dia } : undefined);
+    }
     if (acc === "cubrir") return Cubrir.abrir();
     if (acc === "futuro") return Nav.ir("futuro");
     if (acc === "deudas") return Nav.ir("deudas");

@@ -103,6 +103,34 @@ const Patrones = {
     });
   },
 
+  /* A5 · Cargos que parecen repetirse cada mes y que todavía no están en Pagos fijos.
+     Misma nota, 2 o más meses distintos, a lo más 1 vez por mes, monto parecido (±10 % de la mediana) y día del mes parecido (±3).
+     Nunca Transporte. Devuelve [{ clave, nota, categoria, monto, dia, meses }]. */
+  repetidos() {
+    return this._con("repetidos", movs => {
+      const ya = Almacen.leerPagosPropios().map(x => Vigilante.normal(x.nombre).trim());
+      const grupos = {};
+      movs.filter(m => m.tipo === "gasto" && (m.nota || "").trim() && m.categoria !== "Transporte").forEach(m => {
+        const k = Vigilante.normal(m.nota).trim();
+        (grupos[k] = grupos[k] || []).push(m);
+      });
+      const mediana = a => { const s = a.slice().sort((x, y) => x - y), i = Math.floor(s.length / 2); return s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2; };
+      const out = [];
+      Object.entries(grupos).forEach(([k, lista]) => {
+        const meses = lista.map(m => m.fecha.slice(0, 7));
+        if (new Set(meses).size < 2 || new Set(meses).size !== meses.length) return; // 2+ meses y una sola vez por mes
+        if (ya.some(n => n && (n === k || n.includes(k) || k.includes(n)))) return; // ya está en Pagos fijos
+        const monto = mediana(lista.map(m => m.monto));
+        const dias = lista.map(m => Number(m.fecha.slice(8, 10))), dia = Math.round(mediana(dias));
+        if (!lista.every(m => Math.abs(m.monto - monto) <= monto * 0.1 + 0.005)) return;
+        if (!dias.every(d => Math.abs(d - dia) <= 3)) return;
+        const ult = lista.slice().sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+        out.push({ clave: k, nota: ult.nota.trim(), categoria: ult.categoria || "Otros", monto: redondear(monto), dia, meses: meses.length });
+      });
+      return out.sort((a, b) => b.meses - a.meses || b.monto - a.monto);
+    });
+  },
+
   /* Hora (0 a 23) en la que sueles registrar tu primer movimiento del día: la mediana de los últimos 28 días.
      Solo cuentan los movimientos anotados el mismo día de su fecha (no los que pasas después). Con menos de 5 días: null. */
   horaHabitual() {
