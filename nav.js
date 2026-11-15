@@ -108,7 +108,6 @@ const Nav = {
     const t = this.tipoHoja();
     const gasto = t === "gasto";
     $("hoja-tipos").hidden = t === "ingreso" || t === "pagoDeuda"; // solo Gasté ↔ Colchón comparten hoja
-    document.querySelectorAll("#hoja-registrar .hoja-etiqueta, #hoja-registrar .hoja-atajos").forEach(x => { x.hidden = !gasto; }); // los atajos son de gastos
     $("hoja-titulo-barra").textContent = this.tituloHoja();
     $("hoja-nota").placeholder = { ingreso: "Ej.: sueldo, propina, venta", pagoDeuda: "Ej.: renta, préstamo, tarjeta" }[t] || "Ej.: Uber Eats, súper, taxi";
     $("hoja-nota").closest(".campo").hidden = t === "colchon" || t === "pagoDeuda";
