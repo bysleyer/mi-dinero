@@ -2078,3 +2078,19 @@ html, body { overscroll-behavior: none; }
 .cj-pasos-lista .cj-paso { padding: 8px 0; border-bottom: 1px solid var(--borde); }
 .cj-pasos-lista .cj-paso.hecho .cj-paso-texto { color: var(--suave); }
 .cj-sub { font-size: .875rem; margin: 6px 0; color: var(--suave); }
+
+/* v84 · Mis deudas: tarjeta "Tu día de libertad" (arriba de las pestañas) */
+.libertad { border: 1px solid #2c4a45; background: linear-gradient(180deg, #14262a, var(--tarjeta)); }
+.libertad.libertad-no { border-color: #5a3a35; background: #1d1a1c; }
+.libertad:empty { display: none; }
+.libertad .k { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); margin: 0 0 6px; font-weight: 600; }
+.libertad .fecha { font-size: 2.1rem; font-weight: 800; line-height: 1.1; margin: 0; color: var(--ok); overflow-wrap: anywhere; }
+.libertad .fecha.fecha-chica { font-size: 1.5rem; }
+.libertad.libertad-no .fecha { color: var(--aviso); }
+.libertad .sem { margin: 4px 0 14px; font-size: 1rem; }
+.libertad .av { height: 10px; border-radius: 6px; background: var(--borde); overflow: hidden; }
+.libertad .av i { display: block; height: 100%; background: var(--ok); border-radius: 6px; }
+.libertad .avt { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .88rem; color: var(--suave); margin: 8px 0 0; }
+.libertad .mas { margin: 14px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--fondo); font-size: .95rem; }
+.libertad .mas b { color: var(--ok); }
+.libertad .est { margin: 12px 0 0; font-size: .82rem; color: var(--suave); }

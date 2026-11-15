@@ -338,6 +338,52 @@ const Deudas = {
         <span>${this.textoLibre(p)}</span></li>`;
     }
     $("d-comparador").innerHTML = comp;
+    this.mostrarLibertad(plan, extra, pr, p);
+  },
+
+  // Tarjeta "Tu día de libertad" (v84): arriba de las pestañas. Solo lee: usa la misma cuenta que "Cuándo termino"
+  // (fechasReales → Proyeccion.planDeudas) y los saldos de las tarjetas. No guarda nada.
+  EXTRA_SUGERIDO: 50,
+
+  avanceTotal() {
+    let original = 0, pagado = 0;
+    Datos.deudas().forEach(d => {
+      const saldo = Math.max(0, Datos.saldoDeuda(d.id));
+      original += Math.max(d.monto || 0, saldo);
+      pagado += Math.max(0, (d.monto || 0) - saldo);
+    });
+    return { original, pagado, pct: original > 0 ? Math.round(pagado / original * 100) : 0 };
+  },
+
+  mostrarLibertad(plan, extra, pr, p) {
+    const caja = $("d-libertad");
+    const av = this.avanceTotal();
+    const hayFecha = p.libre && p.libre !== "ya";
+    caja.className = "tarjeta libertad" + (p.libre ? "" : " libertad-no");
+    const barra = av.original > 0 ? `
+      <div class="av" role="img" aria-label="Pagado ${av.pct} por ciento de lo que se debía"><i style="width:${Math.max(av.pct, av.pagado > 0 ? 3 : 0)}%"></i></div>
+      <div class="avt"><span>Pagado ${dineroCorto(av.pagado)}</span><span>De ${dineroCorto(av.original)} · ${av.pct} %</span></div>` : "";
+    if (p.libre === "ya") {
+      caja.innerHTML = `<p class="k">Tu día de libertad</p><p class="fecha fecha-chica">Ya no tienes deudas</p>`;
+      return;
+    }
+    if (!p.libre) {
+      caja.innerHTML = `<p class="k">Tu día de libertad</p><p class="fecha fecha-chica">Todavía no se alcanza</p>
+        <p class="sem">Con estos números no llegas en 2 años.</p>${barra}`;
+    } else {
+      caja.innerHTML = `<p class="k">Tu día de libertad</p><p class="fecha">${fechaLibertad(p.libre)}</p>
+        <p class="sem">${p.semanas <= 1 ? "Falta menos de 1 semana" : `Faltan unas ${p.semanas} semanas`}</p>${barra}`;
+    }
+    // "Con $50 más…": misma cuenta, sumando el extra sugerido a lo que ya pusiste en el campo
+    const mas = this.fechasReales(plan.porcentajeColchon, extra + this.EXTRA_SUGERIDO, pr);
+    let linea = "";
+    if (mas.libre && mas.libre !== "ya" && (!hayFecha || mas.libre < p.libre)) {
+      const dias = hayFecha ? Math.round((p.libre - mas.libre) / 86400000) : 0;
+      const antes = !hayFecha ? "" : dias < 7 ? " (menos de 1 semana antes)" : ` (${Math.round(dias / 7)} ${Math.round(dias / 7) === 1 ? "semana" : "semanas"} antes)`;
+      linea = `<p class="mas">Con <b>${dineroCorto(this.EXTRA_SUGERIDO)} más por semana</b>, llegas el <b>${fechaLibertad(mas.libre)}</b>${antes}.</p>`;
+    }
+    const conExtra = extra > 0 ? ` Incluye tu extra de ${dineroCorto(extra)} por semana.` : "";
+    caja.innerHTML += `${linea}<p class="est">Es un estimado: cambia si cambian tus horas, tus gastos o tus pagos.${conExtra}</p>`;
   },
 
   mostrar() {
@@ -391,6 +437,7 @@ const Deudas = {
 };
 
 const mesAño = f => f.toLocaleDateString("es", { month: "long", year: "numeric" });
+const fechaLibertad = f => f.toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" }).replace(/\./g, "");
 const fechaLarga = f => f.toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" });
 
 if (Datos.actual) Deudas.iniciar();
