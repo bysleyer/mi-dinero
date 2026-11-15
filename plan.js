@@ -446,9 +446,9 @@ const Plan = {
         <li><span>Dinero que tengo hoy</span><span>${Futuro.plata(sem.inicial)}</span></li>
         ${sem.entra.map(l => `<li><span>${escapar(l.nombre)}<span class="detalle">${Futuro.diaCorto(l.fecha)}</span></span><span class="ok">+${dinero(l.monto)}</span></li>`).join("")}
       </ul>
-      <h3 class="pc-sub">Para tus gastos de esta semana</h3>
+      <h3 class="pc-sub">Lo que falta pagar de aquí al domingo</h3>
       <ul class="resumen">${sem.gastos.map(fila).join("") || '<li class="vacio">Nada más esta semana.</li>'}
-        <li class="total"><span>Total</span><span>${dinero(sem.totalGastos)}</span></li></ul>
+        <li class="total"><span>Total por pagar</span><span>${dinero(sem.totalGastos)}</span></li></ul>
       ${sem.huecoAntes ? `<p class="pc-hueco">Antes del cheque del ${Futuro.dia(sem.desde)} te faltan ${dinero(sem.huecoAntes.falta)} (el ${Futuro.dia(sem.huecoAntes.fecha)}).</p>` : ""}
       <div class="p-reparto">
         <div class="p-guardar">

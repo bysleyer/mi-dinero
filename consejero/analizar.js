@@ -126,16 +126,17 @@ const { chromium } = require("playwright");
     const ingreso = (() => {
       try {
         const c = Plan.calcular();
-        const lista = (Datos.actual.ingresos.cheques || []).filter(x => x.bruto > 0 && x.neto > 0)
-          .sort((x, y) => y.fecha.localeCompare(x.fecha)).slice(0, 12)
-          .map(x => ({ fecha: x.fecha, bruto: x.bruto, neto: x.neto, horas: x.horas ?? null, enfermedad: x.enfermedad ?? 0, proporcion: Math.round(x.neto / x.bruto * 10000) / 10000 }));
+        const lista = Jornadas.chequesReales().slice(0, 12)
+          .map(x => ({ fecha: x.fecha, bruto: x.bruto, neto: x.neto, horas: x.horas ?? null, enfermedad: x.enfermedad ?? 0, origen: x.origen, proporcion: Math.round(x.neto / x.bruto * 10000) / 10000 }));
         return {
           semana: { lunes: Plan.claveSemana(), origen: c.usaReal ? "cheque real" : "estimación", netoQueUsaLaApp: red(c.neto),
                     estimadoNeto: red(c.estimado.neto), estimadoBruto: red(c.estimado.bruto), horasPlan: c.horasPlan,
                     horasEnfermedad: Plan.enfermedadEfectiva(c.plan), chequeRealRegistrado: red(c.real.total) },
           proporcionNeto: Math.round(Jornadas.proporcionNeto() * 10000) / 10000,
-          proporcionDe: (Datos.actual.ingresos.cheques || []).length >= 2 ? "últimos 4 cheques reales" : "mis datos",
-          ultimosCheques: lista
+          proporcionDe: lista.length >= 2 ? "últimos cheques reales" : "mis datos (aún no hay 2 cheques reales con horas)",
+          ultimosCheques: lista,
+          // Para no comparar semanas distintas: el cheque de un viernes paga las horas de la SEMANA ANTERIOR
+          nota: "chequeRealRegistrado es lo que cobraste este viernes (paga las horas de la semana pasada). estimadoNeto es lo que se espera por las horas de ESTA semana y se cobra el viernes que sigue. No los compares entre sí; compara cada cheque real con lo estimado para sus mismas horas (ultimosCheques → proporcion)."
         };
       } catch (e) { return { error: e.message }; }
     })();
@@ -160,7 +161,11 @@ const { chromium } = require("playwright");
       hoy: hoyClave,
       versionApp: VERSION_APP.numero,
       dineroHoy: red(Dinero.actual()),
-      semana: { lunes: sem.lunes, domingo: sem.domingo, libre: sem.libre, guardar: sem.guardar, totalGastos: sem.totalGastos,
+      semana: { lunes: sem.lunes, domingo: sem.domingo, libre: sem.libre, guardar: sem.guardar,
+        // Lo que ya salió esta semana (la misma cuenta que "A dónde va"): gastos aparte de pagos a deudas
+        gastado: (() => { const r = Resumen.calcular("semana"); return { gastos: red(r.totalGastado), pagosDeuda: red(r.pagosDeudas), total: red(r.totalGastado + r.pagosDeudas), ingresos: red(r.ingresos) }; })(),
+        // Lo que FALTA pagar de hoy al domingo según la proyección (NO es lo gastado). Antes se llamaba "totalGastos".
+        porPagarHastaDomingo: sem.totalGastos,
                 hueco: sem.hueco, huecoAntes: sem.huecoAntes },
       faltante: f ? { ...f, texto: Proyeccion.textoFaltante(f) } : null,
       renta: { atrasada: red(Proyeccion.rentaAtrasada()), estado: (() => { try { return Proyeccion.estadoRenta(pr); } catch (e) { return null; } })() },

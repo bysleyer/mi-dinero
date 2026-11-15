@@ -173,7 +173,7 @@ const Calendario = {
       <li><span>Días trabajados</span><span>${mesTotales.trabajados}</span></li>
       <li><span>Días no trabajados</span><span>${mesTotales.noTrabajados}</span></li>
       <li><span>Horas totales</span><span>${redondear(mesTotales.horas)} h</span></li>
-      <li class="total"><span>Neto estimado del mes</span><span>${dinero(mesTotales.neto)}</span></li>`;
+      <li class="total"><span>Pago estimado por tus horas del mes</span><span>${dinero(mesTotales.neto)}</span></li>`;
   },
 
   // ---------- Tocar un día: el mismo formulario del Bloque 7 ----------
