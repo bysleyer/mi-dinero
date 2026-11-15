@@ -335,59 +335,6 @@ const Nav = {
     barra.addEventListener("pointercancel", fin);
   },
 
-  // ---------- Diagnóstico automático del teclado (temporal) ----------
-  // Al abrir el teclado en una hoja, mide la pantalla varias veces mientras el teclado sube
-  // y guarda esas medidas en el repositorio PRIVADO de datos (diagnostico/teclado.json). Solo con la sincronización activa.
-  medidasTeclado(ms) {
-    const r = x => Math.round(x * 10) / 10;
-    const caja = el => { if (!el) return null; const b = el.getBoundingClientRect(); return [r(b.top), r(b.bottom)]; };
-    const vv = window.visualViewport, h = $("hoja"), c = document.querySelector(".hoja-caja"), cs = getComputedStyle(c);
-    return { ms, alto: window.innerHeight, altoDoc: document.documentElement.clientHeight, vv: vv ? [r(vv.height), r(vv.offsetTop), r(vv.pageTop)] : null,
-      scroll: r(window.scrollY), hoja: caja(h), estiloHoja: h.getAttribute("style") || "", caja: caja(c), maxCaja: cs.maxHeight, abajoCaja: cs.paddingBottom,
-      scrollCaja: r(c.scrollTop), boton: caja($("hoja-continuar")), monto: caja($("hoja-monto")), foco: document.activeElement ? document.activeElement.id : "",
-      clases: h.className, tipo: this.tipoHoja() };
-  },
-
-  muestrearTeclado() {
-    try {
-      if (!window.matchMedia("(pointer: coarse)").matches || typeof Sync === "undefined" || !Sync.activo() || Sync.soloVer()) return;
-      if ((this._diagEnvios || 0) >= 8 || this._diagMidiendo) return;
-      this._diagMidiendo = true;
-      const muestras = [];
-      [50, 300, 700, 1200, 2000].forEach(ms => setTimeout(() => { try { muestras.push(this.medidasTeclado(ms)); } catch (e) { /* nunca debe romper la hoja */ } }, ms));
-      setTimeout(() => { this._diagMidiendo = false; this._diagEnvios = (this._diagEnvios || 0) + 1; this.subirDiagTeclado(muestras); }, 2200);
-    } catch (e) { this._diagMidiendo = false; }
-  },
-
-  async subirDiagTeclado(muestras) {
-    try {
-      const sonda = document.createElement("div");
-      sonda.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)";
-      document.body.appendChild(sonda);
-      const seguro = getComputedStyle(sonda); const insets = [seguro.paddingTop, seguro.paddingBottom]; sonda.remove();
-      const registro = { cuando: new Date().toISOString(), version: VERSION_APP.numero, aparato: Sync.config().aparato || "", instalada: !!navigator.standalone,
-        ua: navigator.userAgent, pantalla: [screen.width, screen.height, window.devicePixelRatio], muescas: insets, muestras };
-      const ruta = "/contents/diagnostico/teclado.json";
-      let previo = { registros: [] }, sha;
-      const r = await Sync.api(ruta);
-      if (r.ok) { const j = await r.json(); sha = j.sha; try { previo = JSON.parse(Sync.deBase64(j.content)); } catch (e) { /* archivo dañado: se reemplaza */ } }
-      const registros = (previo.registros || []).concat(registro).slice(-12);
-      await Sync.api(ruta, { method: "PUT", body: JSON.stringify({ message: "Diagnóstico del teclado", content: Sync.aBase64(JSON.stringify({ registros }, null, 1)), ...(sha ? { sha } : {}) }) });
-    } catch (e) { /* sin internet o sin permiso: se ignora */ }
-  },
-
-  // Muestra las medidas reales de la pantalla y del teclado (para corregir la hoja en el iPhone)
-  diagTeclado() {
-    const d = $("hoja-diag");
-    if (!d || d.hidden) return;
-    const vv = window.visualViewport, r = x => Math.round(x);
-    const h = $("hoja").getBoundingClientRect(), c = document.querySelector(".hoja-caja").getBoundingClientRect(), b = $("hoja-continuar").getBoundingClientRect();
-    const cs = getComputedStyle(document.querySelector(".hoja-caja"));
-    d.textContent = `pantalla ${r(window.innerHeight)} · visible ${vv ? r(vv.height) : "?"} desde ${vv ? r(vv.offsetTop) : "?"} · scroll ${r(window.scrollY)} · ` +
-      `hoja ${r(h.top)}–${r(h.bottom)} · caja ${r(c.top)}–${r(c.bottom)} (máx ${cs.maxHeight}, abajo ${cs.paddingBottom}) · botón ${r(b.top)}–${r(b.bottom)} · ` +
-      `${$("hoja").className.replace("hoja", "").trim() || "sin teclado"} · ${navigator.standalone ? "instalada" : "navegador"}`;
-  },
-
   iniciar() {
     document.body.classList.add("con-nav");
     $("nav").hidden = false;
@@ -435,25 +382,9 @@ const Nav = {
       else { h.style.top = ""; h.style.height = ""; h.style.bottom = ""; }
       $("hoja").classList.toggle("con-teclado", conTeclado);
       // (ya no se esconde la nota mientras escribes: al quitar el foco todo saltaba y el toque caía en otro lado)
-      this.diagTeclado();
     };
-    // Modo diagnóstico del teclado (temporal): tocar 3 veces el título de la hoja lo prende o lo apaga
-    let toques = [];
-    document.querySelector(".hoja-barra").addEventListener("click", e => {
-      if (e.target.closest("button")) return;
-      const ahora = Date.now();
-      toques = toques.filter(t => ahora - t < 1200).concat(ahora);
-      if (toques.length < 3) return;
-      toques = [];
-      let on = false;
-      try { on = localStorage.getItem("diagTeclado") !== "1"; localStorage.setItem("diagTeclado", on ? "1" : "0"); } catch (e) { on = $("hoja-diag").hidden; }
-      $("hoja-diag").hidden = !on;
-      this.diagTeclado();
-    });
-    try { $("hoja-diag").hidden = localStorage.getItem("diagTeclado") !== "1"; } catch (e) { /* sin almacenamiento: queda apagado */ }
-    setInterval(() => { if (!$("hoja").hidden && !$("hoja-diag").hidden) this.diagTeclado(); }, 400);
     if (window.visualViewport) { window.visualViewport.addEventListener("resize", ajustar); window.visualViewport.addEventListener("scroll", ajustar); }
-    $("hoja").addEventListener("focusin", e => { ajustar(); if (e.target.matches && e.target.matches("input")) this.muestrearTeclado(); });
+    $("hoja").addEventListener("focusin", ajustar);
     $("hoja").addEventListener("focusout", () => setTimeout(ajustar, 60));
     $("hoja").addEventListener("click", e => {
       if (e.target.id === "hoja" || e.target.closest("#hoja-cerrar")) return this.cerrarHoja(true);
