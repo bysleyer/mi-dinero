@@ -68,14 +68,14 @@ const Nav = {
     $("menu-reg").classList.add("abierto");
     $("menu-reg").setAttribute("aria-hidden", "false");
     $("nav-registrar").setAttribute("aria-expanded", "true");
-    document.querySelectorAll(".menu-reg-op").forEach(b => { b.tabIndex = 0; });
+    document.querySelectorAll(".menu-reg-op, .menu-reg-atajo").forEach(b => { b.tabIndex = 0; });
   },
   cerrarMenuReg() {
     if (!$("menu-reg")) return;
     $("menu-reg").classList.remove("abierto");
     $("menu-reg").setAttribute("aria-hidden", "true");
     $("nav-registrar").setAttribute("aria-expanded", "false");
-    document.querySelectorAll(".menu-reg-op").forEach(b => { b.tabIndex = -1; });
+    document.querySelectorAll(".menu-reg-op, .menu-reg-atajo").forEach(b => { b.tabIndex = -1; });
   },
 
   abrirHoja(cual, tipo) {
@@ -192,6 +192,14 @@ const Nav = {
     $("formulario").requestSubmit();
   },
 
+  // Atajos: Transporte, Trabajé hoy, No trabajé hoy y ¿Y si gasto…? (desde el menú del + y desde la hoja de Gasté)
+  atajo(que) {
+    if (que === "trabaje") $("trabaje-hoy").click();
+    else if (que === "no-trabaje") $("no-trabaje-hoy").click();
+    else if (que === "ysigasto") Planeados.abrirTemporal(null, hoy(), this.visible());
+    else abrirFormulario(que, ["gasto", "ingreso", "pagoDeuda"].includes(que) ? { selector: true } : {});
+  },
+
   cerrarHoja() { if ($("hoja")) $("hoja").hidden = true; },
 
   iniciar() {
@@ -208,6 +216,8 @@ const Nav = {
     $("menu-reg").addEventListener("click", e => {
       const op = e.target.closest("[data-reg-tipo]");
       if (op) return this.abrirHoja("registrar", op.dataset.regTipo);
+      const at = e.target.closest("[data-registrar]");
+      if (at) { this.cerrarMenuReg(); return this.atajo(at.dataset.registrar); }
       this.cerrarMenuReg(); // toque en el fondo
     });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && this.menuAbierto()) { this.cerrarMenuReg(); $("nav-registrar").focus(); } });
@@ -269,11 +279,7 @@ const Nav = {
       const r = e.target.closest("[data-registrar]");
       if (!r) return;
       this.cerrarHoja();
-      const que = r.dataset.registrar;
-      if (que === "trabaje") $("trabaje-hoy").click();
-      else if (que === "no-trabaje") $("no-trabaje-hoy").click();
-      else if (que === "ysigasto") Planeados.abrirTemporal(null, hoy(), this.visible());
-      else abrirFormulario(que, ["gasto", "ingreso", "pagoDeuda"].includes(que) ? { selector: true } : {});
+      this.atajo(r.dataset.registrar);
     });
     // Se marca la sección cada vez que cambia la pantalla visible
     const obs = new MutationObserver(() => this.marcar());
