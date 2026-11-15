@@ -2066,3 +2066,10 @@ html, body { overscroll-behavior: none; }
   body.hoja-abierta main.contenedor:not([hidden]) { transform: none; }
   .menu-reg-op, .menu-reg-atajos, .menu-reg.abierto .menu-reg-op, .menu-reg.abierto .menu-reg-atajos { transform: none !important; transition: opacity 150ms ease !important; transition-delay: 0ms !important; }
 }
+
+/* v70: con el teclado abierto la hoja cabe completa encima de él y el botón de guardar queda siempre a la vista */
+.hoja.con-teclado .hoja-caja { max-height: calc(100% - 8px); padding-bottom: 14px; }
+#hoja-continuar { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 0 0 10px var(--tarjeta), 0 60px 0 10px var(--tarjeta); }
+#hoja-continuar.falta { box-shadow: 0 0 0 10px var(--tarjeta), 0 60px 0 10px var(--tarjeta); }
+/* Mientras escribes el monto en Deuda, el título "¿A cuál deuda?" no se esconde */
+.hoja.escribiendo #hoja-deudas-etq { display: block; }
