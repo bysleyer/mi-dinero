@@ -350,11 +350,14 @@ const Nav = {
       const vv = window.visualViewport;
       const teclado = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
       const conTeclado = !!enfocado && (tactil.matches || teclado > 120);
-      document.querySelector(".hoja-caja").style.marginBottom = teclado > 120 ? `${teclado}px` : "";
+      // La hoja ocupa justo la parte visible de la pantalla (encima del teclado): lo que no cabe se desplaza por dentro
+      const h = $("hoja");
+      if (vv && conTeclado) { h.style.top = `${vv.offsetTop}px`; h.style.height = `${vv.height}px`; h.style.bottom = "auto"; }
+      else { h.style.top = ""; h.style.height = ""; h.style.bottom = ""; }
       $("hoja").classList.toggle("con-teclado", conTeclado);
       $("hoja").classList.toggle("escribiendo", conTeclado && document.activeElement === $("hoja-monto"));
     };
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", ajustar);
+    if (window.visualViewport) { window.visualViewport.addEventListener("resize", ajustar); window.visualViewport.addEventListener("scroll", ajustar); }
     $("hoja").addEventListener("focusin", ajustar);
     $("hoja").addEventListener("focusout", () => setTimeout(ajustar, 60));
     $("hoja").addEventListener("click", e => {
