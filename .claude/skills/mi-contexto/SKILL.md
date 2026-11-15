@@ -62,11 +62,16 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
 - En diseño: mostrar imágenes de concepto y, al aplicar, **comparar lado a lado maqueta y app real** hasta que coincidan.
   Sé honesto con qué skills usaste; con impeccable, lee `reference/craft-floor.md` antes de cada cambio de interfaz.
 - Después de cada cambio en la app: probar (Playwright en Node ya instalado; nunca reinstalarlo; las pruebas de toda la app
-  están en `mi-dinero-datos/pruebas/`, y también hay que correr `consejero/analizar.js`), subir la versión
+  están en `mi-dinero-datos/pruebas/`, y también hay que correr `consejero/analizar.js`; lo más fácil es
+  `bash pruebas/todo.sh` desde `mi-dinero-datos`: pruebas a–j, saldo de 400 días, analizador y fotos de pantalla contra la
+  referencia vigente, ver `pruebas/README.md`), subir la versión
   (`VERSION_APP` en `app.js` y `CACHE` en `sw.js`, mismo número), comparar que los números no cambiaron (salvo que se pidiera),
   dejar antes una rama `respaldo/vNN`, commit, push a `main`, verificar GitHub Pages
   (`https://api.github.com/repos/bysleyer/mi-dinero/actions/runs?per_page=1`) y contar qué se probó.
   Si Pages da `startup_failure`, es GitHub: reintentar con un commit vacío.
+- Si dice "dale con cada tarea hasta que termines o necesites algo de mí": seguir sin esperar un "dale" por tarea y parar solo
+  cuando haga falta una respuesta suya o termine la fase.
+- `/mi-contexto` y `/mi-contexto guardar` solo los puede escribir el usuario (la skill no se invoca sola).
 - Nunca borrar historial ni `push --force` sin explicar y esperar confirmación.
 - **Privacidad**: datos reales solo en `mis-datos.json` (excluido de git) y en el repo privado. Nunca pegar llaves en
   el chat. Nunca mandar datos personales a servicios externos ni a otras IAs.
@@ -83,6 +88,9 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
   `pagosfijos.js` (Más → Pagos fijos: esenciales, suscripciones, orden y "Llegó el recibo"). En `campos.js` viven
   `ReglasPago` (pagos fijos propios con versiones por fecha, pausas y cancelación) y `Prioridad` (orden editable: renta fija
   primero, nivel 1/2 se cruzan, suscripciones al final); en `pagos.js`, `Recibos` (recibo del mes o promedio de los últimos 3).
+- `Nav.ir` abre cada pantalla llamando directo a su función (`Futuro.abrir()`, etc.); ya no hay botones ocultos en el inicio ni
+  diagnóstico del teclado (v76). Los `<script>` de `index.html` y `ARCHIVOS` de `sw.js` deben listar los mismos archivos
+  (lo revisa `pruebas/j-archivos.js`).
 - `consejero/analizar.js`: corre la app sin pantalla con `datos.json` y devuelve los números en JSON (lo usa el consejero).
 - Reglas fijas del usuario que la app respeta: el tren y el taxi para ir a trabajar no se tocan; horas extra solo
   "si hay"; la app no asume pagos; las deudas atrasadas no llevan recargos inventados; las sugerencias de mover solo
