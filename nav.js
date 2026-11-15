@@ -468,8 +468,8 @@ const Inicio = {
       <button class="kpi kpi-guardar" data-explica="despues" aria-label="Para después: ${dinero(sem.guardar)}. Ver de dónde sale">
         <span class="kpi-etq">Para después</span><strong>${dinero(sem.guardar)}</strong></button>`;
     this.ajustarCifras();
+    if (typeof Avisos !== "undefined") Avisos.mostrar(); // primero: el mensaje de "Hoy" no repite lo que ya dice un aviso urgente
     this.mostrarHoy();
-    if (typeof Avisos !== "undefined") Avisos.mostrar();
     if (typeof Consejero !== "undefined") Consejero.tarjetaInicio();
   },
 
@@ -483,8 +483,12 @@ const Inicio = {
     const texto = !delDia.length ? "Todavía no registras nada hoy."
       : `${delDia.length} ${delDia.length === 1 ? "movimiento" : "movimientos"} hoy` +
         `${gastado > 0 ? ` · gastaste ${dinero(gastado)}` : ""}${entro > 0 ? ` · entró ${dinero(entro)}` : ""}.`;
+    // Una frase del momento (Mensajes). Si es la invitación a registrar, reemplaza al "Todavía no registras nada hoy."
+    let msg = null;
+    try { msg = typeof Mensajes !== "undefined" ? Mensajes.elegir() : null; } catch (e) { /* sin mensaje */ }
+    const aparte = msg && !(msg.caso === "sin-registro" && !delDia.length);
     caja.hidden = false;
-    caja.innerHTML = `<h2>Hoy</h2><p class="hoy-texto">${texto}</p>
+    caja.innerHTML = `<h2>Hoy</h2><p class="hoy-texto">${msg && !aparte ? escapar(msg.texto) : texto}</p>${aparte ? `<p class="hoy-mensaje">${escapar(msg.texto)}</p>` : ""}
       <button id="inicio-hoy-registrar" class="boton-grande guardar">${delDia.length ? "Registrar otro" : "Registrar un gasto"}</button>`;
   },
 

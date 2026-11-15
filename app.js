@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 78, fecha: "15 nov 2026" };
+const VERSION_APP = { numero: 79, fecha: "15 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -625,13 +625,30 @@ function registrarMovimiento(mov) {
 // "Guardado: $12 en Transporte" — dice qué se guardó
 function textoGuardado(mov) {
   const m = dineroCorto(mov.monto);
-  if (mov.tipo === "gasto") return `Guardado: ${m} en ${mov.categoria || "gastos"}`;
+  if (mov.tipo === "gasto") return `Guardado: ${m} en ${mov.categoria || "gastos"}${consecuenciaGasto(mov)}`;
   if (mov.tipo === "ingreso") return `Guardado: te pagaron ${m}`;
   if (mov.tipo === "pagoDeuda") {
     const d = Datos.deudas().find(x => x.id === mov.deudaId);
     return `Guardado: ${m} a ${d ? d.nombre : "la deuda"}`;
   }
   return "Guardado";
+}
+
+// Lo que pasó con este gasto, en una línea: cómo quedó Libre y cuánto queda de la regla en la que entra.
+// El transporte (tren y taxi al trabajo) no se comenta: queda como siempre.
+function consecuenciaGasto(mov) {
+  if (mov.categoria === "Transporte") return "";
+  try {
+    const partes = [`Libre ${dinero(Plan.semanaReal().libre)}`];
+    if (typeof Vigilante !== "undefined") {
+      Vigilante.reglas().filter(r => Vigilante.entra(r, mov)).slice(0, 2).forEach(r => {
+        const e = Vigilante.estado(r, mov.fecha);
+        const nombre = r.nombre.replace(/\s*\(.*\)\s*$/, "");
+        partes.push(r.maxVeces > 0 ? `${nombre} ${e.veces} de ${r.maxVeces}` : r.maxMonto > 0 ? `${nombre} ${dineroCorto(e.monto)} de ${dineroCorto(r.maxMonto)}` : "");
+      });
+    }
+    return ". " + partes.filter(Boolean).join(" · ");
+  } catch (e) { return ""; }
 }
 
 // "Deshacer" del aviso: borra el movimiento recién guardado sin preguntar (y devuelve lo que salió de los sobres)
@@ -650,7 +667,9 @@ function deshacerMovimiento(id) {
 function textoComparacion(mov) {
   const dif = redondear(mov.monto - mov.estimado);
   const signo = dif > 0 ? "+" : dif < 0 ? "−" : "";
-  return `Estimé ${dinero(mov.estimado)}, te llegaron ${dinero(mov.monto)}, diferencia ${signo}${dinero(Math.abs(dif))}`;
+  let libre = "";
+  try { libre = `. Libre ${dinero(Plan.semanaReal().libre)}`; } catch (e) { /* sin esa cifra */ }
+  return `Estimé ${dinero(mov.estimado)}, te llegaron ${dinero(mov.monto)}, diferencia ${signo}${dinero(Math.abs(dif))}${libre}`;
 }
 
 // Avisa a otras pantallas (ej.: Mis deudas) que los movimientos cambiaron

@@ -95,10 +95,7 @@ const Vigilante = {
       if (!this.entra(regla, mov)) return null;
       const l = this.llevas(regla, mov.fecha, mov);
       if (!this.medir(regla, l).pasado) return null;
-      const partes = [];
-      if (regla.maxVeces != null) partes.push(`${l.veces} de ${regla.maxVeces} ${regla.maxVeces === 1 ? "vez" : "veces"}`);
-      if (regla.maxMonto != null) partes.push(`${dinero(l.monto)} de ${dinero(regla.maxMonto)}`);
-      return { regla, l, texto: `${regla.nombre}: con este llevas ${partes.join(" · ")} ${l.per.texto}.` };
+      return { regla, l, texto: `${regla.nombre}: con este llevas ${this.partes(regla, l).join(" · ")} ${l.per.texto}.` };
     }).filter(Boolean);
   },
 
@@ -136,7 +133,24 @@ const Vigilante = {
   // Línea para la cajita de "Gasté" mientras escribes
   previa(mov) {
     const rotas = this.revisar(mov);
-    return rotas.length ? rotas.map(r => `👀 ${escapar(r.texto)}`).join("<br>") : "";
+    const lineas = rotas.map(r => `👀 ${escapar(r.texto)}`);
+    // Con este no te pasas, pero llegas justo al límite: "te queda 0"
+    this.reglas().forEach(regla => {
+      if (!this.entra(regla, mov) || rotas.some(r => r.regla === regla)) return;
+      const e = this.medir(regla, this.llevas(regla, mov.fecha, mov));
+      if (e.pasado || !((regla.maxVeces > 0 && e.quedanVeces === 0) || (regla.maxMonto > 0 && e.quedaMonto === 0))) return;
+      const justo = regla.maxVeces > 0 && e.quedanVeces === 0 ? `${e.veces} de ${regla.maxVeces} ${regla.maxVeces === 1 ? "vez" : "veces"}` : `${dinero(e.monto)} de ${dinero(regla.maxMonto)}`;
+      lineas.push(`👀 ${escapar(regla.nombre)}: con este llegas a ${justo} ${e.per.texto}. Te queda 0.`);
+    });
+    return lineas.join("<br>");
+  },
+
+  // "3 de 4 veces" / "$28.00 de $40.00": lo que llevas contra el límite de la regla
+  partes(regla, e) {
+    const p = [];
+    if (regla.maxVeces != null) p.push(`${e.veces} de ${regla.maxVeces} ${regla.maxVeces === 1 ? "vez" : "veces"}`);
+    if (regla.maxMonto != null) p.push(`${dinero(e.monto)} de ${dinero(regla.maxMonto)}`);
+    return p;
   }
 };
 
@@ -166,8 +180,21 @@ Object.assign(Consejero, {
     caja.innerHTML = `<h2>🧑‍💼 Tu consejero</h2>
       ${reciente ? `<p class="cj-comentario">${escapar(reciente.texto)}</p>` : ""}
       ${c.proximoPaso ? `<p><strong>👉 ${escapar(c.proximoPaso)}</strong></p>` : ""}
+      ${this.lineaReglas()}
       ${c.informe && c.informe.titulo ? `<p class="ayuda">${escapar(c.informe.titulo)}</p>` : ""}
       <button class="enlace" data-abrir-consejero>Ver todo ›</button>`;
+  },
+
+  // Una línea compacta con lo que llevas en cada regla: "Bebidas 3 de 4 · Otros $28 de $40" (rojo si te pasaste, ámbar si estás cerca)
+  lineaReglas() {
+    const reglas = Vigilante.reglas();
+    if (!reglas.length) return "";
+    const trozos = reglas.map(r => {
+      const e = Vigilante.estado(r);
+      const v = r.maxVeces != null && r.maxVeces > 0 ? `${e.veces} de ${r.maxVeces}` : r.maxMonto != null ? `${dineroCorto(e.monto)} de ${dineroCorto(r.maxMonto)}` : `${e.veces}`;
+      return `<span class="${e.pasado ? "negativo" : e.cerca ? "cerca" : ""}">${escapar(r.nombre.replace(/\s*\(.*\)\s*$/, ""))} ${v}</span>`;
+    });
+    return `<p class="cj-reglas-linea" aria-label="Tus reglas de esta semana">${trozos.join(" · ")}</p>`;
   },
 
   abrir() {

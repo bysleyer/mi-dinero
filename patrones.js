@@ -83,6 +83,25 @@ const Patrones = {
       .slice(0, 4).map(g => ({ nota: g.nota, categoria: g.categoria, monto: g.monto, veces: g.veces }));
   },
 
+  /* Hora (0 a 23) en la que sueles registrar tu primer movimiento del día: la mediana de los últimos 28 días.
+     Solo cuentan los movimientos anotados el mismo día de su fecha (no los que pasas después). Con menos de 5 días: null. */
+  horaHabitual() {
+    return this._con("hora", movs => {
+      const p2 = n => String(n).padStart(2, "0");
+      const local = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+      const desde = Jornadas.sumarDias(hoy(), -28);
+      const primera = {};
+      movs.filter(m => m.creado && m.fecha >= desde && m.fecha < hoy() && ["gasto", "ingreso", "pagoDeuda"].includes(m.tipo)).forEach(m => {
+        const d = new Date(m.creado);
+        if (isNaN(d) || local(d) !== m.fecha) return;
+        const h = d.getHours() + d.getMinutes() / 60;
+        if (primera[m.fecha] == null || h < primera[m.fecha]) primera[m.fecha] = h;
+      });
+      const hs = Object.values(primera).sort((a, b) => a - b);
+      return hs.length >= 5 ? Math.floor(hs[Math.floor(hs.length / 2)]) : null;
+    });
+  },
+
   /* A2 · Categoría que más has usado con esa nota (o null). Igual de la nota completa; si estás escribiendo
      (4 letras o más), vale el comienzo de una nota conocida solo si todas esas notas usan la misma categoría. */
   categoriaDe(nota) {
