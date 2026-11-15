@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <!-- Seguridad: solo código de la propia app; conexiones solo a GitHub (sincronización) -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Mi dinero</title>
   <meta name="theme-color" content="#0e1316">
   <meta name="color-scheme" content="dark">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Mi dinero">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="iconos/icono-192.png" type="image/png">
   <link rel="apple-touch-icon" href="iconos/icono-180.png">
   <!-- manifest.json se agrega desde app.js solo cuando la app se abre desde una dirección web -->
@@ -45,6 +45,7 @@
       <button type="button" role="menuitem" data-reg-tipo="gasto" class="menu-reg-op gasto" tabindex="-1"><span aria-hidden="true">−</span>Gasté</button>
       <button type="button" role="menuitem" data-reg-tipo="ingreso" class="menu-reg-op ingreso" tabindex="-1"><span aria-hidden="true">+</span>Me pagaron</button>
       <button type="button" role="menuitem" data-reg-tipo="pagoDeuda" class="menu-reg-op deuda" tabindex="-1"><span aria-hidden="true">↓</span>Deuda</button>
+      <button type="button" role="menuitem" data-reg-tipo="colchon" class="menu-reg-op colchon" tabindex="-1"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="11" rx="4"/><path d="M8 7V5.5M16 7V5.5"/></svg></span>Colchón</button>
       <div class="menu-reg-atajos" role="group" aria-label="Atajos">
         <button type="button" role="menuitem" data-registrar="transporte" class="menu-reg-atajo" tabindex="-1"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="13" rx="3"/><path d="M6 10h12"/><circle cx="9" cy="13.3" r=".6"/><circle cx="15" cy="13.3" r=".6"/><path d="M9 16.5 7 20.5M15 16.5l2 4"/></svg>Transporte</button>
         <button type="button" role="menuitem" data-registrar="trabaje" class="menu-reg-atajo" tabindex="-1"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.3"/></svg>Trabajé hoy</button>
@@ -63,19 +64,24 @@
           <label for="hoja-monto">Monto</label>
           <div class="monto-caja"><span class="monto-signo" aria-hidden="true">$</span><input id="hoja-monto" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0.00"></div>
         </div>
-        <div class="campo" id="hoja-deuda-campo" hidden>
-          <label for="hoja-deuda">¿A cuál deuda?</label>
-          <select id="hoja-deuda"></select>
+        <div id="hoja-deuda-campo" hidden>
+          <div id="hoja-rapidos" class="hoja-rapidos" role="group" aria-label="Montos rápidos" hidden></div>
+          <p class="hoja-etiqueta" id="hoja-deudas-etq">¿A cuál deuda?</p>
+          <div id="hoja-deudas" class="hoja-deudas" role="radiogroup" aria-labelledby="hoja-deudas-etq"></div>
         </div>
         <div class="campo" id="hoja-renta-campo" hidden>
           <label for="hoja-renta-para">¿Para qué es?</label>
           <select id="hoja-renta-para"></select>
         </div>
-        <div id="hoja-tipos" class="hoja-tipos" role="group" aria-label="Qué vas a registrar">
-          <button class="chip" data-tipo-hoja="gasto" aria-pressed="true">Gasté</button>
-          <button class="chip" data-tipo-hoja="ingreso" aria-pressed="false" hidden>Me pagaron</button>
-          <button class="chip" data-tipo-hoja="pagoDeuda" aria-pressed="false" hidden>Deuda</button>
-          <button class="chip" data-tipo-hoja="colchon" aria-pressed="false">Colchón</button>
+        <div id="hoja-ingreso" hidden>
+          <div class="hoja-seg" role="group" aria-label="Tipo de ingreso">
+            <button type="button" class="chip" data-ing="cheque" aria-pressed="true">Cheque</button>
+            <button type="button" class="chip" data-ing="otro" aria-pressed="false">Otro ingreso</button>
+          </div>
+          <div class="campo hoja-horas" id="hoja-horas-campo">
+            <label for="hoja-horas">Horas trabajadas <span class="opcional">(opcional)</span></label>
+            <input id="hoja-horas" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="Ej.: 38.5">
+          </div>
         </div>
         <div id="hoja-categorias" class="chips hoja-cats" role="group" aria-label="Categoría"></div>
         <p id="hoja-error" class="error hoja-error" role="alert"></p>

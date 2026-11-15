@@ -1994,3 +1994,75 @@ html[data-tema="lavanda"] { --menta: #b9a4f0; }
 .ps-dos .campo input[type="date"] { text-align: left; }
 .ps-dos .campo input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; margin: 0; }
 #pantalla-cuando .volver { margin-bottom: 12px; }
+
+/* =========================================================
+   v69: revisión con mobile-native + emil-design-eng
+   ========================================================= */
+/* Toda la app: sin el rebote de la página entera (las hojas mantienen su propio rebote) */
+html, body { overscroll-behavior: none; }
+
+/* Menú del +: rápido y sin rebote. Entra en ~330 ms (240 ms cada opción, 30 ms entre una y otra); sale todo junto en 150 ms */
+.menu-reg-op, .menu-reg-atajos { transform: translateY(16px) scale(.94); transition: opacity 150ms ease, transform 150ms var(--ease-out); }
+.menu-reg-op:nth-child(n), .menu-reg-atajos { transition-delay: 0ms; }
+.menu-reg.abierto .menu-reg-op, .menu-reg.abierto .menu-reg-atajos { transform: none; transition: opacity 200ms ease, transform 240ms var(--ease-out); }
+.menu-reg.abierto .menu-reg-op:nth-child(1) { transition-delay: 0ms; }
+.menu-reg.abierto .menu-reg-op:nth-child(2) { transition-delay: 30ms; }
+.menu-reg.abierto .menu-reg-op:nth-child(3) { transition-delay: 60ms; }
+.menu-reg.abierto .menu-reg-op:nth-child(4) { transition-delay: 90ms; }
+.menu-reg.abierto .menu-reg-atajos { transition-delay: 120ms; }
+.menu-reg-op.colchon span { background: #9fb7ff; }
+.menu-reg-atajo { transition: transform 120ms var(--ease-out); }
+@media (min-width: 900px) {
+  .menu-reg-op, .menu-reg-atajos { transform: translateY(-10px) scale(.96); }
+}
+
+/* Gasté: categorías en cuadrícula con ícono, todas del mismo tamaño */
+.hoja-cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.hoja-cats[hidden] { display: none; }
+.hoja-cats .cat-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 70px; margin: 0;
+  padding: 6px 2px; border-radius: 14px; font-size: .8rem; line-height: 1.1; text-align: center; }
+.hoja-cats .cat-tile .ico { width: 24px; height: 24px; }
+.hoja-cats .cat-tile[aria-pressed="true"] { border-color: var(--menta); color: var(--menta); background: #11302a; }
+
+/* El botón de la hoja dice lo que falta y se ve apagado hasta que está todo */
+#hoja-continuar { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background-color 150ms ease, color 150ms ease, transform 100ms var(--ease-out); }
+#hoja-continuar.falta { background: #1f2a31; color: #8fa3ad; box-shadow: none; }
+
+/* Me pagaron: Cheque / Otro ingreso */
+.hoja-seg { display: flex; gap: 8px; margin: 10px 0 0; }
+.hoja-seg .chip { flex: 1; min-height: 52px; margin: 0; }
+.hoja-seg .chip[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); background: #11302a; }
+#hoja .hoja-horas { margin: 10px 0 0; }
+#hoja .hoja-horas input { font-size: 1.05rem; font-weight: 400; min-height: 32px; }
+#hoja-ingreso[hidden], #hoja-horas-campo[hidden], #hoja-deuda-campo[hidden], #hoja-rapidos[hidden] { display: none; }
+
+/* Deuda: montos rápidos y lista de deudas para elegir con un toque */
+.hoja-rapidos { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+.hoja-rapidos .chip { min-height: 40px; margin: 0; padding: 0 12px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.hoja-deudas { display: grid; gap: 8px; }
+.deu-fila { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 8px 14px;
+  border: 1px solid var(--borde); border-radius: 14px; background: #0a0f12; color: var(--texto); font: inherit; text-align: left; cursor: pointer;
+  touch-action: manipulation; -webkit-user-select: none; user-select: none; transition: transform 100ms var(--ease-out), border-color 150ms ease, background-color 150ms ease; }
+.deu-fila:active { transform: scale(.98); }
+.deu-fila b { font-size: .95rem; font-weight: 700; overflow-wrap: anywhere; }
+.deu-fila small { color: var(--suave); font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.deu-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #3d4a54; transition: border-width 150ms var(--ease-out), border-color 150ms ease; }
+.deu-fila[aria-checked="true"] { border-color: var(--menta); background: #11302a; }
+.deu-fila[aria-checked="true"] .deu-radio { border: 6px solid var(--menta); }
+.hoja-deudas.con-error .deu-fila { border-color: var(--error); }
+#hoja-renta-campo { margin: 10px 0 0; }
+
+/* Con el teclado abierto, la hoja queda pegada a él: sin el margen de la rayita de abajo (el teclado la tapa) */
+.hoja.con-teclado .hoja-caja { padding-bottom: 10px; box-shadow: 0 140px 0 0 var(--tarjeta); }
+
+/* Hojas como las del iPhone (teléfono): agarradera, arrastrar para cerrar y el fondo se encoge */
+@media (max-width: 899px) {
+  .hoja-barra { padding-top: 22px; touch-action: none; cursor: grab; }
+  .hoja-barra::before { content: ""; position: absolute; top: 8px; left: 50%; translate: -50% 0; width: 40px; height: 5px; border-radius: 3px; background: #3d4a54; }
+  main.contenedor { transition: transform 300ms var(--ease-drawer), border-radius 300ms var(--ease-drawer); }
+  body.hoja-abierta main.contenedor:not([hidden]) { transform: scale(.94); transform-origin: 50% var(--hoja-origen, 0px); border-radius: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.hoja-abierta main.contenedor:not([hidden]) { transform: none; }
+  .menu-reg-op, .menu-reg-atajos, .menu-reg.abierto .menu-reg-op, .menu-reg.abierto .menu-reg-atajos { transform: none !important; transition: opacity 150ms ease !important; transition-delay: 0ms !important; }
+}
