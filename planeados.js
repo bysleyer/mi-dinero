@@ -224,6 +224,85 @@ const Planeados = {
     return `${que}: igual`;
   },
 
+  // ---------- 2.3 · ¿Lo planeado de esta semana cabe? ----------
+  // Misma cuenta de proyeccion.js (la de Libre, sin escenario). Se quita de la cuenta lo planeado de esta semana y se van
+  // poniendo, en orden de fecha, los gastos que caben ese día (Planeados.caben: sin dejar ningún día bajo cero de ahí en adelante).
+  // Lo que no cabe se ofrece mover al próximo cobro (si ahí sí cabe) o elegir otra fecha. Solo lee; mover usa "Elegir fecha".
+  // Cuenta lo planeado con fecha elegida entre hoy y el domingo, y lo que no tiene fecha elegida pero la necesita antes del domingo.
+  cabeEstaSemana() {
+    const hoyC = hoy(), domingo = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(hoyC)), 6);
+    const items = [], ids = [], fuera = [];
+    Almacen.leerPlaneados().forEach(g => {
+      if (this.comprado(g)) return;
+      if (g.elegido && g.elegido.length) {
+        let esta = false;
+        g.elegido.forEach((p, i) => {
+          if (this.parteComprada(g, i)) return;
+          if (p.fecha >= hoyC && p.fecha <= domingo) { items.push({ g, i, fecha: p.fecha, monto: p.monto, sinFecha: false }); esta = true; }
+          else if (p.fecha > domingo) fuera.push({ fecha: p.fecha, monto: -p.monto, nombre: g.nombre });
+        });
+        if (esta) ids.push(g.id);
+      } else if (g.fechaLimite && g.fechaLimite <= domingo) {
+        items.push({ g, i: null, fecha: g.fechaLimite < hoyC ? hoyC : g.fechaLimite, monto: g.monto, sinFecha: true });
+      }
+    });
+    if (!items.length) return null;
+    items.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.g.nombre.localeCompare(b.g.nombre));
+    const pr = Proyeccion.calcular({ horizonte: Plan.DIAS_ADELANTE, excluirPlaneado: ids, extras: fuera });
+    const m = { pr, fechas: Object.keys(pr.porDia).sort() };
+    const puestos = [];
+    items.forEach(it => {
+      it.cabe = it.monto <= this.caben(m, it.fecha, puestos) + 0.005;
+      if (it.cabe) puestos.push({ fecha: it.fecha, monto: it.monto });
+    });
+    items.filter(it => !it.cabe && !it.sinFecha).forEach(it => {
+      const sig = pr.cheques.filter(c => c > it.fecha)[0] || null;
+      if (!sig) return;
+      if (it.monto <= this.caben(m, sig, puestos) + 0.005) { it.mover = sig; puestos.push({ fecha: sig, monto: it.monto }); }
+      else it.noCabeEn = sig;
+    });
+    const noCaben = items.filter(it => !it.cabe);
+    if (!noCaben.length) return null;
+    const suma = a => redondear(a.reduce((x, it) => x + it.monto, 0));
+    const h = this.hueco(m);
+    return { domingo, items, noCaben, planeado: suma(items), noCabenMonto: suma(noCaben), alcanza: suma(items.filter(it => it.cabe)),
+             hueco: h && h.fecha <= domingo ? h : null };
+  },
+
+  nombreCorto(n) { return n.length > 40 ? n.slice(0, 39) + "…" : n; },
+
+  mostrarSemana(sem) {
+    const caja = $("pl-semana");
+    if (!sem) { caja.hidden = true; caja.innerHTML = ""; return; }
+    const MAX = 3;
+    const botones = sem.noCaben.slice(0, MAX).map((it, k) => {
+      const n = escapar(this.nombreCorto(it.g.nombre)), cls = k === 0 ? " lleno" : "";
+      if (it.mover) return `<button class="pl-fr-bt${cls}" data-pl-mover="${it.g.id}" data-pl-parte="${it.i}" data-pl-fecha="${it.mover}">Mover «${n}» al ${Futuro.diaCorto(it.mover)}</button>`;
+      return (it.noCabeEn ? `<p class="pl-fr-n">El ${Futuro.diaCorto(it.noCabeEn)} tampoco alcanza para «${n}».</p>` : "") +
+        `<button class="pl-fr-bt${cls}" data-pl-cuando="${it.g.id}">Elegir fecha · ${n}</button>`;
+    }).join("");
+    caja.hidden = false;
+    caja.innerHTML = `<p class="pl-fr-t">Esta semana no te alcanza para todo lo planeado.</p>
+      <p>Planeaste <b>${dineroCorto(sem.planeado)}</b>. Te alcanza para <b>${dineroCorto(sem.alcanza)}</b>; <b>${dineroCorto(sem.noCabenMonto)}</b> no ${sem.noCaben.length === 1 && sem.noCabenMonto === sem.noCaben[0].monto ? "cabe" : "caben"}.</p>
+      ${sem.hueco ? `<p class="pl-fr-n">Ojo: aun sin esto, el ${Futuro.diaCorto(sem.hueco.fecha)} ya te faltan ${dineroCorto(sem.hueco.falta)}.</p>` : ""}
+      ${botones}
+      ${sem.noCaben.length > MAX ? `<p class="pl-fr-n">y ${sem.noCaben.length - MAX} más que no caben</p>` : ""}
+      ${sem.hueco ? `<button class="pl-fr-bt" data-pl-cubrir>¿Cómo lo cubro?</button>` : ""}`;
+  },
+
+  // Mueve UNA parte de un gasto planeado a otra fecha (con "Deshacer")
+  moverParte(id, i, fecha) {
+    const g = Almacen.leerPlaneados().find(x => x.id === id);
+    if (!g || !g.elegido || !g.elegido[i] || this.parteComprada(g, i)) return;
+    const antes = g.elegido.map(p => ({ ...p }));
+    Almacen.guardarPlaneado({ id, elegido: antes.map((p, j) => j === i ? { ...p, fecha } : p) });
+    window.dispatchEvent(new Event("movimientos-cambiaron"));
+    Pantalla.aviso(`Movido al ${Futuro.diaCorto(fecha)}`, 5000, { texto: "Deshacer", fn: () => {
+      Almacen.guardarPlaneado({ id, elegido: antes });
+      this.alCambiar("Listo: vuelve a su fecha");
+    } });
+  },
+
   // ---------- Lista ----------
   abrirLista() {
     document.querySelectorAll("main.contenedor").forEach(x => { x.hidden = true; });
@@ -235,6 +314,9 @@ const Planeados = {
   mostrarLista() {
     if ($("pantalla-planeados").hidden) return;
     const lista = Almacen.leerPlaneados().slice().sort((a, b) => a.fechaLimite.localeCompare(b.fechaLimite));
+    const sem = lista.length ? this.cabeEstaSemana() : null;
+    this.mostrarSemana(sem);
+    const noCabe = new Set(sem ? sem.noCaben.map(it => it.g.id) : []);
     $("pl-lista").innerHTML = lista.length === 0
       ? `<p class="vacio">No tienes gastos planeados.</p>`
       : lista.map(g => {
@@ -242,13 +324,13 @@ const Planeados = {
           const fechas = g.elegido && g.elegido.length
             ? g.elegido.map(p => `${dinero(p.monto)} el ${this.textoDia(p.fecha)}`).join(" y ") : "";
           return `
-            <li class="pl-item ${e.clase}" tabindex="0" role="button" aria-expanded="false">
+            <li class="pl-item ${e.clase}${noCabe.has(g.id) ? " nocabe" : ""}" tabindex="0" role="button" aria-expanded="false">
               <div class="deuda-cabeza">
                 <span class="deuda-nombre">${escapar(g.nombre)}</span>
                 <span class="deuda-nombre pl-monto">${dineroCorto(g.monto)}</span>
               </div>
               <p class="deuda-sub">Necesito tenerlo para el ${this.textoDia(g.fechaLimite)} · ${g.tipo === "espera" ? "Puede esperar" : "Lo necesito"}</p>
-              <p class="pl-estado ${e.clase}">${e.texto}${fechas && e.clase === "elegido" ? `: ${fechas}` : ""}</p>
+              <p class="pl-estado ${e.clase}">${e.texto}${fechas && e.clase === "elegido" ? `: ${fechas}` : ""}${noCabe.has(g.id) ? ` · <span class="pl-nocabe">no cabe esta semana</span>` : ""}</p>
               <div class="pl-botones">
                 ${e.clase !== "comprado" ? `<button class="boton-chico lleno" data-pl-cuando="${g.id}">¿Cuándo lo compro?</button>
                   <button class="boton-chico" data-pl-compre="${g.id}">Ya lo compré</button>` : ""}
@@ -698,6 +780,11 @@ const Planeados = {
       window.scrollTo(0, 0);
     });
     $("pl-agregar").addEventListener("click", () => this.abrirFormulario());
+    $("pl-semana").addEventListener("click", e => {
+      const c = e.target.closest("[data-pl-cuando]"); if (c) return this.abrirCuando(c.dataset.plCuando);
+      const mv = e.target.closest("[data-pl-mover]"); if (mv) return this.moverParte(mv.dataset.plMover, Number(mv.dataset.plParte), mv.dataset.plFecha);
+      if (e.target.closest("[data-pl-cubrir]")) Cubrir.abrir();
+    });
     $("pl-lista").addEventListener("click", e => {
       const c = e.target.closest("[data-pl-cuando]"); if (c) this.abrirCuando(c.dataset.plCuando);
       const k = e.target.closest("[data-pl-compre]"); if (k) this.comprar(k.dataset.plCompre);

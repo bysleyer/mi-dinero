@@ -2139,3 +2139,15 @@ html, body { overscroll-behavior: none; }
 .mv-mas small { color: var(--suave); font-weight: 400; }
 .mv-vacio { text-align: center; margin: 32px 0 12px; overflow-wrap: anywhere; }
 .mv-quitar { display: block; margin: 0 auto; }
+
+/* v87 · Gastos planeados: aviso "no caben esta semana" */
+.pl-franja { border: 1px solid #5a4a22; border-left: 3px solid var(--aviso); background: #241d0e; border-radius: 14px; padding: 12px 14px; margin-top: 14px; overflow-wrap: anywhere; }
+.pl-franja[hidden] { display: none; }
+.pl-franja p { margin: 0 0 8px; font-size: .95rem; }
+.pl-franja b { color: var(--aviso); }
+.pl-fr-t { color: var(--aviso); font-weight: 700; }
+.pl-fr-n { color: var(--suave); font-size: .88rem !important; }
+.pl-fr-bt { display: block; width: 100%; text-align: center; border: 1px solid #6b5a2a; background: transparent; border-radius: 12px; padding: 11px; margin-top: 8px; color: var(--aviso); font-weight: 700; font-size: .95rem; min-height: 44px; }
+.pl-fr-bt.lleno { background: var(--aviso); color: #241d0e; border-color: var(--aviso); }
+.pl-item.nocabe { border-left: 3px solid var(--aviso); }
+.pl-nocabe { color: var(--aviso); }
