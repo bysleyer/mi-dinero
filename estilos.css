@@ -2240,3 +2240,4 @@ button.dia.sel { outline: 3px solid var(--ok); outline-offset: -3px; }
 /* Papelera (Respaldo → Borrados recientes) */
 .fila-papelera { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--borde); }
 .fila-papelera small { display: block; color: var(--texto-suave, var(--texto)); opacity: .7; margin-top: 2px; }
+.papelera > summary { font-size: 1rem; font-weight: 700; color: var(--texto); display: flex; justify-content: space-between; align-items: center; min-height: 44px; cursor: pointer; }
