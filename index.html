@@ -19,6 +19,16 @@
   <script src="arranque.js"></script>
 </head>
 <body>
+  <!-- Candado: tapa toda la app hasta pasar Face ID (candado.js) -->
+  <div id="candado" class="candado" role="dialog" aria-modal="true" aria-label="Mi dinero está bloqueado">
+    <div class="candado-caja">
+      <div class="candado-ico" aria-hidden="true">🔒</div>
+      <h2>Mi dinero está bloqueado</h2>
+      <button id="candado-abrir" class="boton-grande guardar">Abrir con Face ID</button>
+      <p id="candado-error" class="error" role="alert"></p>
+      <div id="candado-salida"></div>
+    </div>
+  </div>
   <!-- Menú: barra abajo (teléfono) o a la izquierda (computador) -->
   <nav id="nav" class="nav" aria-label="Menú" hidden>
     <div class="nav-marca">Mi dinero</div>
@@ -765,6 +775,15 @@
       <button id="descargar-respaldo" class="boton-chico boton-ancho">Descargar respaldo</button>
     </section>
 
+    <section class="tarjeta" id="candado-tarjeta">
+      <h2>Candado</h2>
+      <p id="candado-estado" class="nota-sobre"></p>
+      <button id="candado-activar" class="boton-chico boton-ancho lleno" hidden>Activar con Face ID</button>
+      <button id="candado-quitar-ajuste" class="boton-chico boton-ancho" hidden>Quitar el candado</button>
+      <p id="candado-mensaje" class="nota-sobre" role="status"></p>
+      <p class="nota-sobre">Tapa la pantalla; no cifra tus datos. Solo vale para este aparato.</p>
+    </section>
+
     <details class="tarjeta papelera" id="papelera">
       <summary>Borrados recientes <span id="papelera-cuenta"></span></summary>
       <p class="nota-sobre">Lo que borraste en los últimos 30 días. Toca Recuperar para devolverlo.</p>
@@ -1094,7 +1113,7 @@
   </div>
 
   <!-- Orden (el de arriba, comparten nombres globales: no lo cambies). Debe coincidir con ARCHIVOS de sw.js:
-       arranque, datos-ejemplo, almacen, campos, app, plan, proyeccion, jornadas, patrones, deudas, liberado, acuerdos, movimientos, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, papelera, respaldo, sincronizar, nav, explica, cubrir, avisos, consejero, mensajes, logros, xp -->
+       arranque, datos-ejemplo, almacen, campos, app, plan, proyeccion, jornadas, patrones, deudas, liberado, acuerdos, movimientos, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, papelera, respaldo, candado, sincronizar, nav, explica, cubrir, avisos, consejero, mensajes, logros, xp -->
 
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
@@ -1123,6 +1142,7 @@
   <script src="acuerdo.js"></script>
   <script src="papelera.js"></script>
   <script src="respaldo.js"></script>
+  <script src="candado.js"></script>
   <script src="sincronizar.js"></script>
   <script src="nav.js"></script>
   <script src="explica.js"></script>

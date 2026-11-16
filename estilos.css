@@ -2241,3 +2241,13 @@ button.dia.sel { outline: 3px solid var(--ok); outline-offset: -3px; }
 .fila-papelera { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--borde); }
 .fila-papelera small { display: block; color: var(--texto-suave, var(--texto)); opacity: .7; margin-top: 2px; }
 .papelera > summary { font-size: 1rem; font-weight: 700; color: var(--texto); display: flex; justify-content: space-between; align-items: center; min-height: 44px; cursor: pointer; }
+
+/* Candado (Face ID) */
+.candado { display: none; }
+html.bloqueado .candado { display: flex; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; padding: 24px; background: var(--fondo, #0e1316); }
+html.bloqueado body > *:not(.candado) { visibility: hidden; }
+.candado-caja { max-width: 360px; width: 100%; text-align: center; }
+.candado-ico { font-size: 3rem; margin-bottom: 8px; }
+#candado-salida { margin-top: 24px; min-height: 44px; }
+.enlace-chico { background: none; border: 0; color: var(--texto); opacity: .7; text-decoration: underline; font-size: .9rem; min-height: 44px; cursor: pointer; }
+#candado-activar[hidden], #candado-quitar-ajuste[hidden], #candado-tarjeta[hidden] { display: none; }

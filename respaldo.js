@@ -335,6 +335,7 @@ const Respaldo = {
       ? `Un archivo <b>.csv</b> con tus ${nMov} ${nMov === 1 ? "movimiento" : "movimientos"}: fecha, tipo, categoría, nota y monto. Se hace en tu teléfono; no se envía a ningún lado.`
       : "Todavía no hay movimientos que bajar.";
     if (typeof Papelera !== "undefined") Papelera.dibujar();
+    if (typeof Candado !== "undefined") Candado.dibujar();
     if (typeof Sync !== "undefined") Sync.mostrarEstado();
     $("respaldo-origen").textContent = Datos.origen === "ejemplo"
       ? "Estás usando datos de EJEMPLO. Carga tu mis-datos.json abajo."
