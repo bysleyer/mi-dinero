@@ -28,7 +28,8 @@
  *   recibos        lo que dijo el recibo de un pago que varía (luz...): { id, pagoId, mes, monto }
  *   pagosPropios   pagos fijos que agrego yo (pagosfijos.js): esenciales y suscripciones con sus fechas
  *   planeados      gastos planeados: { id, nombre, monto, fechaLimite, categoria, nota, tipo,
- *                  enPartes, partes, elegido: [{ fecha, monto }] | null }
+ *                  enPartes, partes, elegido: [{ fecha, monto, saltada?, retirada? }] | null,
+ *                  repite?: { cada: "semana" | "mes", desde, hasta | null } }   (planeados.js: Gastos que se repiten)
  */
 const Almacen = {
   prefijo: "midinero:",

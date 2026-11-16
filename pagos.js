@@ -185,8 +185,8 @@ const Vencimientos = {
     // Bloque 15: gastos planeados con fecha elegida (cada parte en su fecha), menos lo ya comprado
     Almacen.leerPlaneados().filter(g => g.elegido && g.elegido.length).forEach(g => {
       g.elegido.forEach((pt, i) => {
-        if (Planeados.parteComprada(g, i)) return;
-        const varias = g.elegido.length > 1;
+        if (!Planeados.activa(g, i)) return; // comprada, saltada o retirada
+        const varias = g.elegido.length > 1 && !Planeados.repetido(g);
         const nombre = `${g.nombre}${varias ? ` (parte ${i + 1} de ${g.elegido.length})` : ""}`;
         items.push({ id: "planeado", planeadoId: g.id, parte: i, planeado: true, letra: "P", orden: 15, fecha: pt.fecha, nombre,
           claveMov: `planeado-${g.id}#${i}@${pt.fecha}`,

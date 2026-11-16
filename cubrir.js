@@ -54,7 +54,7 @@ const Cubrir = {
     if (Proyeccion.protegerColchon() && Proyeccion.colchon() > 0) ops.push({ id: "colchon", costo: 0, titulo: "Usar el colchón",
       detalle: `Tienes ${dinero(Proyeccion.colchon())} protegidos.`, costoTxt: "Sin costo (es tu ahorro)", mod: { proteger: false }, accion: "colchon" });
     // 2) Pasar un gasto planeado para después del faltante
-    if (dest) Almacen.leerPlaneados().filter(g => !Planeados.comprado(g) && g.elegido && g.elegido.some(p => p.fecha <= f.fin)).forEach(g => {
+    if (dest) Almacen.leerPlaneados().filter(g => !Planeados.comprado(g) && !Planeados.repetido(g) && g.elegido && g.elegido.some(p => p.fecha <= f.fin)).forEach(g => {
       const pendiente = redondear(g.elegido.reduce((s, p, i) => s + (Planeados.parteComprada(g, i) ? 0 : p.monto), 0));
       ops.push({ id: `planeado-${g.id}`, costo: 0, titulo: `Comprar "${g.nombre}" después`, detalle: `Pasarlo al ${Futuro.diaCorto(dest)} o más adelante.`,
         costoTxt: "Sin costo (solo esperar)", accion: "planeado", planeadoId: g.id,

@@ -160,7 +160,7 @@ const { chromium } = require("playwright");
       cubrir, deudas, avisos,
       diasConPagos: dias,
       deudasDatos: Datos.deudas().map(d => ({ id: d.id, nombre: d.nombre, monto: d.monto, saldo: red(Datos.saldoReparto(d.id)), prioridad: d.prioridad, nota: d.nota })),
-      planeados: Almacen.leerPlaneados(),
+      planeados: (() => { try { return Planeados.paraConsejero(); } catch (e) { return Almacen.leerPlaneados(); } })(),
       planesDeuda: Almacen.leerPlanesDeuda(),
       movimientos: movs.map(m => ({ id: m.id, tipo: m.tipo, fecha: m.fecha, monto: m.monto, categoria: m.categoria, nota: m.nota,
                                    tipoIngreso: m.tipoIngreso, deudaId: m.deudaId, razonFueraPlan: m.razonFueraPlan, creado: m.creado })),

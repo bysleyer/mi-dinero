@@ -2151,3 +2151,13 @@ html, body { overscroll-behavior: none; }
 .pl-fr-bt.lleno { background: var(--aviso); color: #241d0e; border-color: var(--aviso); }
 .pl-item.nocabe { border-left: 3px solid var(--aviso); }
 .pl-nocabe { color: var(--aviso); }
+
+/* v88 · Gastos planeados que se repiten */
+.pl-rep { display: inline-block; font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; background: #14262a; color: var(--ok); margin: 2px 0 4px; }
+.pl-estado.repite { color: var(--menta, #4fd1b5); }
+.pl-item.repite .deuda-sub { overflow-wrap: anywhere; }
+/* Un campo "hidden" debe ocultarse aunque su clase le ponga display (la casilla de partes y las ayudas del formulario de planeados) */
+.mv-check[hidden], .campo[hidden], .ayuda[hidden] { display: none; }
+/* Nombres muy largos de gastos planeados: se parten y no empujan el monto fuera de la pantalla */
+.pl-item .deuda-cabeza .deuda-nombre:first-child { min-width: 0; overflow-wrap: anywhere; }
+.pl-item { overflow-wrap: anywhere; }

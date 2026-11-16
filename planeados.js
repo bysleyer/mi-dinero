@@ -14,24 +14,154 @@ const Planeados = {
   editando: null, // id en el formulario
 
   // ---------- Comprado (sale de los gastos registrados, para no duplicar) ----------
+  // Lo comprado de cada gasto planeado, de una sola lectura de los movimientos (se renueva solo si cambian). Antes cada parte volvía a leerlos
+  // todos: con un gasto que se repite (100 partes) la cuenta se hacía lenta.
+  _movs: { crudo: null, porPlaneado: null },
+  compradas(g) {
+    let crudo = "";
+    try { crudo = localStorage.getItem(Almacen.prefijo + "movimientos") || ""; } catch (e) { /* sin almacenamiento */ }
+    if (this._movs.crudo !== crudo || !this._movs.porPlaneado) {
+      const m = new Map();
+      Almacen.leerMovimientos().forEach(x => {
+        if (!x.planeadoId) return;
+        let e = m.get(x.planeadoId);
+        if (!e) m.set(x.planeadoId, e = { todo: false, partes: new Set() });
+        if (x.planeadoParte === "todo") e.todo = true; else e.partes.add(x.planeadoParte);
+      });
+      this._movs = { crudo, porPlaneado: m };
+    }
+    return this._movs.porPlaneado.get(g.id) || { todo: false, partes: new Set() };
+  },
+
   parteComprada(g, i) {
-    return Almacen.leerMovimientos().some(m => m.planeadoId === g.id && (m.planeadoParte === "todo" || m.planeadoParte === i));
+    const c = this.compradas(g);
+    return c.todo || c.partes.has(i);
+  },
+
+  // Una parte cuenta (en la cuenta, en la lista, en "¿cabe?") si no está comprada, ni saltada, ni retirada por un cambio de la repetición
+  activa(g, i) {
+    const p = g.elegido && g.elegido[i];
+    return !!p && !p.saltada && !p.retirada && !this.parteComprada(g, i);
   },
 
   comprado(g) {
+    if (this.repetido(g)) {
+      // Un gasto que se repite solo "termina" si tiene fecha final y ya no queda ninguna vez por delante
+      return !!g.repite.hasta && !this.proxima(g) && !(g.elegido || []).some((p, i) => this.activa(g, i) && p.fecha >= hoy());
+    }
     if (g.elegido && g.elegido.length) return g.elegido.every((_, i) => this.parteComprada(g, i));
     return Almacen.leerMovimientos().some(m => m.planeadoId === g.id);
   },
 
   pendiente(g) {
+    if (this.repetido(g)) { const x = this.proxima(g); return x ? x.monto : 0; } // lo que toca comprar ahora: UNA vez
     if (g.elegido && g.elegido.length) return redondear(g.elegido.reduce((s, p, i) => s + (this.parteComprada(g, i) ? 0 : p.monto), 0));
     return g.monto;
   },
 
   estado(g) {
-    if (this.comprado(g)) return { texto: "Comprado", clase: "comprado" };
+    if (this.comprado(g)) return { texto: g.repite ? "Terminó" : "Comprado", clase: "comprado" };
+    if (this.repetido(g)) return { texto: `Se repite cada ${g.repite.cada}`, clase: "repite" };
     if (g.elegido && g.elegido.length) return { texto: "Con fecha elegida", clase: "elegido" };
     return { texto: "Falta elegir cuándo comprarlo", clase: "sin" };
+  },
+
+  // ---------- 2.4 · Gastos que se repiten (cada semana / cada mes) ----------
+  // Un gasto que se repite es un gasto planeado normal cuyas "partes" son todas las veces de los próximos 2 años
+  // (así la cuenta, el calendario y "¿cabe?" las entienden sin código nuevo). Las partes solo se AGREGAN al final: el número
+  // de cada parte es lo que usa un gasto registrado para saber qué vez compró, así que nunca se quitan ni se reordenan.
+  //   repite: { cada: "semana" | "mes", desde, hasta | null }     parte: { fecha, monto, saltada?, retirada? }
+  // saltada = "Saltar esta vez"; retirada = una vez que ya no va porque cambiaste la repetición. Se renueva solo al abrir la app.
+  HORIZONTE_REPITE: 740,
+
+  repetido(g) { return !!(g && g.repite && g.repite.cada); },
+
+  // Fechas de la repetición de hoy en adelante (hasta 740 días o la fecha final). Cada mes: el mismo día; si el mes es más corto, su último día.
+  fechasRepite(r) {
+    const hoyC = hoy(), fin = Jornadas.sumarDias(hoyC, this.HORIZONTE_REPITE);
+    const tope = r.hasta && r.hasta < fin ? r.hasta : fin;
+    const sale = [];
+    if (r.cada === "semana") {
+      for (let d = r.desde, n = 0; d <= tope && n < 500; d = Jornadas.sumarDias(d, 7), n++) if (d >= hoyC) sale.push(d);
+    } else {
+      const [a, m, dia] = r.desde.split("-").map(Number), dos = n => String(n).padStart(2, "0");
+      for (let k = 0; k < 120; k++) {
+        const y = a + Math.floor((m - 1 + k) / 12), mm = (m - 1 + k) % 12;
+        const f = `${y}-${dos(mm + 1)}-${dos(Math.min(dia, new Date(y, mm + 1, 0).getDate()))}`;
+        if (f > tope) break;
+        if (f >= hoyC) sale.push(f);
+      }
+    }
+    return sale;
+  },
+
+  // Las partes que debe tener el gasto: lo ya comprado, saltado o pasado se queda; lo que ya no corresponde se "retira"; se agrega lo que falta
+  materializar(g) {
+    const hoyC = hoy();
+    const partes = (g.elegido || []).map(p => ({ ...p }));
+    const sched = this.fechasRepite(g.repite);
+    const vivas = new Set();
+    partes.forEach((p, i) => {
+      if (p.saltada || p.retirada || this.parteComprada(g, i) || p.fecha < hoyC) return;
+      if (sched.includes(p.fecha) && Math.abs(p.monto - g.monto) < 0.005) vivas.add(p.fecha); else p.retirada = true;
+    });
+    const cubiertas = new Set(partes.filter((p, i) => p.saltada || (!p.retirada && this.parteComprada(g, i))).map(p => p.fecha));
+    sched.forEach(d => { if (!vivas.has(d) && !cubiertas.has(d)) partes.push({ fecha: d, monto: g.monto }); });
+    return partes;
+  },
+
+  // Al abrir la app: agrega las veces nuevas que ya entran en los 2 años. No escribe nada si no hay cambios (ni en "Solo ver").
+  refrescar() {
+    if (typeof Sync !== "undefined" && Sync.soloVer()) return;
+    try {
+      Almacen.leerPlaneados().filter(g => this.repetido(g)).forEach(g => {
+        const nuevo = this.materializar(g);
+        if (JSON.stringify(nuevo) !== JSON.stringify(g.elegido)) Almacen.guardarPlaneado({ id: g.id, elegido: nuevo });
+      });
+    } catch (e) { /* esto nunca debe romper la app */ }
+  },
+
+  // La vez que toca ahora: la primera sin comprar ni saltar desde hace menos de un periodo (así "Ya lo compré" también vale si te pasaste 1 día)
+  proxima(g) {
+    if (!this.repetido(g) || !g.elegido) return null;
+    const desde = Jornadas.sumarDias(hoy(), -(g.repite.cada === "semana" ? 6 : 27));
+    let mejor = null;
+    g.elegido.forEach((p, i) => { if (this.activa(g, i) && p.fecha >= desde && (!mejor || p.fecha < mejor.fecha)) mejor = { i, fecha: p.fecha, monto: p.monto }; });
+    return mejor;
+  },
+
+  siguientes(g, n) {
+    const px = this.proxima(g);
+    return (g.elegido || []).filter((p, i) => this.activa(g, i) && px && p.fecha > px.fecha).map(p => p.fecha).sort().slice(0, n);
+  },
+
+  // "Saltar esta vez": esa vez no se cuenta y sigue la que viene (se puede deshacer)
+  saltar(id) {
+    const g = Almacen.leerPlaneados().find(x => x.id === id);
+    const px = g && this.proxima(g);
+    if (!px) return;
+    const partes = g.elegido.map(p => ({ ...p }));
+    partes[px.i].saltada = true;
+    Almacen.guardarPlaneado({ id, elegido: partes });
+    this.alCambiar();
+    const sig = this.proxima(Almacen.leerPlaneados().find(x => x.id === id));
+    Pantalla.aviso(sig ? `Saltado: vuelve el ${Futuro.diaCorto(sig.fecha)}` : "Saltado", 5000, { texto: "Deshacer", fn: () => {
+      const g2 = Almacen.leerPlaneados().find(x => x.id === id);
+      if (!g2 || !g2.elegido[px.i]) return;
+      const otra = g2.elegido.map(p => ({ ...p }));
+      delete otra[px.i].saltada;
+      Almacen.guardarPlaneado({ id, elegido: otra });
+      this.alCambiar("Listo: vuelve a contarse");
+    } });
+  },
+
+  // Lo que lee el consejero: la regla y las próximas 8 veces (no las 100 de la cuenta)
+  paraConsejero() {
+    return Almacen.leerPlaneados().map(g => {
+      if (!this.repetido(g)) return g;
+      const proximas = (g.elegido || []).filter((p, i) => this.activa(g, i) && p.fecha >= hoy()).sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(0, 8);
+      return { ...g, elegido: proximas.map(p => ({ fecha: p.fecha, monto: p.monto })), vecesPorDelante: (g.elegido || []).filter((p, i) => this.activa(g, i) && p.fecha >= hoy()).length };
+    });
   },
 
   sinFecha() {
@@ -237,7 +367,7 @@ const Planeados = {
       if (g.elegido && g.elegido.length) {
         let esta = false;
         g.elegido.forEach((p, i) => {
-          if (this.parteComprada(g, i)) return;
+          if (!this.activa(g, i)) return;
           if (p.fecha >= hoyC && p.fecha <= domingo) { items.push({ g, i, fecha: p.fecha, monto: p.monto, sinFecha: false }); esta = true; }
           else if (p.fecha > domingo) fuera.push({ fecha: p.fecha, monto: -p.monto, nombre: g.nombre });
         });
@@ -308,6 +438,7 @@ const Planeados = {
     document.querySelectorAll("main.contenedor").forEach(x => { x.hidden = true; });
     $("pantalla-planeados").hidden = false;
     window.scrollTo(0, 0);
+    this.refrescar();
     this.mostrarLista();
   },
 
@@ -321,8 +452,9 @@ const Planeados = {
       ? `<p class="vacio">No tienes gastos planeados.</p>`
       : lista.map(g => {
           const e = this.estado(g);
-          const fechas = g.elegido && g.elegido.length
+          const fechas = g.elegido && g.elegido.length && !this.repetido(g)
             ? g.elegido.map(p => `${dinero(p.monto)} el ${this.textoDia(p.fecha)}`).join(" y ") : "";
+          if (this.repetido(g) && e.clase !== "comprado") return this.filaRepite(g, noCabe.has(g.id));
           return `
             <li class="pl-item ${e.clase}${noCabe.has(g.id) ? " nocabe" : ""}" tabindex="0" role="button" aria-expanded="false">
               <div class="deuda-cabeza">
@@ -341,6 +473,27 @@ const Planeados = {
         }).join("");
   },
 
+  // La fila de un gasto que se repite (2.4)
+  filaRepite(g, noCabe) {
+    const px = this.proxima(g), sig = this.siguientes(g, 2);
+    const hasta = g.repite.hasta ? ` · hasta el ${Futuro.diaCorto(g.repite.hasta)}` : "";
+    return `
+            <li class="pl-item repite${noCabe ? " nocabe" : ""}" tabindex="0" role="button" aria-expanded="false">
+              <div class="deuda-cabeza">
+                <span class="deuda-nombre">${escapar(g.nombre)}</span>
+                <span class="deuda-nombre pl-monto">${dineroCorto(g.monto)}</span>
+              </div>
+              <span class="pl-rep">↻ Cada ${g.repite.cada}</span>
+              <p class="deuda-sub">${px ? `Próxima vez: ${Futuro.diaCorto(px.fecha)}${sig.length ? ` · después: ${Futuro.listaDias(sig)}` : ""}` : "Ya no queda ninguna vez por delante"}${hasta}${noCabe ? ` · <span class="pl-nocabe">no cabe esta semana</span>` : ""}</p>
+              <div class="pl-botones">
+                ${px ? `<button class="boton-chico lleno" data-pl-compre="${g.id}">Ya lo compré</button>
+                  <button class="boton-chico" data-pl-saltar="${g.id}">Saltar esta vez</button>` : ""}
+                <button class="boton-chico" data-pl-editar="${g.id}">Editar</button>
+                <button class="borrar" data-pl-borrar="${g.id}" aria-label="Borrar">✕</button>
+              </div>
+            </li>`;
+  },
+
   abrirFormulario(g = null) {
     this.editando = g ? g.id : null;
     abrirFormulario("planeado");
@@ -355,7 +508,22 @@ const Planeados = {
       $("f-en-partes").checked = !!g.enPartes;
       $("f-partes").value = String(g.partes || 2);
       $("campo-partes").hidden = !g.enPartes;
+      if (this.repetido(g)) { $("f-fecha").value = g.repite.desde; $("f-hasta").value = g.repite.hasta || ""; }
     }
+    this.elegirRepite(g && this.repetido(g) ? g.repite.cada : "no");
+  },
+
+  // Chips "¿Se repite?": No / Cada semana / Cada mes. Si se repite, cambian las preguntas del formulario.
+  elegirRepite(v) {
+    $("f-repite").value = v;
+    document.querySelectorAll("#form-campos [data-repite]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.repite === v)));
+    const rep = v !== "no";
+    $("lbl-fecha").textContent = rep ? "Primera vez" : "Necesito tenerlo para";
+    $("campo-hasta").hidden = !rep;
+    $("campo-tipo").hidden = rep;
+    $("campo-partes-check").hidden = rep;
+    if (rep) $("campo-partes").hidden = true; else $("campo-partes").hidden = !$("f-en-partes").checked;
+    $("ayuda-repite").hidden = !rep;
   },
 
   async borrar(id) {
@@ -369,6 +537,11 @@ const Planeados = {
   comprar(id) {
     const g = Almacen.leerPlaneados().find(x => x.id === id);
     if (!g) return;
+    const px = this.proxima(g);
+    if (this.repetido(g)) { // una sola vez: la vez que toca (planeadoParte = su número)
+      if (!px) return;
+      return abrirFormulario("gasto", { categoria: g.categoria, monto: px.monto, nota: g.nombre, extra: { planeadoId: g.id, planeadoParte: px.i } });
+    }
     abrirFormulario("gasto", { categoria: g.categoria, monto: this.pendiente(g), nota: g.nombre,
                                extra: { planeadoId: g.id, planeadoParte: "todo" } });
   },
@@ -443,6 +616,8 @@ const Planeados = {
 
   // ---------- ¿Cuándo lo compro? ----------
   abrirCuando(id) {
+    const rep = id !== "temporal" && Almacen.leerPlaneados().find(x => x.id === id);
+    if (rep && this.repetido(rep)) return this.abrirFormulario(rep); // la fecha la manda la repetición
     if (id !== "temporal") this.temporal = null;
     $("pc-h1").textContent = id === "temporal" ? "¿Y si gasto…?" : "¿Cuándo lo compro?";
     this.actual = id;
@@ -788,6 +963,7 @@ const Planeados = {
     $("pl-lista").addEventListener("click", e => {
       const c = e.target.closest("[data-pl-cuando]"); if (c) this.abrirCuando(c.dataset.plCuando);
       const k = e.target.closest("[data-pl-compre]"); if (k) this.comprar(k.dataset.plCompre);
+      const sk = e.target.closest("[data-pl-saltar]"); if (sk) this.saltar(sk.dataset.plSaltar);
       const ed = e.target.closest("[data-pl-editar]"); if (ed) this.abrirFormulario(Almacen.leerPlaneados().find(x => x.id === ed.dataset.plEditar));
       const b = e.target.closest("[data-pl-borrar]"); if (b) this.borrar(b.dataset.plBorrar);
     });
@@ -860,6 +1036,12 @@ const Planeados = {
     $("form-campos").addEventListener("change", e => {
       if (e.target.id === "f-en-partes") $("campo-partes").hidden = !e.target.checked;
     });
+    $("form-campos").addEventListener("click", e => {
+      const r = e.target.closest("[data-repite]");
+      if (r && formularioAbierto === "planeado") this.elegirRepite(r.dataset.repite);
+    });
+    // Al abrir la app: las veces nuevas de lo que se repite. Después de cargar TODO (sincronizar.js se carga más tarde: así sabe si es "Solo ver", que no escribe)
+    window.addEventListener("load", () => this.refrescar());
     window.addEventListener("movimientos-cambiaron", () => { this.mostrarLista(); this.mostrarCuando(); });
     window.addEventListener("jornadas-cambiaron", () => this.mostrarCuando());
   }
@@ -874,18 +1056,32 @@ Formularios.planeado = {
       <input id="f-nombre" type="text" maxlength="80" placeholder="Ej.: Arbolito de Navidad y decoraciones">
     </div>` + campoMonto() + `
     <div class="campo">
-      <label for="f-fecha">Necesito tenerlo para</label>
+      <label id="lbl-repite">¿Se repite?</label>
+      <input id="f-repite" type="hidden" value="no">
+      <div class="chips" role="group" aria-labelledby="lbl-repite">
+        <button type="button" class="chip" data-repite="no" aria-pressed="true">No</button>
+        <button type="button" class="chip" data-repite="semana" aria-pressed="false">Cada semana</button>
+        <button type="button" class="chip" data-repite="mes" aria-pressed="false">Cada mes</button>
+      </div>
+    </div>
+    <div class="campo">
+      <label id="lbl-fecha" for="f-fecha">Necesito tenerlo para</label>
       <input id="f-fecha" type="date" value="${hoy()}">
     </div>
+    <div class="campo" id="campo-hasta" hidden>
+      <label for="f-hasta">Hasta <span class="opcional">(opcional)</span></label>
+      <input id="f-hasta" type="date">
+    </div>
+    <p id="ayuda-repite" class="ayuda" hidden>Se cuenta en tus cuentas de los próximos 2 años, como cualquier gasto planeado. Si es algo fijo que se paga el mismo día (luz, teléfono, Netflix), va mejor en Pagos fijos. Para dejar de repetirlo: Editar → No (queda solo la próxima vez).</p>
     <div class="campo">
       <label for="f-categoria">Categoría</label>
       <select id="f-categoria">${[...CATEGORIAS, Planeados.CATEGORIA_FIESTAS].map(c => `<option>${c}</option>`).join("")}</select>
     </div>
-    <div class="campo">
+    <div class="campo" id="campo-tipo">
       <label for="f-tipo">Tipo</label>
       <select id="f-tipo"><option value="necesito">Lo necesito</option><option value="espera">Puede esperar</option></select>
     </div>
-    <label class="mv-check"><input id="f-en-partes" type="checkbox"> Se puede comprar en partes</label>
+    <label class="mv-check" id="campo-partes-check"><input id="f-en-partes" type="checkbox"> Se puede comprar en partes</label>
     <div class="campo" id="campo-partes" hidden>
       <label for="f-partes">Cantidad de partes</label>
       <select id="f-partes"><option value="2">2</option><option value="3">3</option></select>
@@ -899,16 +1095,40 @@ Formularios.planeado = {
     const montoTxt = $("f-monto").value.trim();
     const monto = redondear(Number(montoTxt));
     const fechaLimite = $("f-fecha").value;
+    const rep = $("f-repite").value;
     if (!nombre) return mostrarError("Escribe el nombre.");
     if (montoTxt === "" || !(monto > 0)) return mostrarError("El monto debe ser mayor que 0.");
-    if (!fechaLimite) return mostrarError("Elige para qué fecha lo necesitas.");
+    if (!fechaLimite) return mostrarError(rep === "no" ? "Elige para qué fecha lo necesitas." : "Elige la primera vez.");
     const anterior = Planeados.editando ? Almacen.leerPlaneados().find(x => x.id === Planeados.editando) : null;
+    const comunes = { nombre, monto, categoria: $("f-categoria").value, nota: $("f-nota").value.trim() };
+
+    // 2.4 · Se repite: las partes son todas las veces de los próximos 2 años
+    if (rep !== "no") {
+      const hasta = $("f-hasta").value || null;
+      if (hasta && hasta < fechaLimite) return mostrarError("La fecha final tiene que ser después de la primera vez.");
+      const datos = { id: anterior ? anterior.id : undefined, ...comunes, fechaLimite, tipo: "espera", enPartes: false, partes: 1, repite: { cada: rep, desde: fechaLimite, hasta } };
+      datos.elegido = Planeados.materializar({ ...(anterior || {}), ...datos, elegido: anterior && Planeados.repetido(anterior) ? anterior.elegido : null });
+      if (!datos.elegido.some((p, i) => !p.saltada && !p.retirada && p.fecha >= hoy())) return mostrarError("Con esas fechas no queda ninguna vez por delante.");
+      if (!Almacen.guardarPlaneado(datos)) return mostrarError("No se pudo guardar en este dispositivo.");
+      Planeados.editando = null;
+      cerrarFormulario();
+      return Planeados.alCambiar("Guardado");
+    }
+
+    // Dejó de repetirse: queda UNA sola vez (la próxima) como gasto de una vez. Es un gasto nuevo: así lo ya comprado de antes no se confunde con él.
+    if (anterior && Planeados.repetido(anterior)) {
+      const px = Planeados.proxima(anterior);
+      const nuevo = Almacen.guardarPlaneado({ ...comunes, fechaLimite: px ? px.fecha : fechaLimite, tipo: $("f-tipo").value, enPartes: false, partes: 1,
+        elegido: px ? [{ fecha: px.fecha, monto }] : null });
+      if (!nuevo) return mostrarError("No se pudo guardar en este dispositivo.");
+      Almacen.borrarPlaneado(anterior.id);
+      Planeados.editando = null;
+      cerrarFormulario();
+      return Planeados.alCambiar(px ? `Ya no se repite: queda el ${Futuro.diaCorto(px.fecha)}` : "Ya no se repite");
+    }
+
     const enPartes = $("f-en-partes").checked;
-    const datos = {
-      id: Planeados.editando || undefined, nombre, monto, fechaLimite,
-      categoria: $("f-categoria").value, nota: $("f-nota").value.trim(), tipo: $("f-tipo").value,
-      enPartes, partes: enPartes ? Number($("f-partes").value) : 1
-    };
+    const datos = { id: Planeados.editando || undefined, ...comunes, fechaLimite, tipo: $("f-tipo").value, enPartes, partes: enPartes ? Number($("f-partes").value) : 1 };
     // Si cambió el monto, la fecha elegida ya no corresponde
     if (anterior && anterior.elegido && Math.abs(anterior.monto - monto) > 0.005) datos.elegido = null;
     if (!Almacen.guardarPlaneado(datos)) return mostrarError("No se pudo guardar en este dispositivo.");
