@@ -11,7 +11,7 @@
  */
 const Sync = {
   ARCHIVO: "datos.json",
-  LISTAS: ["movimientos", "jornadas", "planeados", "diasLibres", "cambiosDatos", "planesDeuda", "deudasPropias", "pagosPropios", "recibos", "simulaciones", "notasConsejero", "acuerdos"],
+  LISTAS: ["movimientos", "jornadas", "planeados", "diasLibres", "cambiosDatos", "planesDeuda", "deudasPropias", "pagosPropios", "recibos", "simulaciones", "notasConsejero", "acuerdos", "mensajesRoberto"],
   VALORES: ["datos", "plan", "revision", "lineaTiempo", "escenarios", "dineroInicial", "futuro", "rentaCargosDesde", "acuerdoSimulado", "prioridad"],
   MAPAS: ["pagosMovidos"], // { clave: { ..., modificado, borrado? } }
 
@@ -192,6 +192,7 @@ const Sync = {
         Almacen.guardarSync({ resumen: { bajo: delOtro, subio: !iguales, de: (remoto && remoto.aparato) || "" } });
         this._reintentos = 0;
         if (typeof Consejero !== "undefined") Consejero.bajar();
+        if (typeof Roberto !== "undefined") Roberto.bajar();
         this.despues(delOtro, aviso);
         return { delOtro };
       }

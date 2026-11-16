@@ -2258,3 +2258,42 @@ html.bloqueado body > *:not(.candado) { visibility: hidden; }
 .campo select { text-overflow: ellipsis; }
 @media (max-width: 360px) { .campo select { font-size: 1.1rem; padding: 14px 10px; } }
 @media (max-width: 360px) { .mv-sugerida, .mv-vence { font-size: .6rem; letter-spacing: -.2px; padding-left: 1px; padding-right: 1px; } }
+
+/* ---------- Roberto (roberto.js): tu asesor financiero ---------- */
+.sr-solo { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.rb-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.rb-chip { display: inline-block; line-height: 1.3; font-weight: 600; font-size: .78rem; padding: 4px 10px; border-radius: 99px; background: #1c262d; border: 1px solid var(--borde); color: var(--suave); }
+.rb-chip.rb-fase { color: var(--menta, #4fd1b5); border-color: #2a5a50; }
+.rb-chip.rb-viejo { color: var(--aviso); border-color: #5a4a2a; }
+.rb-lugar { display: flex; gap: 14px; align-items: center; }
+.rb-lugar-ico { font-size: 2rem; line-height: 1; width: 52px; height: 52px; flex: none; display: grid; place-items: center; border-radius: 14px; background: #1c262d; }
+.rb-lugar b { display: block; }
+.rb-haciendo { display: block; color: var(--suave); font-size: .95rem; margin-top: 2px; }
+.rb-reunion { border: 1px solid #2c4566; background: linear-gradient(#15243a, var(--tarjeta)); }
+.rb-reunion-et { display: flex; justify-content: space-between; gap: 10px; color: #8fb7e8; font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.rb-reunion-texto { margin: 0 0 12px; }
+.rb-opciones { display: grid; gap: 8px; }
+.rb-op { text-align: left; font-size: .95rem; line-height: 1.35; color: var(--texto); background: #1c262d; border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; min-height: 48px; cursor: pointer; }
+.rb-op b { color: var(--menta, #4fd1b5); margin-right: 4px; }
+.rb-op.elegida { background: var(--menta, #4fd1b5); border-color: var(--menta, #4fd1b5); color: #0e1316; }
+.rb-op.elegida b { color: #0e1316; }
+.rb-op.atenuada { opacity: .45; }
+.rb-op:disabled { cursor: default; }
+.rb-op:focus-visible, .rb-enviar:focus-visible, .rb-escribir textarea:focus-visible { outline: 2px solid var(--menta, #4fd1b5); outline-offset: 2px; }
+.rb-pie { margin: 10px 0 0; font-size: .85rem; color: var(--suave); }
+.rb-pie:empty { display: none; }
+.rb-charla { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rb-m { max-width: 86%; padding: 9px 12px; border-radius: 16px; font-size: .95rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rb-m small { display: block; margin-top: 3px; font-size: .72rem; color: var(--suave); }
+.rb-m.rob { align-self: flex-start; background: #1c262d; border-bottom-left-radius: 5px; }
+.rb-m.yo { align-self: flex-end; background: #1f4a41; border-bottom-right-radius: 5px; }
+.rb-m.yo small { color: #a9d8cc; text-align: right; }
+.rb-quien { display: block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--menta, #4fd1b5); margin-bottom: 2px; }
+.rb-dia { align-self: center; font-size: .75rem; color: var(--suave); }
+.rb-vacio { color: var(--suave); font-size: .95rem; }
+.rb-escribir { display: flex; gap: 8px; align-items: flex-end; margin-top: 16px; }
+.rb-escribir[hidden] { display: none; }
+.rb-escribir textarea { flex: 1; min-width: 0; resize: vertical; min-height: 48px; max-height: 160px; padding: 12px 14px; border-radius: 22px; background: var(--tarjeta); border: 1px solid var(--borde); color: var(--texto); font-size: 16px; line-height: 1.35; }
+.rb-enviar { width: 48px; height: 48px; flex: none; border: none; border-radius: 50%; background: var(--menta, #4fd1b5); color: #0e1316; font-size: 1.3rem; font-weight: 800; cursor: pointer; }
+.rb-sin-sync { margin-top: 16px; color: var(--aviso); }
+.rb-nota { margin-top: 14px; color: var(--suave); font-size: .82rem; }

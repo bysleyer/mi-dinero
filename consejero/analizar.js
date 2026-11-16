@@ -166,6 +166,8 @@ const { chromium } = require("playwright");
                                    tipoIngreso: m.tipoIngreso, deudaId: m.deudaId, razonFueraPlan: m.razonFueraPlan, creado: m.creado })),
       jornadas: Almacen.leerJornadas(),
       notasConsejero: Almacen.leer("notasConsejero") || [],
+      // Lo que él le escribe a Roberto desde Más → Roberto (opcion + ref = respuesta a una reunión de roberto/estado.json)
+      mensajesRoberto: (Almacen.leer("mensajesRoberto") || []).filter(m => !m.borrado),
       acuerdos: (() => { try { return Acuerdos.paraConsejero(); } catch (e) { return { error: e.message }; } })(),
       // Más → Pagos fijos: esenciales y suscripciones (el consejero puede SUGERIR pausar una; nunca la pausa él)
       pagosFijos: (() => {

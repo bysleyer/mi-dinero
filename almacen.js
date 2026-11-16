@@ -21,6 +21,8 @@
  *   futuro         "Mi futuro": escenario y vista elegidos { escenario, vista }
  *   consejero      lo último que dejó tu consejero (consejero.json del repositorio de datos; no se sincroniza de vuelta)
  *   notasConsejero tus notas para el consejero: { id, texto, creado, modificado }
+ *   mensajesRoberto lo que le escribes a Roberto (roberto.js): { id, texto, creado, modificado, opcion?, ref? } (se sincroniza)
+ *   roberto      lo último que bajó de roberto/estado.json y roberto/conversacion.json (no se sincroniza: se baja de GitHub)
  *   liberado       respuestas de "se acaba el préstamo semanal" (liberado.js): { "fecha|cuota": "asi" | "pct25"... }. Solo en este aparato
  *   cierres        meses cuyo cierre ya viste (resumen.js, Cierre): { "2026-10": 1 }. Solo en este aparato
  *   acuerdos       bitácora de acuerdos y conversaciones por deuda (acuerdos.js): { id, deudaId, con, fecha, dijo, detalle,
@@ -64,7 +66,7 @@ const Almacen = {
 
   // ---------- Sincronización (sincronizar.js) ----------
   // Se anota cuándo cambió cada dato (para que gane lo más reciente) y se avisa para subirlo.
-  CLAVES_SIN_SYNC: ["sync", "metaSync", "config", "formato", "consejero"],
+  CLAVES_SIN_SYNC: ["sync", "metaSync", "config", "formato", "consejero", "roberto"],
   aplicandoSync: false,
 
   cambioParaSync(clave) {
@@ -541,6 +543,7 @@ const Almacen = {
       pagosPropios: this.leerTodosLosPagosPropios(),
       recibos: this.leerTodosLosRecibos(),
       notasConsejero: this.leer("notasConsejero") || [],
+      mensajesRoberto: this.leer("mensajesRoberto") || [],
       acuerdos: this.leerTodosLosAcuerdos(),
       rentaCargosDesde: this.leer("rentaCargosDesde"),
       prioridad: this.leer("prioridad"),
@@ -580,6 +583,7 @@ const Almacen = {
     guardar("pagosPropios", respaldo.pagosPropios || []);
     guardar("recibos", respaldo.recibos || []);
     guardar("notasConsejero", respaldo.notasConsejero || []);
+    guardar("mensajesRoberto", respaldo.mensajesRoberto || []);
     guardar("acuerdos", respaldo.acuerdos || []);
     // Respaldo viejo con acuerdo de renta: se pasa a "Planear pagos" al leerlo
     if (respaldo.planesDeuda) guardar("planesDeuda", respaldo.planesDeuda);

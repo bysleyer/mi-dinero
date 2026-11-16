@@ -38,6 +38,7 @@
     <button id="nav-registrar" class="nav-item nav-registrar" aria-label="Registrar" aria-haspopup="menu" aria-expanded="false"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span class="nav-txt">Registrar</span></button>
     <button class="nav-item" data-nav="plan"><span class="nav-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span><span class="nav-txt">Plan</span></button>
     <button class="nav-item solo-pc" data-nav="consejero"><span class="nav-ico" aria-hidden="true">🧑‍💼</span><span class="nav-txt">Tu consejero</span></button>
+    <button class="nav-item solo-pc" data-nav="roberto"><span class="nav-ico" aria-hidden="true">🇩🇴</span><span class="nav-txt">Roberto</span></button>
     <button class="nav-item solo-pc" data-nav="deudas"><span class="nav-ico" aria-hidden="true">💳</span><span class="nav-txt">Mis deudas</span></button>
     <button class="nav-item solo-pc" data-nav="pagosfijos"><span class="nav-ico" aria-hidden="true">🧾</span><span class="nav-txt">Pagos fijos</span></button>
     <button class="nav-item solo-pc" data-nav="planeados"><span class="nav-ico" aria-hidden="true">🛍️</span><span class="nav-txt">Gastos planeados</span></button>
@@ -107,6 +108,7 @@
         <h2>Más</h2>
         <div class="hoja-lista hoja-tiles">
           <button data-nav="consejero"><span class="tile-ico" aria-hidden="true">🧑‍💼</span><b>Tu consejero</b><small>Informe y reglas</small></button>
+          <button data-nav="roberto"><span class="tile-ico" aria-hidden="true">🇩🇴</span><b>Roberto</b><small id="rb-mosaico">Tu asesor financiero</small></button>
           <button data-nav="deudas"><span class="tile-ico" aria-hidden="true">💳</span><b>Mis deudas</b><small>Qué debes y cuándo termina</small></button>
           <button data-nav="pagosfijos"><span class="tile-ico" aria-hidden="true">🧾</span><b>Pagos fijos</b><small>Lo que pagas cada mes</small></button>
           <button data-nav="planeados"><span class="tile-ico" aria-hidden="true">🛍️</span><b>Gastos planeados</b><small>Compras que quieres hacer</small></button>
@@ -681,6 +683,32 @@
     </section>
   </main>
 
+  <!-- Pantalla: Roberto, tu asesor financiero (roberto.js). Solo lee sus archivos; tus mensajes viajan con la sincronización -->
+  <main id="pantalla-roberto" class="contenedor" hidden>
+    <button id="volver-roberto" class="volver">← Volver</button>
+    <p id="rb-ceja" class="ceja"></p>
+    <h1>Roberto</h1>
+    <div id="rb-chips" class="rb-chips"></div>
+    <section class="tarjeta rb-lugar" id="rb-lugar" aria-live="polite"></section>
+    <section class="tarjeta rb-reunion" id="rb-reunion" hidden>
+      <h2 class="rb-reunion-et"><span id="rb-reunion-et">Quiere hablar contigo</span><span id="rb-reunion-hora"></span></h2>
+      <p id="rb-reunion-texto" class="rb-reunion-texto"></p>
+      <div id="rb-opciones" class="rb-opciones" role="group" aria-label="Opciones de Roberto"></div>
+      <p id="rb-reunion-pie" class="rb-pie"></p>
+    </section>
+    <section class="tarjeta rb-conversacion">
+      <h2>Conversación</h2>
+      <ol id="rb-charla" class="rb-charla"></ol>
+    </section>
+    <p id="rb-sin-sync" class="estado rb-sin-sync" hidden></p>
+    <form id="rb-escribir" class="rb-escribir" hidden>
+      <label for="rb-texto" class="sr-solo">Escríbele a Roberto</label>
+      <textarea id="rb-texto" rows="1" maxlength="600" placeholder="Escríbele a Roberto…" enterkeyhint="send"></textarea>
+      <button type="submit" class="rb-enviar" aria-label="Enviar a Roberto">↑</button>
+    </form>
+    <p class="estado rb-nota">Roberto trabaja de 5:58 a. m. a 7:58 p. m. (hora de Nueva York) y lee tus mensajes en su próxima corrida. No es un chat en vivo.</p>
+  </main>
+
   <!-- Pantalla: Respaldo (Bloque 6) -->
   <main id="pantalla-logros" class="contenedor" hidden>
     <button id="volver-logros" class="volver volver-principal">← Volver</button>
@@ -1113,7 +1141,7 @@
   </div>
 
   <!-- Orden (el de arriba, comparten nombres globales: no lo cambies). Debe coincidir con ARCHIVOS de sw.js:
-       arranque, datos-ejemplo, almacen, campos, app, plan, proyeccion, jornadas, patrones, deudas, liberado, acuerdos, movimientos, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, papelera, respaldo, candado, sincronizar, nav, explica, cubrir, avisos, consejero, mensajes, logros, xp -->
+       arranque, datos-ejemplo, almacen, campos, app, plan, proyeccion, jornadas, patrones, deudas, liberado, acuerdos, movimientos, resumen, calendario, planeados, pagos, alcanza, escenarios, mover, futuro, colchon, datosfijos, pagosfijos, prestamo, acuerdo, papelera, respaldo, candado, sincronizar, nav, explica, cubrir, avisos, consejero, mensajes, logros, xp, roberto -->
 
   <script src="datos-ejemplo.js"></script>
   <script src="almacen.js"></script>
@@ -1152,5 +1180,6 @@
   <script src="mensajes.js"></script>
   <script src="logros.js"></script>
   <script src="xp.js"></script>
+  <script src="roberto.js"></script>
 </body>
 </html>
