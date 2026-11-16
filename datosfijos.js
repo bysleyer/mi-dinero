@@ -169,8 +169,8 @@ const DatosFijos = {
             <li class="${x.deshecho ? "df-deshecho" : ""}">
               <div class="mov-info">
                 <div class="mov-tipo">${seccion}: ${c.etiqueta}${x.original ? " (valor original)" : ""}</div>
-                <div class="mov-detalle">${this.texto(c, x.anterior)} → <strong>${this.texto(c, x.valor)}</strong> · desde el ${fechaCorta(x.desde)}</div>
-                <div class="mov-detalle">Cambiado el ${fechaCorta(Resumen.aClave(new Date(x.creado)))}${x.deshecho ? " · deshecho" : ""}</div>
+                <div class="mov-detalle">Cambió de ${this.texto(c, x.anterior)} a <strong>${this.texto(c, x.valor)}</strong>${x.desde > hoy() ? ` · empieza el ${fechaCorta(x.desde)}` : ` · desde el ${fechaCorta(x.desde)}`}</div>
+                <div class="mov-detalle">Lo cambiaste el ${fechaCorta(Resumen.aClave(new Date(x.creado)))}${x.deshecho ? " · deshecho" : ""}</div>
               </div>
               ${x.deshecho ? "" : `<button class="boton-chico" data-df-deshacer="${x.id}">Deshacer</button>`}
             </li>`;
