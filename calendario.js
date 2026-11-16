@@ -63,6 +63,7 @@ const Calendario = {
     const h = new Date();
     this.año = h.getFullYear();
     this.mes = h.getMonth();
+    this.seleccion = null;
     if (redibujar) this.mostrar();
   },
 
@@ -70,6 +71,7 @@ const Calendario = {
     const f = new Date(this.año, this.mes + delta, 1);
     this.año = f.getFullYear();
     this.mes = f.getMonth();
+    this.seleccion = null;
     this.mostrar();
   },
 
@@ -94,6 +96,7 @@ const Calendario = {
       estado = `<span class="dia-punto" aria-hidden="true">•</span>`;
     }
     if (fecha === hoyClave) clases.push("hoy");
+    if (fecha === this.seleccion) clases.push("sel");
 
     // Marcas de fechas importantes
     const marcas = [];
@@ -120,7 +123,7 @@ const Calendario = {
     ].filter(Boolean).join(", ");
 
     return `
-      <button class="${clases.join(" ")}" data-fecha="${fecha}" aria-label="${escapar(descripcion)}">
+      <button class="${clases.join(" ")}" data-fecha="${fecha}" aria-label="${escapar(descripcion)}" aria-pressed="${fecha === this.seleccion}">
         <span class="dia-num">${dia}${es15 ? "<small>!</small>" : ""}</span>
         ${marcas.join("")}
         ${estado}
@@ -176,7 +179,75 @@ const Calendario = {
       <li class="total"><span>Pago estimado por tus horas del mes</span><span>${dinero(mesTotales.neto)}</span></li>`;
   },
 
-  // ---------- Tocar un día: el mismo formulario del Bloque 7 ----------
+  // ---------- Tocar un día: su detalle en una hoja (2.2) ----------
+  // Muestra lo de ese día (jornada, lo que entra y vence, lo registrado y el saldo al final) y trae "Anotar jornada",
+  // que abre el formulario de siempre (tocarDia). Solo lee: el saldo sale de la misma cuenta de Libre (proyeccion.js).
+  seleccion: null,
+
+  verDia(fecha) {
+    this.seleccion = fecha;
+    document.querySelectorAll("#cal-semanas button.dia").forEach(b => { const on = b.dataset.fecha === fecha; b.classList.toggle("sel", on); b.setAttribute("aria-pressed", String(on)); });
+    // La hoja tapa la parte de abajo: el día tocado se sube para que quede a la vista arriba de ella
+    const c = document.querySelector(`#cal-semanas button.dia[data-fecha="${fecha}"]`);
+    if (c) { const y = c.getBoundingClientRect().top; if (y > 150 || y < 60) window.scrollTo({ top: Math.max(0, window.scrollY + y - 110), behavior: "instant" }); }
+    Nav.abrirHoja("dia");
+    this.dibujarDia();
+  },
+
+  dibujarDia() {
+    const f = this.seleccion;
+    if (!f) return;
+    const hoyC = hoy(), d = Jornadas.aFecha(f), dia = d.getDate();
+    $("hoja-titulo-barra").textContent = Jornadas.textoDia(f);
+    const dif = Math.round((d - Jornadas.aFecha(hoyC)) / 86400000);
+    const cuando = dif === 0 ? "Hoy" : dif === 1 ? "Mañana" : dif === -1 ? "Ayer" : dif > 0 ? `Dentro de ${dif} días` : `Hace ${-dif} días`;
+    const j = Almacen.leerJornadas().find(x => x.fecha === f);
+    const libre = !j && Proyeccion.esLibre(f) ? this.libreDe(f) : null;
+    const es15 = dia === this.diaDelMes("accionLegal", 15);
+    const pastillas = [
+      d.getDay() === this.diaDeCobro() ? `<span class="cd-pill">cobro</span>` : "",
+      es15 ? `<span class="cd-pill r">día 15</span>` : "",
+      libre ? `<span class="cd-pill a">día libre</span>` : ""
+    ].join("");
+
+    const jornada = j ? (j.horas > 0 ? `✓ Trabajé ${redondear(j.horas)} h` : "✕ No trabajé")
+      : libre ? `◇ Día libre planeado (${escapar(libre.motivo)})`
+      : f < hoyC ? `<span class="cd-neg">• Falta anotar</span>` : f === hoyC ? "Sin registrar todavía" : "Todavía no";
+
+    // Lo que entra y el saldo: la cuenta de Libre (hoy y los próximos 3 meses)
+    let entra = [], saldo = null, fuera = false;
+    if (f >= hoyC) {
+      const pr = Proyeccion.calcular({ horizonte: Plan.DIAS_ADELANTE });
+      const x = pr.porDia[f];
+      if (x) { entra = x.lineas.filter(l => l.monto > 0 && l.tipo !== "simulado"); saldo = x.saldoFin; } else fuera = true;
+    }
+    const vence = Vencimientos.delDia(f).filter(v => !v.alerta).flatMap(v => v.partes);
+    const movs = Almacen.leerMovimientos().filter(m => m.fecha === f).sort((a, b) => (a.creado || "").localeCompare(b.creado || ""));
+
+    const fila = (txt, monto, clase = "") => `<div class="cd-f"><span>${txt}</span><b class="${clase}">${monto}</b></div>`;
+    const lineaMov = m => {
+      const esIngreso = m.tipo === "ingreso", esAjuste = m.tipo === "ajuste";
+      const titulo = m.tipo === "gasto" ? `${m.categoria}${m.nota ? ` · ${m.nota}` : ""}` : esIngreso ? (esCheque(m) ? "Cheque" : `Otro ingreso${m.nota ? ` · ${m.nota}` : ""}`)
+        : `${NOMBRES_TIPO[m.tipo] || "Movimiento"}${m.nota ? ` · ${m.nota}` : ""}`;
+      return fila(escapar(titulo), esAjuste ? `Saldo: ${dinero(m.monto)}` : `${esIngreso ? "+" : "−"}${dinero(m.monto)}`, esAjuste ? "" : esIngreso ? "cd-pos" : "cd-neg");
+    };
+    const seccion = (titulo, cuerpo) => cuerpo ? `<h4 class="cd-h">${titulo}</h4>${cuerpo}` : "";
+    const atr = es15 ? Proyeccion.rentaAtrasada() : 0;
+
+    $("cd-cuerpo").innerHTML = `
+      <p class="cd-sub">${cuando}${pastillas}</p>
+      ${es15 ? `<div class="pista-15" role="note"><strong>${f === hoyC ? "Hoy" : "Este día"} es el límite de la renta atrasada:</strong> ${escapar(this.PISTA_15.charAt(0).toLowerCase() + this.PISTA_15.slice(1))}.${atr > 0.005 ? ` <b>Debes ${dineroCorto(atr)}.</b>` : ""}</div>` : ""}
+      ${seccion("Jornada", `<div class="cd-f"><span>${jornada}</span></div>`)}
+      ${seccion("Entra", entra.map(l => fila(escapar(l.nombre), `+${dinero(l.monto)}`, "cd-pos")).join(""))}
+      ${seccion("Vence este día", vence.map(p => fila(`${p.pagado ? "✓ " : ""}${escapar(p.nombre)}${p.pagado ? " (pagado)" : ""}`, dinero(p.monto))).join(""))}
+      ${seccion("Registrado este día", movs.map(lineaMov).join(""))}
+      ${saldo !== null ? `<div class="cd-tot"><span>Saldo al final del día</span><span class="${saldo < -0.005 ? "cd-neg" : "cd-pos"}">${dinero(saldo)}</span></div>
+        <p class="cd-nota">${saldo < -0.005 ? `Ese día te faltan ${dineroCorto(-saldo)}. ` : ""}Según tu cuenta de los próximos 3 meses; es un estimado.</p>`
+        : `<p class="cd-nota">${fuera ? "Ese día queda fuera de los próximos 3 meses, que es lo que calcula la cuenta." : "El saldo de los días que ya pasaron no se guarda."}</p>`}
+      <button type="button" class="cd-bt${!j && f <= hoyC ? " lleno" : ""}" data-cd-anotar="${f}">${j ? "Editar jornada" : "Anotar jornada"}</button>`;
+  },
+
+  // ---------- Abrir el formulario de la jornada de un día (el mismo del Bloque 7) ----------
   tocarDia(fecha) {
     const j = Almacen.leerJornadas().find(x => x.fecha === fecha);
     if (j) {
@@ -321,9 +392,17 @@ const Calendario = {
     $("cal-hoy").addEventListener("click", () => this.irAHoy());
     $("cal-semanas").addEventListener("click", e => {
       const d = e.target.closest("[data-fecha]");
-      if (d) this.tocarDia(d.dataset.fecha);
+      if (d) this.verDia(d.dataset.fecha);
     });
-    window.addEventListener("jornadas-cambiaron", () => { this.mostrar(); if (!$("pantalla-calendario").hidden) this.mostrarLibres(); });
+    $("cd-cuerpo").addEventListener("click", e => {
+      const b = e.target.closest("[data-cd-anotar]");
+      if (!b) return;
+      Nav.cerrarHoja();
+      this.tocarDia(b.dataset.cdAnotar);
+    });
+    const alCambiarDatos = () => { if (!$("hoja").hidden && !$("hoja-dia").hidden) this.dibujarDia(); };
+    window.addEventListener("jornadas-cambiaron", () => { this.mostrar(); if (!$("pantalla-calendario").hidden) this.mostrarLibres(); alCambiarDatos(); });
+    window.addEventListener("movimientos-cambiaron", alCambiarDatos);
   }
 };
 

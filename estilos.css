@@ -732,6 +732,9 @@ body.con-nav .botones-final { display: none; }
   body.con-nav .aviso-flotante { bottom: 32px; left: calc(50% + 120px); }
   body.con-nav .hoja { align-items: center; }
   body.con-nav .hoja-caja { border-radius: 20px; max-width: 520px; }
+  /* Detalle del día (calendario): en computador va a la derecha y deja ver la cuadrícula */
+  body.con-nav .hoja.con-dia { justify-content: flex-end; padding-right: 32px; background: rgba(0,0,0,.2); }
+  body.con-nav .hoja.con-dia .hoja-caja { max-width: 440px; max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px); }
   body.con-nav .ventana { align-items: center; }
   body.con-nav .ventana-caja { border-radius: 20px; max-height: 92vh; max-height: 92dvh; }
   body.con-nav .pestanas { display: none; }
@@ -2182,3 +2185,23 @@ html, body { overscroll-behavior: none; }
 .lb-op[aria-pressed="true"] { border-color: var(--ok); }
 #lb-cuerpo .lb-n { margin: 10px 0 0; }
 #lb-cuerpo .lb-bt { border-color: #6b5a2a; }
+
+/* v90 · Calendario: detalle del día (hoja) */
+button.dia.sel { outline: 3px solid var(--ok); outline-offset: -3px; }
+#cd-cuerpo { overflow-wrap: anywhere; }
+.cd-sub { margin: 0 0 10px; color: var(--suave); font-size: .9rem; }
+.cd-pill { display: inline-block; font-size: .75rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; margin-left: 6px; background: #14262a; color: var(--ok); }
+.cd-pill.a { background: #3b2f14; color: var(--aviso); }
+.cd-pill.r { background: #3a1f1c; color: var(--error); }
+.cd-h { margin: 14px 0 2px; font-size: .72rem; letter-spacing: .07em; text-transform: uppercase; color: var(--suave); }
+.cd-f { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--borde); font-size: .95rem; }
+.cd-h + .cd-f { border-top: 0; }
+.cd-f b { white-space: nowrap; font-weight: 700; }
+.cd-pos { color: var(--ok); }
+.cd-neg { color: var(--error); }
+.cd-tot { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--borde); font-weight: 700; }
+.cd-nota { font-size: .82rem; color: var(--suave); margin: 8px 0 0; }
+.cd-bt { display: block; width: 100%; text-align: center; border: 1px solid #2c4a45; background: transparent; border-radius: 12px; padding: 12px; margin-top: 14px; color: var(--ok); font-weight: 800; font-size: 1rem; min-height: 48px; }
+.cd-bt.lleno { background: var(--ok); color: #06201b; border-color: var(--ok); }
+/* La hoja del detalle del día deja ~200 px arriba para el calendario; si el detalle es largo, se desplaza por dentro */
+.hoja.con-dia .hoja-caja { max-height: calc(100vh - 200px); max-height: calc(100dvh - 200px); }

@@ -102,9 +102,11 @@ const Nav = {
     $("hoja-avisos").hidden = cual !== "avisos";
     $("hoja-acuerdos").hidden = cual !== "acuerdos";
     $("hoja-liberado").hidden = cual !== "liberado";
+    $("hoja-dia").hidden = cual !== "dia";
+    $("hoja").classList.toggle("con-dia", cual === "dia"); // la hoja del día deja libre arriba la cuadrícula del calendario
     $("hoja-explica").hidden = cual !== "explica";
     if (cual === "avisos") { try { if (typeof Xp !== "undefined") Xp.revisoAvisos(); } catch (e) { /* el XP nunca debe romper los avisos */ } }
-    $("hoja-titulo-barra").textContent = cual === "registrar" ? this.tituloHoja() : cual === "explica" ? tipo : { mas: "Más", avisos: "Avisos", acuerdos: "Acuerdos", liberado: "Dinero que se libera" }[cual] || "";
+    $("hoja-titulo-barra").textContent = cual === "registrar" ? this.tituloHoja() : cual === "explica" ? tipo : { mas: "Más", avisos: "Avisos", acuerdos: "Acuerdos", liberado: "Dinero que se libera", dia: "Detalle del día" }[cual] || "";
     // No se enfoca el monto solo: el teclado se abre cuando tocas el campo
   },
 
