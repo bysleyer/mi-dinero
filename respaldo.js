@@ -246,7 +246,6 @@ const Respaldo = {
     }
     Almacen.marcarRespaldoDescargado();
     this.mostrar();
-    if (typeof Papelera !== "undefined") Papelera.iniciar();
     this.mostrarAvisos();
   },
 
@@ -370,6 +369,7 @@ const Respaldo = {
     $("aviso-respaldo").addEventListener("click", () => this.abrir());
     $("aviso-datos-viejos").addEventListener("click", () => this.abrir());
     this.conectarSelector("cargar-respaldo", "respaldo-revision");
+    if (typeof Papelera !== "undefined") Papelera.iniciar();
     this.mostrarAvisos();
   },
 
