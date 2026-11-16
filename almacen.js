@@ -21,6 +21,7 @@
  *   futuro         "Mi futuro": escenario y vista elegidos { escenario, vista }
  *   consejero      lo último que dejó tu consejero (consejero.json del repositorio de datos; no se sincroniza de vuelta)
  *   notasConsejero tus notas para el consejero: { id, texto, creado, modificado }
+ *   liberado       respuestas de "se acaba el préstamo semanal" (liberado.js): { "fecha|cuota": "asi" | "pct25"... }. Solo en este aparato
  *   acuerdos       bitácora de acuerdos y conversaciones por deuda (acuerdos.js): { id, deudaId, con, fecha, dijo, detalle,
  *                  estado: "espera" | "acordado" | "no", hasta, porEscrito, respondido, creado, modificado, borrado? }
  *   cambiosDatos   "Datos fijos": { id, campo, valor, anterior, desde, creado, deshecho }

@@ -401,6 +401,7 @@ const Deudas = {
       )).join("");
     this.mostrarPagos();
     this.mostrarProyeccion();
+    Liberado.mostrarTarjeta();
   },
 
   iniciar() {

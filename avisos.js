@@ -48,6 +48,14 @@ const Avisos = {
         (a.deudaId === Plan.ID_DEUDA_RENTA && atr > 0.005 ? " Lo del día 15 sigue en pie: insiste por escrito." : ""),
       acciones: [["Ver acuerdos", "acuerdos"]] }));
 
+    // Se acaba el préstamo semanal: ¿a dónde va ese dinero? (una sola vez; 1.4)
+    try {
+      const lb = Liberado.base(pr);
+      if (Liberado.pendiente(lb)) campana.push({ id: `liberado-${lb.clave}`, firma: lb.clave,
+        texto: `El préstamo semanal termina el ${Futuro.diaCorto(lb.fin)}. Desde el ${Futuro.diaCorto(lb.desde)} quedan ${dineroCorto(lb.cuota)} por semana: ¿a dónde van?`,
+        acciones: [["Decidir", "liberado"]] });
+    } catch (e) { /* un aviso nunca debe romper los demás */ }
+
     // 3) Pagos que vencen hoy o mañana sin pagar
     const vencen = Vencimientos.entre(hoyClave, manana).filter(i => !i.alerta && !(i.inmediato && !i.movido))
       .map(i => ({ fecha: i.fecha, nombre: i.nombre, monto: redondear(i.partes.filter(p => !p.pagado).reduce((x, p) => x + p.monto, 0)) }))
@@ -252,6 +260,7 @@ const Avisos = {
       return PagosFijos.abrirEditor(null, acc.slice(3), x ? { nombre: x.nota, monto: x.monto, dia: x.dia } : undefined);
     }
     if (acc === "acuerdos" && clave) { Nav.ir("deudas"); return Acuerdos.abrir(clave); }
+    if (acc === "liberado") { Nav.ir("deudas"); return Liberado.abrir(); }
     if (acc === "cubrir") return Cubrir.abrir();
     if (acc === "futuro") return Nav.ir("futuro");
     if (acc === "deudas") return Nav.ir("deudas");

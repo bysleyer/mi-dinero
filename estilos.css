@@ -2161,3 +2161,24 @@ html, body { overscroll-behavior: none; }
 /* Nombres muy largos de gastos planeados: se parten y no empujan el monto fuera de la pantalla */
 .pl-item .deuda-cabeza .deuda-nombre:first-child { min-width: 0; overflow-wrap: anywhere; }
 .pl-item { overflow-wrap: anywhere; }
+
+/* v89 · Se acaba el préstamo semanal: ¿a dónde va ese dinero? */
+.lb-card { border: 1px solid #5a4a22; border-left: 3px solid var(--aviso); background: #241d0e; overflow-wrap: anywhere; }
+.lb-card[hidden] { display: none; }
+.lb-card p { margin: 0 0 8px; font-size: .95rem; }
+.lb-card b { color: var(--aviso); }
+.lb-t { margin: 0 0 6px; color: var(--aviso); font-size: 1.05rem; }
+.lb-n { color: var(--suave); font-size: .85rem !important; }
+.lb-flujo { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: .9rem; margin: 4px 0 12px; }
+.lb-flujo span:nth-child(even) { color: var(--suave); text-align: right; }
+.lb-bt { display: block; width: 100%; text-align: center; border: 1px solid #6b5a2a; background: transparent; border-radius: 12px; padding: 11px; margin-top: 8px; color: var(--aviso); font-weight: 700; font-size: .95rem; min-height: 44px; }
+.lb-bt.lleno { background: var(--aviso); color: #241d0e; border-color: var(--aviso); }
+#lb-cuerpo { overflow-wrap: anywhere; }
+.lb-intro { margin: 0 0 10px; background: #10201f; border: 1px solid #2c4a45; border-left: 3px solid var(--ok); border-radius: 12px; padding: 12px; font-size: .95rem; }
+.lb-intro b { color: var(--ok); }
+.lb-op { display: block; width: 100%; text-align: left; border: 1px solid var(--borde); background: var(--fondo); border-radius: 12px; padding: 10px 12px; margin-top: 8px; color: var(--texto); font-size: .92rem; }
+.lb-op b { display: block; }
+.lb-op span { display: block; color: var(--suave); font-size: .88rem; margin-top: 2px; }
+.lb-op[aria-pressed="true"] { border-color: var(--ok); }
+#lb-cuerpo .lb-n { margin: 10px 0 0; }
+#lb-cuerpo .lb-bt { border-color: #6b5a2a; }
