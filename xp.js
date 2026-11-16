@@ -15,12 +15,12 @@
  * Subir del nivel n al n+1 cuesta 100 + 50·(n−1) XP.
  *
  * Solo se cuenta lo que pasa desde que se activó el XP ("desde"): nada se calcula hacia atrás.
- * Pendiente: los jefes de deudas.
+ * Jefes de deudas (logros.js): cada deuda es un jefe; sus pagos le quitan vida y al llegar a cero con pagos da +75 XP.
  *
  * Datos guardados: { desde, ganados: { id: { xp, fecha, tipo, texto } }, avisos: { fecha: 1 },
  *                    respaldos: { lunesDeLaSemana: 1 }, nivelVisto, tema,
- *                    logros: { id: { fecha, visto } }, flags: { vuelta, madrugador, colchon500 },
- *                    colchonVisto, colchonAportes, ultimaVisita }
+ *                    logros: { id: { fecha, visto } }, flags: { vuelta, madrugador, colchon500, primerGolpe, jefeMitad, libreDeDeudas },
+ *                    colchonVisto, colchonAportes, ultimaVisita, jefes: { idDeuda: { nombre, base, max, vistoEn, danio, mitad, derrotado, cerrado } } }
  */
 const Xp = {
   CLAVE: "progreso",
@@ -89,7 +89,7 @@ const Xp = {
     }
     p.ganados = p.ganados || {}; p.avisos = p.avisos || {}; p.respaldos = p.respaldos || {};
     p.nivelVisto = p.nivelVisto || 1; p.tema = p.tema || "menta"; p.desde = p.desde || hoy();
-    p.logros = p.logros || {}; p.flags = p.flags || {}; p.colchonAportes = p.colchonAportes || 0;
+    p.logros = p.logros || {}; p.flags = p.flags || {}; p.colchonAportes = p.colchonAportes || 0; p.jefes = p.jefes || {};
     if (p.colchonVisto === undefined) p.colchonVisto = null;
     return p;
   },

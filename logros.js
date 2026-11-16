@@ -1,5 +1,5 @@
 /*
- * LOGROS - 20 medallas por hábitos (propuesta aprobada)
+ * LOGROS - 23 medallas por hábitos + los jefes de deudas (propuestas aprobadas)
  *
  * Cada logro se gana una sola vez, se guarda con su fecha (en "progreso", ver xp.js) y da XP.
  * Las condiciones son de hábito, no de cuánto ganas, gastas o ahorras. Los logros nunca se pierden.
@@ -11,6 +11,9 @@
  *   colchón   → cuando subes el número del colchón en Plan (se compara con lo último que vio la app)
  *   respaldos → las semanas y los meses en que hiciste un respaldo
  *   secretos  → volver después de 7 días, registrar antes de las 6 a. m., registrar el 31 de diciembre, llegar al nivel 10
+ *   jefes     → cada deuda es un jefe: su vida es lo que debes y cada PAGO registrado le quita vida (jefes de deudas, 1.3).
+ *               Se derrota al llegar a cero con pagos (al menos la mitad de su vida inicial): "Ajustar saldo" no es un golpe.
+ *               +75 XP cada uno. Solo cuenta lo que pasa desde que existe el jefe. Nada baja ni se pierde: sin castigos.
  */
 const Logros = {
   // Íconos de 8×8 píxeles: "#" = píxel encendido
@@ -34,7 +37,11 @@ const Logros = {
     continuar: ["..####..", ".##..#..", "#..#...#", "#....#.#", "#.#....#", "#...#..#", ".#....#.", "..####.."],
     huevo: ["..####..", ".######.", "########", "#.#..#.#", "########", "########", ".######.", "..####.."],
     fuegos: ["...##...", "..#..#..", "##.##.##", "...##...", "...##...", "##.##.##", "..#..#..", "...##..."],
-    espada: ["......##", ".....##.", "....##..", "...##...", "##.##...", "###.....", ".##.....", "........"]
+    espada: ["......##", ".....##.", "....##..", "...##...", "##.##...", "###.....", ".##.....", "........"],
+    jefe: [".######.", "########", "#..##..#", "########", "########", ".#.##.#.", "..####..", "........"],
+    golpe: ["......##", ".....###", "....###.", "...###..", "#.###...", "###.....", ".#......", "........"],
+    mitad: ["########", "#......#", "#.####.#", "#.####.#", "#......#", "#......#", "########", "........"],
+    libre: ["..####..", ".#....#.", "#..##..#", "#.####.#", "#..##..#", ".#....#.", "..####..", "........"]
   },
 
   // v = animación propia al desbloquear ("giro" la moneda, "estrella", "temblar" el cofre)
@@ -58,9 +65,16 @@ const Logros = {
     { id: "vuelta", g: "Secretos", n: "Vuelta sin reproches", r: "Continuar", c: "Volver a la app después de 7 días sin entrar. Sin castigos por faltar.", xp: 20, i: "continuar", s: true },
     { id: "madrugador", g: "Secretos", n: "Madrugador", r: "Huevo de Pascua", c: "Registrar un gasto antes de las 6 a. m.", xp: 15, i: "huevo", s: true },
     { id: "fin-de-ano", g: "Secretos", n: "Fin de año", r: "Fuegos artificiales", c: "Registrar gastos el 31 de diciembre.", xp: 30, i: "fuegos", s: true },
-    { id: "jefe-derrotado", g: "Secretos", n: "Jefe derrotado", r: "Espada legendaria", c: "Llegar al nivel 10.", xp: 200, i: "espada", s: true }
+    { id: "jefe-derrotado", g: "Secretos", n: "Final del juego", r: "Espada legendaria", c: "Llegar al nivel 10.", xp: 200, i: "espada", s: true },
+    // Jefes de deudas (1.3). Los jefes mismos ("Derrotaste a ...") salen de tus deudas: ver jefes()
+    { id: "primer-golpe", g: "Logros de jefes", n: "Primer golpe", r: "Tutorial de combate", c: "Registrar tu primer pago a una deuda.", xp: 15, i: "golpe" },
+    { id: "jefe-mitad", g: "Logros de jefes", n: "Jefe a la mitad", r: "Segunda fase", c: "Quitarle la mitad de la vida a un jefe.", xp: 30, i: "mitad" },
+    { id: "libre-de-deudas", g: "Logros de jefes", n: "Libre de deudas", r: "Créditos finales", c: "Derrotar a todos los jefes. Sin castigos por tardar.", xp: 300, i: "libre" }
   ],
-  GRUPOS: ["Registro", "Pagos", "Colchón y respaldos", "Secretos"],
+  GRUPOS: ["Jefes", "Logros de jefes", "Registro", "Pagos", "Colchón y respaldos", "Secretos"],
+  XP_JEFE: 75,
+  // "Inspirado en" de cada jefe (las deudas que agregas tú son "Jefe sorpresa")
+  SABORES: { deudaRenta: "Jefe del castillo", deudaInternet: "Jefe del bosque", deudaAmigo: "Jefe sin prisa", deudaLuz: "Jefe relámpago", deudaPrestamo: "Jefe de zona" },
   DURACION_AVISO: 3400,
 
   svgPixel(nombre) {
@@ -146,12 +160,75 @@ const Logros = {
       "vuelta": () => !!p.flags.vuelta,
       "madrugador": () => !!p.flags.madrugador,
       "fin-de-ano": () => c.dias.some(d => d.endsWith("-12-31")),
-      "jefe-derrotado": () => nivel >= 10
+      "jefe-derrotado": () => nivel >= 10,
+      "primer-golpe": () => !!p.flags.primerGolpe,
+      "jefe-mitad": () => !!p.flags.jefeMitad,
+      "libre-de-deudas": () => !!p.flags.libreDeDeudas
     }[id]();
+  },
+
+  // ---------- Jefes de deudas (1.3) ----------
+  CERO: 0.005,
+
+  // Mira cada deuda como un jefe. Nace cuando la ves con saldo (lo que ya estaba en cero no cuenta) y se guarda en p.jefes:
+  //   { nombre, base (vida al empezar), max (la mayor vida), vistoEn, danio (pagado desde que apareció), mitad, derrotado, cerrado }
+  // Golpe = un pago registrado (la renta: solo lo pagado a la atrasada). "Ajustar saldo" no es golpe: si el saldo llega a cero sin
+  // pagos suficientes (menos de la mitad de la vida inicial) queda "cerrado sin batalla": sin XP, y si el saldo reaparece, el jefe vuelve.
+  evaluarJefes(p, sumar) {
+    p.jefes = p.jefes || {};
+    if (typeof Sync !== "undefined" && Sync.soloVer()) return;   // "Solo ver" no escribe nada
+    const ahora = new Date().toISOString(), hoyC = hoy();
+    const pagos = Almacen.leerMovimientos().filter(m => m.tipo === "pagoDeuda" && m.deudaId && !(m.deudaId === Plan.ID_DEUDA_RENTA && m.rentaMes === "mes"));
+    if (pagos.some(m => { const dia = Xp.fechaLocal(m.creado); return dia && dia >= p.desde; })) p.flags.primerGolpe = true;
+    const deudas = Datos.deudas();
+    deudas.forEach(d => {
+      const saldo = Math.max(0, redondear(Datos.saldoReparto(d.id)));
+      let j = p.jefes[d.id];
+      if (j && j.derrotado) return;                          // lo derrotado no se pierde ni vuelve
+      if (!j) {
+        if (saldo <= this.CERO) return;                      // una deuda que ya estaba en cero no es jefe
+        j = p.jefes[d.id] = { nombre: d.nombre, base: saldo, max: Math.max(redondear(d.monto || 0), saldo), vistoEn: ahora, danio: 0, mitad: null, derrotado: null, cerrado: null };
+      }
+      j.nombre = d.nombre;
+      if (j.cerrado) {                                       // cerrado sin batalla: si el saldo reaparece, empieza otra pelea
+        if (saldo <= this.CERO) return;
+        Object.assign(j, { cerrado: null, base: saldo, vistoEn: ahora, mitad: null, danio: 0 });
+      }
+      if (saldo > j.max) j.max = saldo;                      // si el saldo crece, la vida máxima crece: la barra no se "cura" ni se alarma
+      j.danio = redondear(pagos.filter(m => m.deudaId === d.id && (m.creado || "") > j.vistoEn).reduce((a, m) => a + m.monto, 0));
+      const mitad = j.danio >= j.base / 2 - this.CERO;
+      if (mitad && saldo > this.CERO && !j.mitad) { j.mitad = hoyC; p.flags.jefeMitad = true; }
+      if (saldo <= this.CERO) {
+        if (mitad) {
+          j.derrotado = hoyC; p.flags.jefeMitad = true;
+          sumar(`jefe:${d.id}`, this.XP_JEFE, hoyC, "logro", `Derrotaste a ${d.nombre}`);
+          p.logros[`jefe-${d.id}`] = p.logros[`jefe-${d.id}`] || { fecha: hoyC, visto: false };
+        } else j.cerrado = hoyC;
+      }
+    });
+    // Libre de deudas: ya no debes nada de lo que se reparte y derrotaste al menos a un jefe pagando
+    if (Object.values(p.jefes).some(j => j.derrotado) && deudas.every(d => Datos.saldoReparto(d.id) <= this.CERO)) p.flags.libreDeDeudas = true;
+  },
+
+  // Lo que se dibuja en el grupo "Jefes": en batalla primero, luego los demás en el orden de la app, al final lo derrotado o cerrado
+  jefesLista(p) {
+    const deudas = Datos.deudas(), orden = Plan.deudasEnOrden().map(d => d.id);
+    const porOrden = d => { const i = orden.indexOf(d.id); return i < 0 ? 99 : i; };
+    const vivos = deudas.map(d => {
+      const j = (p.jefes || {})[d.id], saldo = Math.max(0, redondear(Datos.saldoReparto(d.id)));
+      if (j && j.derrotado) return null;
+      if (!j && saldo <= this.CERO) return null;
+      const max = Math.max(j ? j.max : 0, redondear(d.monto || 0), saldo);
+      return { id: d.id, nombre: d.nombre, saldo, max, j: j || null, orden: porOrden(d) };
+    }).filter(Boolean).sort((a, b) => (b.j && b.j.danio > 0 ? 1 : 0) - (a.j && a.j.danio > 0 ? 1 : 0) || a.orden - b.orden);
+    const caidos = Object.entries(p.jefes || {}).filter(([, j]) => j.derrotado).map(([id, j]) => ({ id, nombre: j.nombre, saldo: 0, max: j.max, j, orden: 0 }))
+      .sort((a, b) => a.j.derrotado.localeCompare(b.j.derrotado));
+    return [...vivos, ...caidos];
   },
 
   // Anota los logros nuevos (con su XP). "sumar" es la función de xp.js que escribe en el registro de XP.
   evaluar(p, pagos, sumar) {
+    try { this.evaluarJefes(p, sumar); } catch (e) { /* los jefes nunca deben romper el XP */ }
     let hubo = true, vueltas = 0;
     while (hubo && vueltas++ < 4) {                      // el XP de un logro puede subir de nivel y abrir otro (Jefe derrotado)
       hubo = false;
@@ -169,7 +246,14 @@ const Logros = {
   // ---------- Aviso al ganar un logro (centro de la pantalla, con animación) ----------
   _abierto: false, _timer: null, _espera: null,
 
-  pendientes(p) { return this.LISTA.filter(l => p.logros[l.id] && !p.logros[l.id].visto); },
+  // Los jefes derrotados también son logros (uno por deuda): "Derrotaste a ..."
+  jefesDerrotados(p) {
+    return Object.entries(p.jefes || {}).filter(([, j]) => j.derrotado).map(([id, j]) => ({
+      id: `jefe-${id}`, g: "Jefes", n: `Derrotaste a ${j.nombre}`, r: this.SABORES[id] || "Jefe sorpresa", c: "Vida en cero, con pagos.",
+      xp: this.XP_JEFE, i: "espada", v: "estrella", jefe: true, fecha: j.derrotado }));
+  },
+  todos(p) { return [...this.LISTA, ...this.jefesDerrotados(p)]; },
+  pendientes(p) { return this.todos(p).filter(l => p.logros[l.id] && !p.logros[l.id].visto); },
   ocupado() { return this._abierto || !!this._espera; },
 
   // Muestra el siguiente logro que todavía no se ha mostrado
@@ -183,6 +267,7 @@ const Logros = {
 
   abrirAviso(l) {
     const aviso = $("lg-aviso");
+    const t = aviso.querySelector(".lg-titulo"); if (t) t.textContent = l.jefe ? "Jefe derrotado" : "Logro desbloqueado";
     $("lg-aviso-nombre").textContent = l.n;
     $("lg-aviso-xp").textContent = `+${l.xp} XP`;
     $("lg-aviso-ref").textContent = `Inspirado en: ${l.r}`;
@@ -226,10 +311,27 @@ const Logros = {
     const p = Xp.leer(), pagos = Xp.pagosDeMovimientos(p);
     const c = this.contexto(p, pagos);
     const ganados = this.LISTA.filter(l => p.logros[l.id]);
-    $("lg-resumen").textContent = `${ganados.length} de ${this.LISTA.length} logros`;
-    $("lg-resumen-xp").textContent = `${ganados.reduce((s, l) => s + l.xp, 0)} XP ganados con logros`;
+    const jefes = this.jefesLista(p), derrotados = jefes.filter(x => x.j && x.j.derrotado).length;
+    $("lg-resumen").textContent = `${ganados.length} de ${this.LISTA.length} logros${jefes.length ? ` · ${derrotados} de ${jefes.length} jefes derrotados` : ""}`;
+    $("lg-resumen-xp").textContent = `${ganados.reduce((s, l) => s + l.xp, 0) + derrotados * this.XP_JEFE} XP ganados con logros y jefes`;
     const fecha = f => { const [a, m, d] = f.split("-").map(Number); return new Date(a, m - 1, d).toLocaleDateString("es", { day: "numeric", month: "short" }).replace(/\./g, ""); };
+    const tarjetaJefe = x => {
+      const caido = x.j && x.j.derrotado, cerrado = x.j && x.j.cerrado;
+      const pct = x.max > 0 ? Math.max(0, Math.min(100, Math.round(x.saldo / x.max * 100))) : 0;
+      const clase = caido ? "ganado" : cerrado ? "cerrado" : x.j && x.j.danio > 0 ? "curso" : "";
+      const cond = caido ? `Lo derrotaste pagando ${dineroCorto(x.j.danio)}.` : cerrado ? "Su saldo llegó a cero sin pagos: no cuenta como batalla." : `Vida: ${dineroCorto(x.saldo)} de ${dineroCorto(x.max)}.`;
+      const estado = caido ? `Derrotado · ${fecha(x.j.derrotado)}` : cerrado ? "Cerrado sin batalla" : `Vida ${pct} %`;
+      const barra = caido || cerrado ? "" : `<span class="lg-barra hp" aria-hidden="true"><i style="width:${pct}%"></i></span>`;
+      return `<li class="lg-tarjeta ${clase}">
+        <span class="lg-ico" aria-hidden="true">${this.svgPixel(caido ? "espada" : "jefe")}</span>
+        <span class="lg-texto"><b class="lg-nombre">${escapar(x.nombre)}</b>
+          <span class="lg-ref">Inspirado en: ${this.SABORES[x.id] || "Jefe sorpresa"}</span>
+          <span class="lg-cond">${cond}</span>${barra}
+          <span class="lg-meta"><span class="lg-xp">+${this.XP_JEFE} XP</span><span class="lg-estado">${estado}</span></span></span></li>`;
+    };
     $("lg-lista").innerHTML = this.GRUPOS.map(g => {
+      if (g === "Jefes") return `<h2 class="lg-grupo">Jefes</h2>` + (jefes.length ? `<ul class="lg-grid">${jefes.map(tarjetaJefe).join("")}</ul>`
+        : `<p class="nota-sobre">Todavía no hay jefes: cada deuda que tengas será uno.</p>`);
       const tarjetas = this.LISTA.filter(l => l.g === g).map(l => {
         const ok = p.logros[l.id], av = !ok && this.avance(l.id, c, p);
         const estado = ok ? `Ganado · ${fecha(ok.fecha)}` : av ? `${av[0]} de ${av[1]}` : l.s ? "Secreto" : "Pendiente";

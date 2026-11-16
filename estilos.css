@@ -2205,3 +2205,9 @@ button.dia.sel { outline: 3px solid var(--ok); outline-offset: -3px; }
 .cd-bt.lleno { background: var(--ok); color: #06201b; border-color: var(--ok); }
 /* La hoja del detalle del día deja ~200 px arriba para el calendario; si el detalle es largo, se desplaza por dentro */
 .hoja.con-dia .hoja-caja { max-height: calc(100vh - 200px); max-height: calc(100dvh - 200px); }
+
+/* v91 · Jefes de deudas (Logros) */
+.lg-barra.hp i { background: var(--error); }
+.lg-tarjeta.cerrado { opacity: .75; }
+.lg-tarjeta.cerrado .lg-ico svg { fill: #3a4850; }
+.lg-tarjeta .lg-nombre { overflow-wrap: anywhere; }
