@@ -4,12 +4,13 @@
  * Él NO toca la app: deja sus archivos en el repositorio PRIVADO de datos y esta pantalla solo los lee.
  *   - roberto/estado.json        dónde está, qué hace, su fase y si quiere hablar contigo (pideHablar)
  *   - roberto/conversacion.json  sus mensajes para ti y hasta dónde leyó los tuyos (leidoHasta)
+ *   - roberto/cuaderno.json      su fase y sus metas (las muestra la pizarra de la oficina 3D, roberto3d.js)
  * Lo que tú le escribes (o la opción que eliges en una reunión) va en la lista "mensajesRoberto", que viaja con la
  * sincronización como las notas del consejero. Él lo lee en su próxima corrida y te contesta. No es un chat en vivo.
  * Sin sincronización activa no hay forma de hablar con él: la pantalla lo dice.
  */
 const Roberto = {
-  ARCHIVOS: { estado: "roberto/estado.json", conversacion: "roberto/conversacion.json" },
+  ARCHIVOS: { estado: "roberto/estado.json", conversacion: "roberto/conversacion.json", cuaderno: "roberto/cuaderno.json" },
   // Corridas: cada hora a los :58, de 5:58 a. m. a 7:58 p. m. (hora de Nueva York)
   PRIMERA: 5, ULTIMA: 19, MINUTO: 58,
   LUGARES: {
@@ -95,6 +96,7 @@ const Roberto = {
     this.bajar();
   },
   cerrar() {
+    if (typeof Roberto3D !== "undefined") Roberto3D.pausar();
     $("pantalla-roberto").hidden = true;
     $("pantalla-inicio").hidden = false;
     Pantalla.actualizar();
@@ -103,6 +105,7 @@ const Roberto = {
   mostrar() {
     const d = this.leer(), e = d.estado, conectado = typeof Sync !== "undefined" && Sync.activo();
     this.mostrarMosaico();
+    this.mostrar3D(d);
     // Encabezado y lugar
     const lugar = e ? (this.LUGARES[e.turno === "casa" ? "fuera" : e.lugar] || ["🧑‍💼", "En la oficina"]) : null;
     const espera = e && e.pideHablar && !this.respondida(e.pideHablar);
@@ -128,6 +131,16 @@ const Roberto = {
     $("rb-sin-sync").hidden = puede;
     $("rb-sin-sync").textContent = !conectado ? "Para hablar con Roberto, activa la sincronización en Más → Respaldo y sincronizar: así le llegan tus mensajes."
       : "Este aparato está en \"Solo ver\": desde aquí puedes leer a Roberto, pero no escribirle.";
+  },
+
+  // La oficina en 3D arriba (roberto3d.js). Si el aparato no puede (sin WebGL), la caja queda escondida y la tarjeta de texto dice lo mismo.
+  async mostrar3D(d) {
+    const caja = $("rb-oficina");
+    if (typeof Roberto3D === "undefined" || !d.estado || !Roberto3D.webgl()) { caja.hidden = true; return; }
+    caja.hidden = false;
+    if (Roberto3D.e && Roberto3D.activo) { Roberto3D.actualizar(d); return; }
+    const ok = await Roberto3D.mostrar(caja, d);
+    if (!ok) caja.hidden = true;
   },
 
   mostrarReunion(e) {
