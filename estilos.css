@@ -2257,4 +2257,4 @@ html.bloqueado body > *:not(.candado) { visibility: hidden; }
 .ac-tramo input:focus, .df-acuerdo-fila input:focus { outline: none; border-color: var(--menta, #4fd1b5); }
 .campo select { text-overflow: ellipsis; }
 @media (max-width: 360px) { .campo select { font-size: 1.1rem; padding: 14px 10px; } }
-@media (max-width: 360px) { .mv-sugerida, .mv-vence { letter-spacing: -.3px; padding-left: 1px; padding-right: 1px; } }
+@media (max-width: 360px) { .mv-sugerida, .mv-vence { font-size: .6rem; letter-spacing: -.2px; padding-left: 1px; padding-right: 1px; } }
