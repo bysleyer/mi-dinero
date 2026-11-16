@@ -157,6 +157,69 @@ const Respaldo = {
     Pantalla.aviso("Respaldo descargado");
   },
 
+  // ---------- Movimientos para una hoja de cálculo (.csv) · Plan 2, 2.6 ----------
+  // fecha, tipo, categoría, nota, monto. Se arma aquí, en el teléfono: no se envía a ningún lado ni se guarda nada.
+  //   · Montos siempre positivos y con punto decimal (el tipo dice si entra o sale). Una fila por movimiento, de la fecha más vieja a la más nueva.
+  //   · "Pago de deuda" y "Ajuste de saldo" llevan el nombre de la deuda en "categoría" (el ajuste trae el saldo nuevo).
+  //   · Comillas en lo que lleva coma, comilla o salto de línea; un texto que empieza con = + - @ lleva un apóstrofo para que la hoja no lo tome por fórmula.
+  CSV_COLUMNAS: ["fecha", "tipo", "categoría", "nota", "monto"],
+
+  celdaCsv(valor) {
+    let t = String(valor == null ? "" : valor);
+    if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+    return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  },
+
+  filasCsv() {
+    const deuda = id => { const d = Datos.deudas().find(x => x.id === id); return d ? d.nombre : "Una deuda que ya no está"; };
+    return Almacen.leerMovimientos().slice().sort((a, b) => (a.fecha + (a.creado || "")).localeCompare(b.fecha + (b.creado || ""))).map(m => {
+      const tipo = m.tipo === "gasto" ? "Gasto" : m.tipo === "ingreso" ? (esCheque(m) ? "Cheque" : "Otro ingreso") : m.tipo === "pagoDeuda" ? "Pago de deuda" : m.tipo === "ajuste" ? "Ajuste de saldo" : (m.tipo || "");
+      const categoria = m.tipo === "gasto" ? (m.categoria || "") : (m.tipo === "pagoDeuda" || m.tipo === "ajuste") ? deuda(m.deudaId) : "";
+      return [m.fecha, tipo, categoria, m.nota || "", (Math.round(Number(m.monto) * 100) / 100).toFixed(2)];
+    });
+  },
+
+  // Texto del .csv. "separador" de líneas: \r\n para el archivo (como lo espera Excel) y \n para pegar
+  textoCsv(salto = "\r\n") {
+    return [this.CSV_COLUMNAS, ...this.filasCsv()].map(f => f.map(c => this.celdaCsv(c)).join(",")).join(salto) + salto;
+  },
+
+  bajarCsv() {
+    const n = this.filasCsv().length;
+    if (!n) { $("csv-estado").textContent = "No hay movimientos para bajar."; return; }
+    // El \uFEFF del principio hace que Excel muestre bien las tildes
+    const blob = new Blob(["\uFEFF" + this.textoCsv()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mi-dinero-movimientos-${hoy()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    $("csv-copia").hidden = true;
+    $("csv-estado").textContent = `Listo: ${n} ${n === 1 ? "movimiento" : "movimientos"}. Si el teléfono no bajó el archivo, usa "Copiar para pegar en Notas".`;
+    Pantalla.aviso("Archivo .csv listo");
+  },
+
+  async copiarCsv() {
+    const n = this.filasCsv().length;
+    if (!n) { $("csv-estado").textContent = "No hay movimientos para copiar."; return; }
+    const texto = this.textoCsv("\n"), caja = $("csv-copia");
+    try {
+      await navigator.clipboard.writeText(texto);
+      caja.hidden = true;
+      $("csv-estado").textContent = `Copiado (${n} ${n === 1 ? "movimiento" : "movimientos"}). Pégalo en Notas, Numbers o Excel.`;
+    } catch (e) {
+      // Si el teléfono no deja copiar solo, se muestra el texto ya seleccionado
+      caja.hidden = false;
+      caja.value = texto;
+      caja.focus();
+      caja.select();
+      $("csv-estado").textContent = "Mantén el dedo sobre el texto, toca \"Copiar\" y pégalo en Notas, Numbers o Excel.";
+    }
+  },
+
   // ---------- Copiar y pegar (para iPhone y páginas donde no se puede descargar) ----------
   textoRespaldo() {
     const contenido = Almacen.exportarTodo();
@@ -267,6 +330,10 @@ const Respaldo = {
       ? `Último respaldo: ${fechaCorta(Resumen.aClave(new Date(config.ultimoRespaldo)))}` +
         (dias === 0 ? " (hoy)" : ` (hace ${dias} ${dias === 1 ? "día" : "días"})`)
       : "Todavía no has descargado ningún respaldo en este dispositivo.";
+    const nMov = this.filasCsv().length;
+    $("csv-info").innerHTML = nMov
+      ? `Un archivo <b>.csv</b> con tus ${nMov} ${nMov === 1 ? "movimiento" : "movimientos"}: fecha, tipo, categoría, nota y monto. Se hace en tu teléfono; no se envía a ningún lado.`
+      : "Todavía no hay movimientos que bajar.";
     $("respaldo-origen").textContent = Datos.origen === "ejemplo"
       ? "Estás usando datos de EJEMPLO. Carga tu mis-datos.json abajo."
       : "Estás usando tus propias cifras.";
@@ -294,6 +361,8 @@ const Respaldo = {
     $("volver-respaldo").addEventListener("click", () => this.cerrar());
     $("descargar-respaldo").addEventListener("click", () => this.descargar());
     $("copiar-respaldo").addEventListener("click", () => this.copiar());
+    $("bajar-csv").addEventListener("click", () => this.bajarCsv());
+    $("copiar-csv").addEventListener("click", () => this.copiarCsv());
     this.conectarPegado("pegar-respaldo", "revisar-pegado", "respaldo-revision");
     $("aviso-ejemplo").addEventListener("click", () => this.abrir());
     $("aviso-respaldo").addEventListener("click", () => this.abrir());
