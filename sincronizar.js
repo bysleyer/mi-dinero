@@ -169,6 +169,7 @@ const Sync = {
           Almacen.guardarSync({ remotoActualizado: remoto.actualizado, remotoAparato: remoto.aparato });
           const cambio = antes !== JSON.stringify(this.local());
           estado("Al día");
+          Almacen.guardarSync({ resumen: { bajo: cambio ? 1 : 0, subio: false, de: remoto.aparato || "" } });
           this.despues(cambio ? 1 : 0, false);
           return { delOtro: cambio ? 1 : 0 };
         }
@@ -188,6 +189,7 @@ const Sync = {
           if (r.conflicto) continue; // otro aparato subió justo ahora: se vuelve a combinar
         }
         estado("Al día");
+        Almacen.guardarSync({ resumen: { bajo: delOtro, subio: !iguales, de: (remoto && remoto.aparato) || "" } });
         this._reintentos = 0;
         if (typeof Consejero !== "undefined") Consejero.bajar();
         this.despues(delOtro, aviso);
@@ -235,8 +237,46 @@ const Sync = {
     return c.error ? `☁ ${c.estado}` : `☁ Sincronizado${cuando ? ` · ${cuando}` : ""}${c.modo === "ver" ? " · solo ver" : ""}`;
   },
 
+  // Cuántas cosas de este aparato todavía no se han subido (cambiadas después de la última sincronización)
+  pendientes() {
+    const c = this.config();
+    if (!c || this.soloVer()) return 0;
+    const desde = c.ultimo || "";
+    const l = this.local();
+    let n = 0;
+    this.LISTAS.forEach(k => (l.listas[k] || []).forEach(x => { if (this.t(x) > desde) n++; }));
+    return n;
+  },
+
+  // Lo que pasó la última vez, en palabras de todos los días, y qué hacer si falló
+  textoDetalle() {
+    const c = this.config();
+    if (!this.activo()) return "";
+    const r = c.resumen;
+    const partes = [];
+    if (c.error) {
+      const m = c.estado || "";
+      if (/Sin internet|No se pudo conectar/.test(m)) partes.push("No pasa nada: tus datos están a salvo en este aparato. Se suben solos cuando vuelva la conexión.");
+      else if (/otro aparato estaba guardando/.test(m)) partes.push("Dos aparatos guardaron al mismo tiempo. Se intenta otra vez solo; no se pierde nada.");
+      else if (/Todavía no hay datos/.test(m)) partes.push("Abre Mi dinero en el aparato donde ya tienes tus datos y sincroniza ahí primero.");
+      else partes.push("Revisa la llave y el repositorio en «Conectar o cambiar la conexión». Tus datos siguen guardados en este aparato.");
+    } else if (r) {
+      if (c.modo === "ver") partes.push(r.bajo ? "Se actualizó con lo último del aparato principal." : "No había nada nuevo en el aparato principal.");
+      else {
+        const trajo = r.bajo ? `Trajo ${r.bajo} ${r.bajo === 1 ? "cambio" : "cambios"}${r.de ? ` de «${r.de}»` : ""}` : "No había cambios de otros aparatos";
+        partes.push(`${trajo} y ${r.subio ? "subió lo de este aparato" : "no había nada nuevo que subir"}.`);
+      }
+    }
+    const p = this.pendientes();
+    if (p && !c.error) partes.push(`Hay ${p} ${p === 1 ? "cambio" : "cambios"} en este aparato que se subirán en unos segundos.`);
+    else if (p) partes.push(`Hay ${p} ${p === 1 ? "cambio" : "cambios"} sin subir.`);
+    if (c.remotoActualizado && c.modo === "ver") partes.push(`Lo más nuevo de GitHub es del ${new Date(c.remotoActualizado).toLocaleString("es", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}.`);
+    return partes.join(" ");
+  },
+
   mostrarEstado() {
     const t = this.textoEstado();
+    if ($("sy-detalle")) { const d = this.textoDetalle(); $("sy-detalle").textContent = d; $("sy-detalle").hidden = !d; }
     if ($("sync-estado")) { $("sync-estado").textContent = t; $("sync-estado").hidden = !t; }
     if ($("sy-estado")) $("sy-estado").textContent = t || "Este aparato no está conectado.";
     // El estado va primero y con color: ámbar si falta conectar, verde si está sincronizado, rojo si falló
