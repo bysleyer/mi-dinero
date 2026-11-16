@@ -2251,3 +2251,9 @@ html.bloqueado body > *:not(.candado) { visibility: hidden; }
 #candado-salida { margin-top: 24px; min-height: 44px; }
 .enlace-chico { background: none; border: 0; color: var(--texto); opacity: .7; text-decoration: underline; font-size: .9rem; min-height: 44px; cursor: pointer; }
 #candado-activar[hidden], #candado-quitar-ajuste[hidden], #candado-tarjeta[hidden] { display: none; }
+
+/* Revisión de diseño (grupo 4): los campos de los tramos y del acuerdo se ven y se tocan como los demás */
+.ac-tramo input, .df-acuerdo-fila input { min-height: 44px; padding: 8px 10px; border: 2px solid #2f3b44; border-radius: 12px; background: #171e23; color: var(--texto); box-sizing: border-box; }
+.ac-tramo input:focus, .df-acuerdo-fila input:focus { outline: none; border-color: var(--menta, #4fd1b5); }
+.campo select { text-overflow: ellipsis; }
+@media (max-width: 360px) { .campo select { font-size: 1.1rem; padding: 14px 10px; } }
