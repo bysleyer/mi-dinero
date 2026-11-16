@@ -48,6 +48,13 @@ const Avisos = {
         (a.deudaId === Plan.ID_DEUDA_RENTA && atr > 0.005 ? " Lo del día 15 sigue en pie: insiste por escrito." : ""),
       acciones: [["Ver acuerdos", "acuerdos"]] }));
 
+    // Del 1 al 5: ya está el cierre del mes anterior (una vez por mes; 2.5)
+    try {
+      const cm = Cierre.avisoPendiente();
+      if (cm) campana.push({ id: `cierre-${cm}`, firma: cm, clave: cm, acciones: [["Ver el cierre", "cierre"]],
+        texto: `Ya está tu cierre de ${Cierre.nombreMes(cm).toLowerCase()}: lo que entró, lo que salió y cómo cambió cada categoría.` });
+    } catch (e) { /* un aviso nunca debe romper los demás */ }
+
     // Se acaba el préstamo semanal: ¿a dónde va ese dinero? (una sola vez; 1.4)
     try {
       const lb = Liberado.base(pr);
@@ -260,6 +267,7 @@ const Avisos = {
       return PagosFijos.abrirEditor(null, acc.slice(3), x ? { nombre: x.nota, monto: x.monto, dia: x.dia } : undefined);
     }
     if (acc === "acuerdos" && clave) { Nav.ir("deudas"); return Acuerdos.abrir(clave); }
+    if (acc === "cierre") { Cierre._pedido = clave || null; return Nav.ir("cierre"); }
     if (acc === "liberado") { Nav.ir("deudas"); return Liberado.abrir(); }
     if (acc === "cubrir") return Cubrir.abrir();
     if (acc === "futuro") return Nav.ir("futuro");

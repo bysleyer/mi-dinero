@@ -34,7 +34,12 @@ const Resumen = {
   // ---------- Cálculos ----------
   calcular(periodo) {
     const r = this.rango(periodo);
-    const movs = Almacen.leerMovimientos().filter(m => m.fecha >= r.inicio && m.fecha <= r.fin);
+    return { rango: r, ...this.calcularRango(r.inicio, r.fin) };
+  },
+
+  // Las sumas de cualquier rango de fechas (las usa también el Cierre del mes: así sus totales son los de esta pantalla)
+  calcularRango(inicio, fin) {
+    const movs = Almacen.leerMovimientos().filter(m => m.fecha >= inicio && m.fecha <= fin);
     const suma = lista => lista.reduce((s, m) => s + m.monto, 0);
 
     const gastos = movs.filter(m => m.tipo === "gasto");
@@ -43,12 +48,17 @@ const Resumen = {
       nombre: c,
       total: suma(gastos.filter(m => m.categoria === c))
     }));
+    const ingresos = movs.filter(m => m.tipo === "ingreso"), pagos = movs.filter(m => m.tipo === "pagoDeuda");
+    const porDeuda = {};
+    pagos.forEach(m => { porDeuda[m.deudaId || "?"] = redondear((porDeuda[m.deudaId || "?"] || 0) + m.monto); });
     return {
-      rango: r,
       porCategoria,
       totalGastado: suma(gastos),
-      pagosDeudas: suma(movs.filter(m => m.tipo === "pagoDeuda")),
-      ingresos: suma(movs.filter(m => m.tipo === "ingreso"))
+      pagosDeudas: suma(pagos),
+      ingresos: suma(ingresos),
+      cheques: suma(ingresos.filter(esCheque)),
+      porDeuda,
+      movimientos: gastos.length + ingresos.length + pagos.length   // cuántos movimientos de dinero hay (sin ajustes de saldo)
     };
   },
 
@@ -233,3 +243,188 @@ const Resumen = {
 };
 
 if (Datos.actual) Resumen.iniciar();
+
+/*
+ * CIERRE DEL MES (Plan 2, 2.5) · pantalla "Mi mes"
+ * La versión de lectura única de "A dónde va": lo que entró y salió de un mes, cada categoría contra el mes anterior,
+ * los pagos fijos a tiempo y con retraso, y lo que pagaste a cada deuda. Solo lee lo registrado; no guarda datos de dinero.
+ *   · Las sumas salen de Resumen.calcularRango (la misma cuenta de "A dónde va").
+ *   · El mes en curso se compara con el mismo tramo del mes anterior (del 1 al día de hoy), no con el mes entero.
+ *   · La app no guarda el saldo de cada día: "cuánto bajaron las deudas" son los pagos del mes por deuda y lo que debes hoy.
+ *   · Transporte se muestra, pero nunca se marca (regla del consejero). Las demás se marcan en ámbar si suben más de 20 % y más de $100.
+ *   · Del 1 al 5 de cada mes, la campana avisa que está el cierre del mes anterior (una vez; se recuerda en este teléfono: clave "cierres").
+ */
+const Cierre = {
+  MAX_MESES: 12,
+  _meses: [], _i: 0, _pedido: null,
+
+  // ---------- Meses ----------
+  dos(n) { return String(n).padStart(2, "0"); },
+  nombreMes(ym) { const n = Calendario.MESES[Number(ym.slice(5, 7)) - 1]; return n.charAt(0).toUpperCase() + n.slice(1); },
+  titulo(ym) { return `${this.nombreMes(ym)} ${ym.slice(0, 4)}`; },
+  mesAnterior(ym) { const a = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)); return m === 1 ? `${a - 1}-12` : `${a}-${this.dos(m - 1)}`; },
+  ultimoDia(ym) { return new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0).getDate(); },
+  primerMes() {
+    const f = Almacen.leerMovimientos().filter(m => m.tipo !== "ajuste" && m.fecha).map(m => m.fecha).sort()[0];
+    return f ? f.slice(0, 7) : null;
+  },
+
+  // Desde el primer mes con movimientos (o hasta 12 meses atrás) hasta el mes en curso, sin saltarse ninguno
+  meses() {
+    const hoyM = hoy().slice(0, 7), prim = this.primerMes() || hoyM;
+    const lista = [];
+    for (let ym = hoyM; ym >= prim && lista.length < this.MAX_MESES; ym = this.mesAnterior(ym)) lista.unshift(ym);
+    return lista;
+  },
+
+  // ---------- Los números de un mes ----------
+  datos(ym) {
+    const hoyC = hoy(), enCurso = ym === hoyC.slice(0, 7);
+    const corte = enCurso ? Number(hoyC.slice(8)) : this.ultimoDia(ym);
+    const prev = this.mesAnterior(ym), prevCorte = enCurso ? Math.min(corte, this.ultimoDia(prev)) : this.ultimoDia(prev);
+    const actual = Resumen.calcularRango(`${ym}-01`, `${ym}-${this.dos(corte)}`);
+    const previo = Resumen.calcularRango(`${prev}-01`, `${prev}-${this.dos(prevCorte)}`);
+    const conPrevio = previo.movimientos > 0;
+    const nombres = [...new Set([...actual.porCategoria.map(c => c.nombre), ...previo.porCategoria.map(c => c.nombre)])];
+    const categorias = nombres.map(nombre => {
+      const total = (actual.porCategoria.find(c => c.nombre === nombre) || { total: 0 }).total, antes = (previo.porCategoria.find(c => c.nombre === nombre) || { total: 0 }).total;
+      const dif = redondear(total - antes), pct = antes > 0 ? Math.round(dif / antes * 100) : null;
+      return { nombre, total, antes, dif, pct, nuevo: conPrevio && antes === 0 && total > 0, yaNo: conPrevio && total === 0 && antes > 0,
+               marca: conPrevio && nombre !== "Transporte" && dif > 100 && pct != null && pct > 20 };
+    }).filter(c => c.total > 0 || c.antes > 0);
+    const salio = redondear(actual.totalGastado + actual.pagosDeudas);
+    return { ym, enCurso, corte, ultimo: this.ultimoDia(ym), prev, prevCorte, actual, previo, conPrevio, categorias,
+             entro: actual.ingresos, cheques: actual.cheques, otros: redondear(actual.ingresos - actual.cheques), salio, quedo: redondear(actual.ingresos - salio),
+             pagos: this.pagosFijos(ym, corte), deudas: this.deudasDelMes(actual) };
+  },
+
+  // Pagos fijos del mes: a tiempo (pagado en su fecha o antes), con retraso o sin pagar. Solo en meses desde que hay registro.
+  pagosFijos(ym, corte) {
+    const prim = this.primerMes();
+    if (!prim || ym < prim) return null;
+    const hoyC = hoy(), inicio = `${ym}-01`, fin = `${ym}-${this.dos(corte)}`;
+    const fechaDePago = {};
+    Almacen.leerMovimientos().forEach(m => {
+      if (m.vencimiento && m.fecha && (m.tipo === "gasto" || m.tipo === "pagoDeuda") && (!fechaDePago[m.vencimiento] || m.fecha < fechaDePago[m.vencimiento])) fechaDePago[m.vencimiento] = m.fecha;
+    });
+    const r = { aTiempo: 0, tarde: [], sinPagar: [] };
+    Vencimientos.entre(inicio, fin).filter(i => !i.alerta && !i.planeado && !i.inmediato && !["plandeuda", "recargo"].includes(i.id) && i.fecha >= inicio && i.fecha <= fin).forEach(i => {
+      i.partes.forEach(p => {
+        const pago = fechaDePago[p.clave] || (p.pagado ? i.fecha : null);
+        if (pago) {
+          if (pago <= i.fecha) r.aTiempo++;
+          else r.tarde.push({ nombre: p.nombre, monto: p.monto, dias: Math.round((Jornadas.aFecha(pago) - Jornadas.aFecha(i.fecha)) / 86400000) });
+        } else if (i.fecha < hoyC) r.sinPagar.push({ nombre: p.nombre, monto: p.monto });
+      });
+    });
+    r.total = r.aTiempo + r.tarde.length + r.sinPagar.length;
+    return r;
+  },
+
+  deudasDelMes(actual) {
+    const nombre = id => { const d = Datos.deudas().find(x => x.id === id); return d ? d.nombre : "Una deuda que ya no está"; };
+    const lista = Object.entries(actual.porDeuda).map(([id, monto]) => ({ nombre: nombre(id), monto })).sort((a, b) => b.monto - a.monto);
+    const hoyDebes = redondear(Datos.deudas().reduce((s, d) => s + Math.max(0, Datos.saldoReparto(d.id)), 0));
+    return { lista, total: actual.pagosDeudas, hoyDebes };
+  },
+
+  // ---------- Pantalla ----------
+  vistos() { return Almacen.leer("cierres") || {}; },
+  marcarVisto(ym) { const v = this.vistos(); if (v[ym]) return; v[ym] = 1; Almacen.guardar("cierres", v); },
+
+  // Del 1 al 5: el mes anterior, si tuvo movimientos y todavía no lo viste
+  avisoPendiente() {
+    const h = hoy();
+    if (Number(h.slice(8)) > 5) return null;
+    const prev = this.mesAnterior(h.slice(0, 7)), prim = this.primerMes();
+    if (!prim || prev < prim || this.vistos()[prev]) return null;
+    return Almacen.leerMovimientos().some(m => m.tipo !== "ajuste" && m.fecha && m.fecha.startsWith(prev)) ? prev : null;
+  },
+
+  abrir() {
+    this._meses = this.meses();
+    const pedido = this._pedido && this._meses.includes(this._pedido) ? this._pedido : hoy().slice(0, 7);
+    this._pedido = null;
+    this._i = Math.max(0, this._meses.indexOf(pedido));
+    document.querySelectorAll("main.contenedor").forEach(x => { x.hidden = true; });
+    $("pantalla-inicio").hidden = true;
+    $("pantalla-mes").hidden = false;
+    window.scrollTo(0, 0);
+    this.mostrar();
+  },
+
+  cerrar() { Nav.ir("resumen"); },
+
+  mover(delta) {
+    const i = this._i + delta;
+    if (i < 0 || i >= this._meses.length) return;
+    this._i = i;
+    this.mostrar();
+    window.scrollTo(0, 0);
+  },
+
+  mostrar() {
+    if ($("pantalla-mes").hidden) return;
+    const ym = this._meses[this._i], d = this.datos(ym);
+    $("cm-titulo").textContent = this.titulo(ym);
+    $("cm-mes").textContent = this.nombreMes(ym);
+    $("cm-ant").disabled = this._i === 0;
+    $("cm-sig").disabled = this._i === this._meses.length - 1;
+    $("cm-sub").textContent = d.enCurso ? `En curso: va por el día ${d.corte} de ${d.ultimo}` : "";
+    if (!d.enCurso) this.marcarVisto(ym);
+    $("cm-contenido").innerHTML = d.actual.movimientos === 0
+      ? `<section class="tarjeta"><p class="vacio">No anotaste nada en ${escapar(this.nombreMes(ym).toLowerCase())}.</p></section>` : this.html(d);
+    if (typeof Avisos !== "undefined") Avisos.mostrar();
+  },
+
+  html(d) {
+    const $$ = dineroCorto, mp = this.nombreMes(d.prev).toLowerCase();
+    const tramo = d.enCurso ? ` <span class="opcional">(del 1 al ${d.corte})</span>` : "";
+    const contra = d.enCurso ? `el 1 al ${d.prevCorte} de ${mp}` : mp;
+    const entroSalio = `<section class="tarjeta"><h2>Entró y salió${tramo}</h2>
+      <div class="cm-dos"><div><small>Entró</small><b class="cm-pos">${$$(d.entro)}</b><small>${d.entro > 0 ? `Cheques ${$$(d.cheques)} · otros ${$$(d.otros)}` : "Nada anotado"}</small></div>
+        <div><small>Salió</small><b>${$$(d.salio)}</b><small>Gastos ${$$(d.actual.totalGastado)} · deudas ${$$(d.actual.pagosDeudas)}</small></div></div>
+      <div class="cm-f"><span>${d.quedo >= 0 ? "Quedó" : "Faltó"} (lo registrado)</span><b class="${d.quedo >= 0 ? "cm-pos" : "cm-neg"}">${d.quedo >= 0 ? "+" : "−"}${$$(Math.abs(d.quedo))}</b></div>
+      <p class="cm-nota">Solo cuenta lo que anotaste en la app.${d.enCurso && d.conPrevio ? ` Se compara con ${escapar(contra)}, no con el mes entero: así la comparación es justa.` : ""}</p></section>`;
+
+    const linea = c => {
+      if (!d.conPrevio) return "";
+      if (c.nuevo) return `<small><span class="cm-pill">nuevo</span> no había en ${mp}</small>`;
+      if (c.yaNo) return `<small>En ${mp} gastaste ${$$(c.antes)}; este mes nada</small>`;
+      if (c.dif === 0) return `<small>Igual que en ${mp}</small>`;
+      return `<small class="${c.marca ? "cm-amb" : ""}">${$$(Math.abs(c.dif))} ${c.dif > 0 ? "más" : "menos"} que ${d.enCurso ? `del 1 al ${d.prevCorte} de ${mp}` : `en ${mp}`}${c.pct != null ? ` (${c.dif > 0 ? "+" : "−"}${Math.abs(c.pct)} %)` : ""}</small>`;
+    };
+    const cats = d.categorias.length ? d.categorias.map(c => `<div class="cm-cat"><div class="cm-fila"><b>${escapar(c.nombre)}</b><span>${$$(c.total)}</span></div>${linea(c)}</div>`).join("")
+      : `<p class="vacio">Sin gastos este mes.</p>`;
+    const categorias = `<section class="tarjeta"><h2>Por categoría${d.conPrevio ? ` <span class="opcional">(contra ${escapar(contra)})</span>` : ""}</h2>${cats}
+      ${d.conPrevio ? "" : `<p class="cm-nota">No hay un mes anterior con movimientos para comparar.</p>`}</section>`;
+
+    let pagos = "";
+    if (d.pagos) {
+      const p = d.pagos;
+      pagos = `<section class="tarjeta"><h2>Pagos fijos</h2>
+        ${p.total ? `<p class="cm-grande"><b>${p.aTiempo} de ${p.total}</b> a tiempo</p>` : `<p class="vacio">Ningún pago fijo venció${d.enCurso ? " todavía" : " este mes"}.</p>`}
+        ${p.tarde.map(x => `<div class="cm-f"><span>${escapar(x.nombre)} <span class="cm-pill cm-a">${x.dias} ${x.dias === 1 ? "día" : "días"} tarde</span></span><b>${dinero(x.monto)}</b></div>`).join("")}
+        ${p.sinPagar.map(x => `<div class="cm-f"><span>${escapar(x.nombre)} <span class="cm-pill cm-r">sin pagar</span></span><b>${dinero(x.monto)}</b></div>`).join("")}
+        ${p.total ? `<p class="cm-nota">${p.sinPagar.length ? `Sin pagar ${d.enCurso ? "hasta hoy" : "al cierre"}: ${p.sinPagar.length}.` : `Sin pagar ${d.enCurso ? "hasta hoy" : "al cierre"}: ninguno.`}</p>` : ""}</section>`;
+    }
+
+    const de = d.deudas;
+    const deudas = `<section class="tarjeta"><h2>Deudas</h2>
+      ${de.total > 0 ? `<p class="cm-grande"><b class="cm-pos">${$$(de.total)}</b> en pagos a tus deudas</p>${de.lista.map(x => `<div class="cm-f"><span>${escapar(x.nombre)}</span><b>${$$(x.monto)}</b></div>`).join("")}`
+        : `<p class="vacio">No registraste pagos a deudas este mes.</p>`}
+      <div class="cm-f"><span>Hoy debes (lo atrasado)</span><b>${$$(de.hoyDebes)}</b></div>
+      <p class="cm-nota">Los pagos son lo registrado en el mes; "Hoy debes" es la cuenta de hoy.</p></section>`;
+    return entroSalio + categorias + pagos + deudas;
+  },
+
+  iniciar() {
+    $("abrir-cierre").addEventListener("click", () => Nav.ir("cierre"));
+    $("volver-mes").addEventListener("click", () => this.cerrar());
+    $("cm-ant").addEventListener("click", () => this.mover(-1));
+    $("cm-sig").addEventListener("click", () => this.mover(1));
+    window.addEventListener("movimientos-cambiaron", () => { if (!$("pantalla-mes").hidden) this.mostrar(); });
+  }
+};
+
+if (Datos.actual) Cierre.iniciar();

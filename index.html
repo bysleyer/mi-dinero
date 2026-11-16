@@ -993,6 +993,7 @@
     <button id="volver-resumen" class="volver volver-principal">← Volver</button>
     <p id="ceja-resumen" class="ceja"></p>
     <h1>A dónde va</h1>
+    <button id="abrir-cierre" class="boton-chico lleno">Cierre del mes</button>
 
     <div class="selector" role="group" aria-label="Período">
       <button data-periodo="semana">Esta semana</button>
@@ -1021,6 +1022,20 @@
       <p id="r-resultado" class="mensaje-sobrante"></p>
       <div id="r-acciones" class="pl-botones"></div>
     </section>
+  </main>
+
+  <!-- Pantalla: Cierre del mes (Plan 2, 2.5) -->
+  <main id="pantalla-mes" class="contenedor" hidden>
+    <button id="volver-mes" class="volver volver-principal">← Volver</button>
+    <p class="ceja">Cierre del mes</p>
+    <h1 id="cm-titulo"></h1>
+    <p id="cm-sub" class="estado"></p>
+    <div class="cm-selector">
+      <button id="cm-ant" class="cal-flecha" aria-label="Mes anterior">‹</button>
+      <span id="cm-mes" class="cm-mes" aria-live="polite"></span>
+      <button id="cm-sig" class="cal-flecha" aria-label="Mes siguiente">›</button>
+    </div>
+    <div id="cm-contenido"></div>
   </main>
 
   <!-- Ventana de formulario -->

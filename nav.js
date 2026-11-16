@@ -7,17 +7,17 @@ const Nav = {
   // Sección del menú → función que abre esa pantalla
   SECCIONES: {
     futuro: () => Futuro.abrir(), plan: () => Plan.abrir(), deudas: () => Deudas.abrir(), planeados: () => Planeados.abrirLista(),
-    calendario: () => Calendario.abrir(), resumen: () => Resumen.abrir(), movimientos: () => Movimientos.abrir(), datosfijos: () => DatosFijos.abrir(), pagosfijos: () => PagosFijos.abrir(),
+    calendario: () => Calendario.abrir(), resumen: () => Resumen.abrir(), cierre: () => Cierre.abrir(), movimientos: () => Movimientos.abrir(), datosfijos: () => DatosFijos.abrir(), pagosfijos: () => PagosFijos.abrir(),
     respaldo: () => Respaldo.abrir(), consejero: () => Consejero.abrir(), progreso: () => Xp.abrir(), logros: () => Logros.abrir()
   },
   // Si los datos no cargaron (error), estas no abren nada; Datos fijos, Respaldo, Progreso y Logros sí (Respaldo permite recuperarse)
-  NECESITAN_DATOS: ["futuro", "plan", "deudas", "planeados", "calendario", "resumen", "movimientos", "pagosfijos", "consejero"],
+  NECESITAN_DATOS: ["futuro", "plan", "deudas", "planeados", "calendario", "resumen", "cierre", "movimientos", "pagosfijos", "consejero"],
   // Pantalla visible → sección marcada en el menú
   MARCA: {
     "pantalla-inicio": "inicio", "pantalla-futuro": "futuro", "pantalla-alcanza": "futuro", "pantalla-escenarios": "futuro",
     "pantalla-prestamo": "futuro", "pantalla-acuerdo": "futuro", "pantalla-mover": "futuro", "pantalla-plan": "plan",
     "pantalla-deudas": "deudas", "pantalla-planeados": "planeados", "pantalla-cuando": "planeados",
-    "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-movimientos": "movimientos", "pantalla-datosfijos": "datosfijos", "pantalla-pagosfijos": "pagosfijos", "pantalla-respaldo": "respaldo",
+    "pantalla-calendario": "calendario", "pantalla-resumen": "resumen", "pantalla-mes": "resumen", "pantalla-movimientos": "movimientos", "pantalla-datosfijos": "datosfijos", "pantalla-pagosfijos": "pagosfijos", "pantalla-respaldo": "respaldo",
     "pantalla-cubrir": "inicio", "pantalla-consejero": "consejero", "pantalla-progreso": "progreso", "pantalla-logros": "logros"
   },
   EN_MAS: ["consejero", "deudas", "pagosfijos", "planeados", "calendario", "resumen", "movimientos", "datosfijos", "respaldo", "progreso", "logros"],

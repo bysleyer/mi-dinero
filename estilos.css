@@ -2211,3 +2211,28 @@ button.dia.sel { outline: 3px solid var(--ok); outline-offset: -3px; }
 .lg-tarjeta.cerrado { opacity: .75; }
 .lg-tarjeta.cerrado .lg-ico svg { fill: #3a4850; }
 .lg-tarjeta .lg-nombre { overflow-wrap: anywhere; }
+
+/* v92 · Cierre del mes */
+.cm-selector { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+.cm-mes { flex: 1; text-align: center; font-weight: 800; font-size: 1.15rem; }
+.cm-selector .cal-flecha:disabled { opacity: .35; }
+#cm-contenido { overflow-wrap: anywhere; }
+.cm-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.cm-dos > div { background: #0e1316; border: 1px solid var(--borde); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+.cm-dos b { display: block; font-size: 1.35rem; }
+.cm-dos small { display: block; color: var(--suave); font-size: .82rem; }
+.cm-pos { color: var(--ok); }
+.cm-neg { color: var(--error); }
+.cm-amb { color: var(--aviso) !important; }
+.cm-f { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--borde); font-size: .95rem; }
+.cm-f b { white-space: nowrap; }
+.cm-cat { padding: 10px 0; border-top: 1px solid var(--borde); }
+.cm-cat:first-of-type { border-top: 0; }
+.cm-fila { display: flex; justify-content: space-between; gap: 10px; }
+.cm-cat small { display: block; color: var(--suave); font-size: .85rem; margin-top: 2px; }
+.cm-grande { margin: 0 0 6px; }
+.cm-grande b { font-size: 1.35rem; }
+.cm-pill { display: inline-block; font-size: .75rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; background: #14262a; color: var(--ok); }
+.cm-pill.cm-a { background: #3b2f14; color: var(--aviso); }
+.cm-pill.cm-r { background: #3a1f1c; color: var(--error); }
+.cm-nota { font-size: .82rem; color: var(--suave); margin: 8px 0 0; }
