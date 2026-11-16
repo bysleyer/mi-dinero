@@ -246,6 +246,7 @@ const Respaldo = {
     }
     Almacen.marcarRespaldoDescargado();
     this.mostrar();
+    if (typeof Papelera !== "undefined") Papelera.iniciar();
     this.mostrarAvisos();
   },
 
@@ -334,6 +335,7 @@ const Respaldo = {
     $("csv-info").innerHTML = nMov
       ? `Un archivo <b>.csv</b> con tus ${nMov} ${nMov === 1 ? "movimiento" : "movimientos"}: fecha, tipo, categoría, nota y monto. Se hace en tu teléfono; no se envía a ningún lado.`
       : "Todavía no hay movimientos que bajar.";
+    if (typeof Papelera !== "undefined") Papelera.dibujar();
     $("respaldo-origen").textContent = Datos.origen === "ejemplo"
       ? "Estás usando datos de EJEMPLO. Carga tu mis-datos.json abajo."
       : "Estás usando tus propias cifras.";

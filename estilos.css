@@ -2236,3 +2236,7 @@ button.dia.sel { outline: 3px solid var(--ok); outline-offset: -3px; }
 .cm-pill.cm-a { background: #3b2f14; color: var(--aviso); }
 .cm-pill.cm-r { background: #3a1f1c; color: var(--error); }
 .cm-nota { font-size: .82rem; color: var(--suave); margin: 8px 0 0; }
+
+/* Papelera (Respaldo → Borrados recientes) */
+.fila-papelera { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--borde); }
+.fila-papelera small { display: block; color: var(--texto-suave, var(--texto)); opacity: .7; margin-top: 2px; }
