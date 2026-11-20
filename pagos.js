@@ -242,15 +242,62 @@ const Vencimientos = {
 
   // Un pago ya vencido que se registró como gasto normal (sin tocar "Ya lo pagué") cuenta como pagado si hay un gasto de
   // la MISMA categoría (o un pago a la misma deuda) en los 7 días antes del vencimiento o después, de monto parecido (50 %–150 %).
-  // La categoría "Otros" no se empareja (daría falsos positivos). Contarlo de más es el error seguro.
-  pagadoSinClave(p, fecha) {
+  // Cada gasto cubre UN solo vencimiento (ver emparejados). La categoría "Otros" no se empareja (daría falsos positivos).
+  // Ante la duda, el vencimiento queda pendiente: esconder una deuda es peor que ver un pago de más.
+  pagadoSinClave(p, fecha, clave) {
+    if (!this.emparejable(p)) return false;
+    return this.emparejados().has(clave);
+  },
+
+  emparejable(p) {
     const a = p.accion || {};
-    if (a.tipo === "gasto" && (!a.categoria || a.categoria === "Otros")) return false;
-    if (a.tipo !== "gasto" && a.tipo !== "pagoDeuda") return false;
-    const desde = Jornadas.sumarDias(fecha, -7), hasta = hoy();
-    return Almacen.leerMovimientos().some(m => !m.vencimiento && !m.planeadoId && m.fecha >= desde && m.fecha <= hasta &&
+    if (a.tipo === "gasto") return !!a.categoria && a.categoria !== "Otros";
+    return a.tipo === "pagoDeuda";
+  },
+
+  sirvePara(m, p, fecha) {
+    const a = p.accion;
+    return !m.vencimiento && !m.planeadoId && m.fecha >= Jornadas.sumarDias(fecha, -7) &&
       (a.tipo === "gasto" ? m.tipo === "gasto" && m.categoria === a.categoria : m.tipo === "pagoDeuda" && m.deudaId === a.deudaId) &&
-      m.monto >= p.monto * 0.5 && m.monto <= p.monto * 1.5);
+      m.monto >= p.monto * 0.5 && m.monto <= p.monto * 1.5;
+  },
+
+  // Empareja de una vez todos los vencimientos ya pasados con los gastos sin "Ya lo pagué": primero las parejas más
+  // cercanas en fecha, luego en monto, y cada gasto y cada vencimiento se usan una sola vez. Devuelve las claves pagadas.
+  // Se guarda hasta que cambie algo en el aparato, el día o las cifras.
+  emparejados() {
+    const hoyClave = hoy();
+    const llave = `${hoyClave}|${Almacen.cambios}`;
+    const c = this._emparejo;
+    if (c && c.llave === llave && c.datos === Datos.actual) return c.pagadas;
+    const pagadas = new Set();
+    // Se guarda antes de calcular: mientras se calcula, nada cuenta como pagado sin clave (corta la recursión)
+    this._emparejo = { llave, datos: Datos.actual, pagadas };
+    try {
+      const desde = this.desdeVencidos(hoyClave), ayer = Jornadas.sumarDias(hoyClave, -1);
+      if (desde > ayer) return pagadas;
+      const pendientes = [];
+      this.entreBase(desde, ayer).forEach(item => item.partes.forEach(p => {
+        if (!p.sinClave && !p.pagado && p.clave && this.emparejable(p)) pendientes.push({ p, fecha: item.fecha });
+      }));
+      const movs = Almacen.leerMovimientos().filter(m => m.fecha <= hoyClave);
+      const dias = (a, b) => Math.abs(Math.round((Jornadas.aFecha(a) - Jornadas.aFecha(b)) / 86400000));
+      const parejas = [];
+      pendientes.forEach((v, i) => movs.forEach((m, j) => {
+        if (this.sirvePara(m, v.p, v.fecha)) parejas.push({ i, j, dias: dias(m.fecha, v.fecha), dif: Math.abs(m.monto - v.p.monto), fecha: v.fecha });
+      }));
+      parejas.sort((x, y) => x.dias - y.dias || x.dif - y.dif || x.fecha.localeCompare(y.fecha));
+      const usadoV = new Set(), usadoM = new Set();
+      parejas.forEach(x => {
+        if (usadoV.has(x.i) || usadoM.has(x.j)) return;
+        usadoV.add(x.i); usadoM.add(x.j);
+        pagadas.add(pendientes[x.i].p.clave);
+      });
+      return pagadas;
+    } catch (e) {
+      this._emparejo = null;
+      throw e;
+    }
   },
 
   // Vencimientos según las fechas normales (sin mover)
@@ -262,7 +309,7 @@ const Vencimientos = {
       item.fecha = fecha;
       item.partes = item.partes.map((p, i) => {
         const clave = p.clave || `${item.id}-${i}@${fecha}`;
-        return { ...p, clave, pagado: !p.sinClave && (pagados.has(clave) || (fecha < hoyClave && this.pagadoSinClave(p, fecha))) };
+        return { ...p, clave, pagado: !p.sinClave && (pagados.has(clave) || (fecha < hoyClave && this.pagadoSinClave(p, fecha, clave))) };
       });
       items.push(item);
     };
@@ -346,7 +393,7 @@ const Vencimientos = {
           continue;
         }
         if (saltos.some(x => f > x.desde && f <= x.hasta)) continue; // semana corrida: sin pago
-        if (f < hoyClave && this.pagadoSinClave({ monto: gp.monto, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_PRESTAMO } }, f)) {
+        if (f < hoyClave && this.pagadoSinClave({ monto: gp.monto, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_PRESTAMO } }, f, clave)) {
           if (f >= desde) agregar({ id: "prestamo", letra: "", nombre: gp.nombre, orden: 20,
             partes: [{ nombre: gp.nombre, monto: gp.monto, clave, accion: { tipo: "pagoDeuda", deudaId: Plan.ID_DEUDA_PRESTAMO } }] }, f);
           continue; // ya se pagó sin "Ya lo pagué": no vuelve a restar del saldo

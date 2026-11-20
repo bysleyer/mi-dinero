@@ -43,6 +43,8 @@ const Almacen = {
   VERSION_FORMATO: 4,
 
   // ---------- Funciones básicas ----------
+  cambios: 0, // sube con cada guardar/borrar: sirve para saber si un cálculo guardado sigue valiendo
+
   leer(clave) {
     try {
       const texto = localStorage.getItem(this.prefijo + clave);
@@ -60,6 +62,7 @@ const Almacen = {
     } catch (e) {
       return false;
     }
+    this.cambios++;
     this.cambioParaSync(clave);
     return true;
   },
@@ -90,6 +93,7 @@ const Almacen = {
   borrar(clave) {
     try {
       localStorage.removeItem(this.prefijo + clave);
+      this.cambios++;
       return true;
     } catch (e) {
       return false;

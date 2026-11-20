@@ -35,18 +35,19 @@ const Alcanza = {
     Vencimientos.entre(hoyClave, hasta).filter(i => i.alerta).forEach(i => {
       const antes = lineas.filter(l => l.fecha <= i.fecha).slice(-1)[0];
       lineas.push({ fecha: i.fecha, orden: 99, tipo: "alerta", nombre: i.partes[0].nombre, monto: 0,
-                    saldo: antes ? antes.saldo : dineroHoy });
+                    saldo: antes ? antes.saldo : pr.inicial });
     });
     lineas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.orden - b.orden);
-    let saldo = dineroHoy;
+    // Se parte del saldo inicial de la proyección: si el colchón está protegido, ya viene restado
+    let saldo = pr.inicial;
     lineas.forEach(l => { saldo = redondear(saldo + l.monto); l.saldo = saldo; });
     return lineas;
   },
 
   // Sugerencia para la primera vez que falta dinero
-  sugerencia(lineas, indice, dineroHoy) {
+  sugerencia(lineas, indice, inicial) {
     const hastaAqui = lineas.slice(0, indice + 1);
-    let disponible = dineroHoy + hastaAqui.filter(l => l.monto > 0).reduce((s, l) => s + l.monto, 0)
+    let disponible = inicial + hastaAqui.filter(l => l.monto > 0).reduce((s, l) => s + l.monto, 0)
       + hastaAqui.filter(l => l.tipo === "semanal").reduce((s, l) => s + l.monto, 0);
     const pagos = hastaAqui.filter(l => l.tipo === "pago")
       .sort((a, b) => this.prioridad(a) - this.prioridad(b) || a.fecha.localeCompare(b.fecha));
@@ -103,6 +104,10 @@ const Alcanza = {
     const primeraFalta = lineas.findIndex(l => l.saldo < 0 && l.monto < 0);
     let html = `<li class="linea-tiempo inicio"><div class="mov-info"><div class="mov-tipo">Hoy tienes</div></div>
       <span class="lt-saldo">${dinero(dineroHoy)}</span></li>`;
+    const pr = this._pr;
+    if (pr.protegido && pr.colchon > 0) html += `<li class="linea-tiempo"><div class="mov-info"><div class="mov-tipo">Colchón apartado (no se toca)</div>
+        <div class="mov-detalle">−${dinero(pr.colchon)}</div></div>
+      <span class="lt-saldo">${this.saldoTexto(pr.inicial)}</span></li>`;
     lineas.forEach((l, i) => {
       const falta = l.saldo < 0;
       const clase = l.tipo === "alerta" ? "alerta-linea" : falta ? "falta" : "";
@@ -117,7 +122,7 @@ const Alcanza = {
           <span class="lt-saldo">${this.saldoTexto(l.saldo)}</span>
         </li>`;
       if (i === primeraFalta) {
-        html += `<li class="lt-sugerencia">${escapar(this.sugerencia(lineas, i, dineroHoy))}</li>`;
+        html += `<li class="lt-sugerencia">${escapar(this.sugerencia(lineas, i, pr.inicial))}</li>`;
       }
     });
     $("a-lista").innerHTML = html;
