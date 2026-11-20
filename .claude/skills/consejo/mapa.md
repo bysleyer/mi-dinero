@@ -9,9 +9,10 @@ Este archivo es público: no pongas aquí cifras, datos del dueño ni hallazgos 
 - **Fechas `modificado`/`creado`:** la app las escribe siempre con `toISOString()` (UTC).
 - **Ids:** la app pone `id` a todo lo que crea en las listas.
 - **Borrar:** no se borra, se marca `borrado: true` (`papelera.js`); así lo entiende la sincronización.
-- **localStorage:** solo lo toca `almacen.js`. Ningún otro archivo lo usa directamente.
+- **localStorage:** lo escribe solo `almacen.js`. Hay lecturas directas en `planeados.js`, `campos.js` y `arranque.js` (candado y sync al arrancar).
 - **Sin build ni librerías.** Excepción: three.js en `vendor/` solo para la oficina 3D de Roberto.
-- **Un solo cálculo de saldo día a día:** `proyeccion.js`. Lo usan alcanza, escenarios, mover, plan, futuro y cubrir.
+- **Cálculo de saldo día a día:** `proyeccion.js`. Lo usan alcanza, escenarios, mover, plan, futuro y cubrir, pero `alcanza.js` vuelve a sumar los saldos de las líneas por su cuenta.
+- **Pruebas:** `pruebas/j-archivos.js` comprueba que los `<script>` de index.html y la lista de `sw.js` coinciden.
 - **`SOLO SIMULA`:** `acuerdo.js` y `prestamo.js` no cambian saldos ni deudas.
 - **Repo privado `mi-dinero-datos`:** una sola Action (`puente-home.yml`, cada 15 min y al cambiar `datos.json`), que usa los secretos `PUENTE_EMAIL` y `PUENTE_PASSWORD`. Las pruebas están en `pruebas/` (`bash pruebas/todo.sh`).
 - **Versión:** `VERSION_APP` en `app.js`. El caché del service worker se sube a mano (`CACHE` en `sw.js`).
@@ -54,3 +55,7 @@ Antes de dar algo por verificado, mira si cambió con `git log --oneline <commit
   - lo remoto se pinta con `textContent` o `escapar()`;
   - no hay llaves en el repo público.
 - `sincronizar.js` @61d6610 (2026-11-20, Cuentas): con ids válidos y fechas ISO, `combinar()` no pierde ni duplica movimientos, y el borrado se propaga.
+- Fechas @f8e9de4 `proyeccion.js` / @3d52ecb `jornadas.js` (2026-11-20, Cuentas): `aFecha`, `sumarDias`, `claveSemana`, `hoy()` y `fechaDelMes` trabajan en hora local. No hay `new Date("AAAA-MM-DD")`, las diferencias de días aguantan el cambio de horario y el fin de mes se recorta con `Math.min`.
+- XSS @d9cad10 (2026-11-20, Seguridad): en `consejero.js`, `roberto.js`, `respaldo.js` y `candado.js` todo lo remoto o escrito por el usuario pasa por `escapar()`. La CSP de `index.html:6` (`script-src 'self'`, `connect-src 'self' https://api.github.com`) bloquea scripts inyectados.
+- `sw.js` @d4af7ae (2026-11-20, Seguridad): solo guarda GET del mismo origen y borra los cachés viejos al activarse.
+- `puente/home.js` (repo de datos, 2026-11-20, Seguridad): los logs solo imprimen el código HTTP, nunca el cuerpo ni el correo. La Action tiene `contents: read` y no usa `pull_request_target`.
