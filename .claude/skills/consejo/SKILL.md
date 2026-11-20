@@ -15,6 +15,7 @@ Sala 3D (acta en vivo): https://claude.ai/artifact/S617uekMHjEYjFdNyNtsWF
 - **El dueño no gana por insistir.** Si discute un hallazgo, solo cambia con evidencia nueva (código, prueba, dato). Si solo insiste, el hallazgo queda en pie y lo dices con respeto y claridad.
 - **Los integrantes no ven la opinión del dueño.** Si dijo "creo que el login está bien" o "esto ya funciona", en la ficha lo conviertes en algo que hay que comprobar: "Verificar si el login es correcto". Nunca les pasas lo que él espera oír.
 - **Privacidad:** el informe va al repo privado `mi-dinero-datos`, nunca al público `mi-dinero`.
+- **Economía sin perder precisión:** el consejo cuesta por cada paso de cada integrante, y el tuyo cuenta igual. Alcance exacto, sin lecturas repetidas, pruebas con código solo para lo grave. Si este chat ya es largo (mucho código o muchas idas y vueltas), dile al dueño en una línea que el consejo sale más barato en un chat nuevo, y sigue igual si quiere hacerlo aquí.
 
 ## 1. Entender el pedido
 
@@ -49,20 +50,30 @@ Además, en un **puntual pequeño** (un archivo o una función) baja Arquitectur
 
 ## 3. La ficha (lo que recibe cada integrante)
 
-Escríbela antes de convocar, igual para todos salvo la última línea:
+**Preparación (tú, barato):**
+1. Lee `mapa.md` (en esta carpeta). Sus hechos fijos y lo «ya verificado» le ahorran a cada integrante explorar.
+2. Para cada punto «ya verificado» del área, mira si el archivo cambió desde ese commit: `git log --oneline <commit>.. -- <archivo>`. Si no cambió, va en la ficha como «No repetir». Si cambió, se revisa de nuevo.
+3. Saca los rangos de líneas con **un solo** `grep -n` de las funciones implicadas (por ejemplo `grep -nE '^  (async )?[a-zA-Z_]+\(' archivo.js`). No leas tú el código entero: eso lo hacen ellos.
+4. Reparte el área para que **nadie revise lo mismo**: lo de cada uno va en «Tu foco» y lo de los demás en «Fuera de tu área».
+
+La ficha, igual para todos salvo las tres últimas líneas:
 
 ```
 FICHA DEL CONSEJO · <fecha> · modo <completo|puntual|rápido>
 Qué se revisa: <alcance concreto>
-Archivos de partida: <lista; en completo, "toda la app">
-Repos: /home/user/mi-dinero (app) y /home/user/mi-dinero-datos (datos, pruebas, Roberto) — ajusta las rutas si son otras
+Lee solo: <archivo:A-B, archivo:C-D …> (más allá, solo grep puntual)
+Repos: /home/user/mi-dinero (app) y /home/user/mi-dinero-datos (datos, pruebas, Roberto); ajusta las rutas si son otras
+Mapa: /home/user/mi-dinero/.claude/skills/consejo/mapa.md (léelo primero)
+No repetir (ya verificado y sin cambios): <puntos del mapa, o "nada">
 Afirmaciones a verificar (no las des por ciertas): <lo que el dueño dio por hecho, como preguntas>
+Tope de pasos: <rápido 5 · normal 10 · completo 15>
 Tu foco en esta sesión: <una línea para este integrante>
+Fuera de tu área (lo cubre otro): <lo de los demás, en una línea>
 ```
 
-Para el Abogado en la primera ronda añade: `Modo: RONDA 1`.
+Al Abogado, en la primera ronda, añádele `Modo: RONDA 1`. Su foco es el planteamiento, no los detalles de línea, y su tope es la mitad del de los demás.
 
-Antes de escribir la ficha, mira tú rápido los archivos implicados (`grep`, `ls`) para que el alcance sea concreto: así los integrantes no gastan tiempo buscando.
+En modo **completo** no le pases «toda la app» a todos: divide por zonas del mapa (Seguridad: datos y sistema; Cuentas: dinero y cálculos; Arquitectura: estructura transversal y pruebas; Producto: pantallas). Cada uno con sus archivos.
 
 ## 4. Llevar el acta en la sala 3D
 
@@ -75,12 +86,12 @@ Documentos:
 - `miembros/<id>` con id `seguridad`, `cuentas`, `arquitectura`, `producto`, `abogado`: `{ nombre, modelo, estado, tarea }`. `estado`: `esperando`, `investigando`, `escribiendo`, `debatiendo`, `listo`, `fuera` (no convocado), `receso`. `tarea`: una frase corta y concreta ("Revisa sincronizar.js: la llave").
 - `hallazgos/<id>`: `{ sesion, miembro, gravedad, titulo, donde, estado, nota, orden }`. `estado`: `propuesto`, `en pie`, `tumbado`. `nota`: el motivo del careo. Id del documento: `<sesion>-<miembro>-H<n>`.
 
-Usa un solo `batch` por momento (hasta 50 escrituras) para no pedir muchas aprobaciones:
-1. **Al convocar:** borra los `hallazgos` de la sesión anterior (`list` + `delete` en el mismo batch), pon `sesion/actual` con `id` nuevo (`AAAAMMDD-HHMM`), `tema` y `fase: preparando`; los no convocados en `fuera`; los convocados en `esperando` con el `modelo` real que van a usar.
-2. **Al lanzar la ronda 1:** `fase: ronda1`; cada convocado `investigando` con su `tarea`.
-3. **Cada vez que uno entrega:** ese integrante `listo` (tarea: "Entregó N hallazgos") y sus hallazgos como `propuesto`.
-4. **Careo:** `fase: ronda2`; el Abogado `debatiendo`. Al terminar, cada hallazgo `en pie` o `tumbado` con su `nota`, y la gravedad corregida si la cambió.
-5. **Veredicto:** `fase: veredicto` y luego `cerrada` con `veredicto` (el texto corto de la sección 7); todos a `listo` o `fuera`.
+Solo **tres escrituras por sesión**, cada una un `batch` (hasta 50 escrituras); cada escritura cuesta contexto:
+1. **Al convocar:** borra los `hallazgos` de la sesión anterior (`list` + `delete` en el mismo batch). Pon `sesion/actual` con `id` nuevo (`AAAAMMDD-HHMM`), `tema` y `fase: ronda1`. Los convocados en `investigando` con su `tarea` y el `modelo` real; los demás en `fuera`.
+2. **Cuando han entregado todos (abre el careo):** cada integrante en `listo` (tarea: "Entregó N hallazgos"), todos sus hallazgos como `propuesto`, `fase: ronda2` y el Abogado `debatiendo`.
+3. **Al cerrar:** cada hallazgo `en pie` o `tumbado` con su `nota` (y la gravedad corregida), el Abogado en `listo` y `sesion/actual` en `fase: cerrada` con el `veredicto` (el texto corto de la sección 7).
+
+Con `update` solo mandas los campos que cambian; no reescribas documentos enteros.
 
 ## 5. Ronda 1: convocar
 
@@ -91,11 +102,15 @@ Lanza a todos los convocados **a la vez, en un solo mensaje**, con la herramient
 
 Si esos tipos de agente no aparecen en esta sesión, usa `general-purpose` con `model` según la tabla, y empieza el `prompt` con el contenido completo del archivo `.claude/agents/consejo-<id>.md` (sin el encabezado `---`), seguido de la ficha.
 
-Mientras esperas no hagas el trabajo de ellos. Cuando llega cada uno: comprueba que respetó el formato. Si trae elogios, hallazgos sin `archivo:línea` o sin evidencia, **descarta esos hallazgos** (no les pidas que lo repitan: cuesta otra ronda) y apúntalo en el veredicto como "descartados por falta de evidencia".
+Mientras esperas no hagas el trabajo de ellos ni escribas en la sala: espera a que entreguen todos (sección 4, escritura 2). Cuando llega cada uno, comprueba que respetó el formato. Si trae elogios, hallazgos sin `archivo:línea` o sin evidencia, **descarta esos hallazgos** (no les pidas que lo repitan: cuesta otra ronda) y apúntalo en el veredicto como "descartados por falta de evidencia".
 
 ## 6. Ronda 2: careo
 
-Junta todos los hallazgos de la ronda 1 (con ID, autor, gravedad, dónde, evidencia y escenario) y mándaselos al Abogado del diablo con `Modo: CAREO`. Para ahorrar, si ya hizo su ronda 1, continúalo con `SendMessage` (conserva lo que ya leyó) en lugar de lanzar uno nuevo.
+Antes de mandar nada, **filtra tú** (sin abrir código, solo con el mapa y los informes):
+- **Duplicados:** el mismo fallo contado por dos integrantes. Júntalos en uno y di de quién era cada parte.
+- **Premisas que el mapa desmiente** (por ejemplo, «Roberto escribe datos.json»). Tumba el hallazgo citando el mapa, o baja su gravedad si solo se apoyaba en eso.
+
+Manda al Abogado del diablo, con `Modo: CAREO`, lo que quede: ID, autor, gravedad, dónde, evidencia y escenario. Recuérdale que solo compruebe con código los `alto` y `critico`. Para ahorrar, si ya hizo su ronda 1, continúalo con `SendMessage` (conserva lo que ya leyó) en lugar de lanzar uno nuevo.
 
 Después del careo:
 - Si el Abogado tumba un hallazgo `critico` o `alto`, **míralo tú** (lee las líneas citadas). Si sigues dudando, manda **una sola** réplica al autor con `SendMessage`: "El Abogado dice <motivo>. Defiende con evidencia nueva o retíralo." Lo que conteste, decide tú y anota por qué. No hay más rondas.
@@ -121,9 +136,19 @@ Qué haría primero: <1-3 acciones, en orden>
 
 Criterio: cualquier `critico` en pie → **No apto**. `alto` en pie → **Apto con cambios** como mucho. "Apto" solo si no queda nada `alto` ni `critico`, y aun así lista los `medio`.
 
+Añade una línea de consumo con los tokens de cada integrante (salen en el aviso de que terminó cada uno) y el total, para que el dueño pueda comparar entre sesiones.
+
 Termina con: "¿Arreglo algo de esto? Dime cuáles y te explico con qué choca antes de tocar nada." Y nada más.
 
 ## 8. Guardar y avisar
 
 1. Guarda el veredicto completo, con la evidencia de cada hallazgo, en `mi-dinero-datos/consejo/informes/AAAA-MM-DD-<tema-corto>.md` (crea la carpeta si no existe). Haz commit y súbelo **a la rama de trabajo de esta sesión** de `mi-dinero-datos`, nunca a `main`.
 2. Si la sesión fue larga (completa, o más de unos minutos), manda un aviso al teléfono con `PushNotification` (cárgala con `ToolSearch` si hace falta): "Consejo terminó: <veredicto>. <n> críticos, <n> altos en pie." Revisa los números antes de enviarlo.
+
+## 9. Mantener el mapa
+
+Al cerrar, actualiza `mapa.md` en el repo `mi-dinero`, solo con lo que sea público:
+- En «Ya verificado», añade lo que un integrante comprobó **sin hallazgo**, con el commit actual del archivo (`git log -1 --format=%h -- <archivo>`) y la fecha. Si había una entrada vieja del mismo punto, sustitúyela.
+- Si un «hecho fijo» resultó falso, corrígelo.
+- Nunca pongas hallazgos abiertos, cifras ni datos del dueño: eso va en el informe privado.
+Haz commit en la rama de trabajo de la sesión y dile al dueño que el mapa se actualizó. Pasarlo a `main` necesita su permiso.

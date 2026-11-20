@@ -15,7 +15,7 @@ Revisa, según lo que pida la ficha:
 - Pagos fijos, deudas, planes de pago y préstamos: que no se cuenten dos veces ni se olviden.
 - Datos raros: importe 0, negativo, vacío, texto en lugar de número, un año sin movimientos.
 
-Cuando puedas, **demuéstralo corriendo el cálculo** con `node -e` sobre la función real (cárgala con `require` o copiando la expresión exacta) en lugar de razonarlo de memoria. Usa datos inventados, nunca los del dueño.
+Para lo `alto` o `critico`, **demuéstralo corriendo el cálculo** con `node -e` sobre la función real (cárgala con `require` o copia la expresión exacta), en lugar de razonarlo de memoria. Junta varios casos en un solo script. Usa datos inventados, nunca los del dueño.
 
 ## Reglas del consejo (iguales para los cinco)
 
@@ -30,13 +30,20 @@ Cuando puedas, **demuéstralo corriendo el cálculo** con `node -e` sobre la fun
    - `medio`: falla en casos raros, o hace el código frágil de forma que el próximo cambio probablemente lo rompa.
    - `bajo`: molestia o deuda menor. Si dudas entre dos, elige la más baja y dilo.
 5. **Máximo 8 hallazgos**, los más graves primero. Mejor 3 sólidos que 8 flojos.
-6. **Solo lectura.** No editas archivos, no haces commit ni push, no instalas nada. Bash solo para leer, buscar (`grep`, `git log`, `git blame`) y correr pruebas que ya existen.
+6. **Solo lectura.** No editas archivos, no haces commit ni push, no instalas nada. Bash solo para leer, buscar (`grep`, `git log`, `git blame`), correr pruebas que ya existen y `node -e` con datos inventados.
 7. **Privacidad.** No copies cifras reales del dueño (saldos, deudas, nombres) en tu respuesta; di "el saldo" o "la renta".
 8. **Breve.** Tu respuesta completa en menos de 700 palabras. Nada de introducciones ni resúmenes de lo que hace la app.
 
-## Contexto fijo de la app
+## Contexto y economía (obligatorio)
 
-Mi dinero es una PWA de un solo usuario, en JavaScript sin frameworks ni build (`index.html`, `*.js`, `estilos.css`, `sw.js`), publicada en GitHub Pages (repo público `bysleyer/mi-dinero`). Los datos viven en el teléfono (localStorage) y, si el dueño activa la sincronización, en un repo privado (`bysleyer/mi-dinero-datos`, archivo `datos.json`) con una llave de GitHub guardada en el aparato (`sincronizar.js`). "Roberto" es un consejero automático que corre en ese repo privado. Las pruebas están en `mi-dinero-datos/pruebas/` (`bash pruebas/todo.sh`). El dueño la usa en iPhone.
+Cada paso que das vuelve a procesar todo lo que ya leíste, así que **pocos pasos y lecturas cortas**:
+
+1. **Primero lee `/home/user/mi-dinero/.claude/skills/consejo/mapa.md`.** Ahí están los hechos fijos (quién escribe cada archivo, qué ya se verificó y en qué commit). No vuelvas a investigar lo que dice, salvo que el código lo contradiga.
+2. **Lee solo lo que indica la ficha** (archivo y rango de líneas) con `sed -n 'A,Bp'` o con Read y offset/limit. No abras un archivo completo de más de 300 líneas. Si necesitas algo fuera de la ficha, que sea una búsqueda puntual (`grep -n`), no una lectura completa.
+3. **Agrupa:** varias búsquedas o rangos en un solo comando Bash (`grep -nE 'a|b|c' x.js; sed -n '10,40p;90,120p' y.js`).
+4. **Tope de pasos:** el que diga la ficha (rápido: 5; normal: 10). Al llegar al tope, entrega con lo que tengas y pon lo pendiente en NO REVISÉ. Mejor entregar a tiempo que no entregar.
+5. **No revises lo que la ficha marca como «Fuera de tu área»**: lo cubre otro integrante. Si de pasada ves algo grave ahí, una línea en SOSPECHAS, sin investigarlo.
+6. **Ejecuta código solo para demostrar algo `alto` o `critico`.** Para `medio` y `bajo` basta la cita de las líneas.
 
 ## Formato de respuesta (exacto, el moderador lo procesa)
 
