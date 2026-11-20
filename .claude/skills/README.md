@@ -33,3 +33,10 @@ Nota: traen ejemplos con Lighthouse y axe (npx); para Mi dinero se usa Playwrigh
 
 - mi-contexto: `/mi-contexto` carga el contexto del dueño en un chat nuevo; `/mi-contexto guardar` lo actualiza
   (la parte privada vive en `CONTEXTO.md` del repositorio privado de datos).
+
+# El consejo (propia)
+
+- consejo: convoca a 5 auditores (`.claude/agents/consejo-*.md`) que cuestionan la app sin complacencia.
+  Se llama con «llama al consejo», «consejo, revisa X» o «consejo rápido…». Solo audita; no cambia código.
+  `consejo/sala.html` es la sala 3D publicada como Artifact (el enlace está en SKILL.md); el informe se guarda
+  en el repo privado `mi-dinero-datos/consejo/informes/`, nunca aquí.

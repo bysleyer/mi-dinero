@@ -1,0 +1,474 @@
+<title>Sala del Consejo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Sala oscura de deliberación: escena 3D a la izquierda (arriba en el teléfono), acta en vivo a la derecha. Un solo tema, a propósito. */
+:root {
+  color-scheme: dark;
+  --sala: #0c1016;          /* fondo de la sala */
+  --muro: #141a23;          /* paneles */
+  --linea: #263040;
+  --texto: #e7e2d8;
+  --tenue: #8b93a1;
+  --laton: #d6a75c;         /* luz de la mesa, acento */
+  --critico: #ff6b5e;
+  --alto: #f29f4c;
+  --medio: #e3cf6a;
+  --bajo: #7fb0d6;
+  --bien: #79c59a;
+  --f-titulo: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --f-texto: "Instrument Sans", system-ui, sans-serif;
+  --f-dato: "IBM Plex Mono", ui-monospace, monospace;
+}
+html, body { height: 100%; }
+body { background: var(--sala); color: var(--texto); font-family: var(--f-texto); font-size: 15px; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 100%; }
+.escena { position: relative; min-height: 560px; overflow: hidden; }
+#lienzo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+.cabecera { position: absolute; top: 16px; left: max(16px, env(safe-area-inset-left, 0px)); right: 16px; pointer-events: none; display: flex; flex-direction: column; gap: 6px; }
+.cabecera h1 { font-family: var(--f-titulo); font-weight: 800; font-size: clamp(30px, 4vw, 46px); letter-spacing: .02em; margin: 0; line-height: .95; text-transform: uppercase; }
+.cabecera .tema { font-size: 15px; color: var(--tenue); max-width: 52ch; text-wrap: balance; }
+.fases { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.fase { font-family: var(--f-dato); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--linea); color: var(--tenue); border-radius: 2px; background: rgba(12,16,22,.6); }
+.fase.hecha { color: var(--texto); border-color: #3a4556; }
+.fase.ahora { color: var(--sala); background: var(--laton); border-color: var(--laton); }
+.etiquetas { position: absolute; inset: 0; pointer-events: none; }
+.etq { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); width: 170px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; pointer-events: auto; cursor: pointer; background: none; border: 0; color: inherit; font: inherit; padding: 0; }
+.etq:focus-visible { outline: 2px solid var(--laton); outline-offset: 4px; border-radius: 4px; }
+.etq .nom { font-family: var(--f-titulo); font-weight: 600; font-size: 17px; letter-spacing: .04em; text-transform: uppercase; }
+.etq .mod { font-family: var(--f-dato); font-size: 10px; color: var(--tenue); border: 1px solid var(--linea); padding: 1px 6px; border-radius: 2px; background: rgba(12,16,22,.7); }
+.etq .burbuja { font-size: 12.5px; line-height: 1.3; background: rgba(20,26,35,.92); border: 1px solid var(--linea); border-radius: 6px; padding: 5px 8px; max-width: 170px; overflow-wrap: anywhere; }
+.etq .burbuja:empty { display: none; }
+.etq.apagado { opacity: .45; }
+.ayuda { position: absolute; bottom: 14px; left: max(16px, env(safe-area-inset-left, 0px)); font-family: var(--f-dato); font-size: 11px; color: var(--tenue); pointer-events: none; }
+.sin3d { position: absolute; inset: 0; display: grid; place-items: center; color: var(--tenue); padding: 24px; text-align: center; }
+
+.acta { background: var(--muro); border-left: 1px solid var(--linea); padding-block: 20px 28px; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; overflow-y: auto; max-height: 100vh; }
+.acta h2 { font-family: var(--f-titulo); font-weight: 600; font-size: 20px; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 10px; color: var(--laton); }
+.aviso { font-size: 13px; color: var(--tenue); border: 1px dashed var(--linea); padding: 10px 12px; border-radius: 4px; }
+.miembros { display: flex; flex-direction: column; gap: 2px; }
+.fila { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 4px; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%; }
+.fila:hover, .fila.sel { background: #1b2230; }
+.fila:focus-visible { outline: 2px solid var(--laton); }
+.punto { width: 10px; height: 10px; border-radius: 50%; }
+.fila .txt { min-width: 0; }
+.fila .r { font-weight: 600; font-size: 14px; }
+.fila .t { font-size: 12.5px; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-family: var(--f-dato); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: 2px; border: 1px solid var(--linea); color: var(--tenue); white-space: nowrap; }
+.chip.trabaja { color: var(--laton); border-color: var(--laton); }
+.chip.listo { color: var(--bien); border-color: var(--bien); }
+.chip.debate { color: var(--critico); border-color: var(--critico); }
+.cuenta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+.cuenta div { border: 1px solid var(--linea); border-radius: 4px; padding: 6px 8px; }
+.cuenta b { display: block; font-family: var(--f-dato); font-size: 20px; font-variant-numeric: tabular-nums; }
+.cuenta span { font-size: 11px; color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; }
+.hallazgos { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.hz { border: 1px solid var(--linea); border-left-width: 3px; border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.hz.critico { border-left-color: var(--critico); } .hz.alto { border-left-color: var(--alto); } .hz.medio { border-left-color: var(--medio); } .hz.bajo { border-left-color: var(--bajo); }
+.hz.tumbado { opacity: .5; } .hz.tumbado .tit { text-decoration: line-through; }
+.hz .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-family: var(--f-dato); font-size: 10.5px; color: var(--tenue); text-transform: uppercase; }
+.hz .tit { font-size: 13.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.hz .donde { font-family: var(--f-dato); font-size: 11.5px; color: var(--tenue); overflow-wrap: anywhere; }
+.hz .nota { font-size: 12.5px; color: var(--tenue); font-style: italic; }
+.veredicto { border: 1px solid var(--laton); border-radius: 4px; padding: 12px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
+.estado-red { font-family: var(--f-dato); font-size: 11px; color: var(--tenue); }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .escena { min-height: 0; height: 64vh; height: 64svh; }
+  .acta { border-left: 0; border-top: 1px solid var(--linea); max-height: none; overflow: visible; }
+  .etq { width: 120px; } .etq .burbuja { max-width: 120px; font-size: 11.5px; } .etq .nom { font-size: 14px; }
+}
+@media (max-width: 520px) { .etq .burbuja { display: none; } }
+</style>
+
+<div class="app">
+  <section class="escena" aria-label="Sala del consejo en 3D">
+    <canvas id="lienzo" aria-hidden="true"></canvas>
+    <div class="etiquetas" id="etiquetas"></div>
+    <div class="cabecera">
+      <h1>El Consejo</h1>
+      <div class="tema" id="tema">En receso. Di «llama al consejo» en Claude Code para convocarlo.</div>
+      <div class="fases" id="fases"></div>
+    </div>
+    <div class="ayuda" id="ayuda">Arrastra para girar la sala · toca a un integrante para ver qué hace</div>
+  </section>
+
+  <aside class="acta" aria-label="Acta de la sesión">
+    <div class="aviso" id="aviso" hidden></div>
+    <section>
+      <h2>Integrantes</h2>
+      <div class="miembros" id="miembros"></div>
+    </section>
+    <section>
+      <h2>Hallazgos</h2>
+      <div class="cuenta" id="cuenta"></div>
+      <ul class="hallazgos" id="hallazgos"></ul>
+    </section>
+    <section id="secVeredicto" hidden>
+      <h2>Veredicto</h2>
+      <div class="veredicto" id="veredicto"></div>
+    </section>
+    <div class="estado-red" id="red">Conectando con el acta…</div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  // ---------- Integrantes (lo fijo; el estado viene del acta) ----------
+  const MIEMBROS = [
+    { id: "seguridad",    nombre: "Seguridad",        rol: "Datos expuestos, llaves, permisos", modelo: "opus",   color: 0x5fb6ff, forma: "octa" },
+    { id: "cuentas",      nombre: "Cuentas",          rol: "Que cada centavo cuadre",           modelo: "opus",   color: 0xd6a75c, forma: "moneda" },
+    { id: "arquitectura", nombre: "Arquitectura",     rol: "Estructura, lógica, deuda técnica", modelo: "sonnet", color: 0x9b8cff, forma: "cubo" },
+    { id: "producto",     nombre: "Producto",         rol: "Si un usuario real lo entiende",    modelo: "sonnet", color: 0x6fd3b0, forma: "aro" },
+    { id: "abogado",      nombre: "Abogado del diablo", rol: "Tumbar lo que no se sostiene",    modelo: "opus",   color: 0xff6b5e, forma: "tetra" },
+  ];
+  const FASES = [
+    ["preparando", "Preparando"], ["ronda1", "Ronda 1"], ["ronda2", "Careo"], ["veredicto", "Veredicto"], ["cerrada", "Cerrada"],
+  ];
+  const ESTADOS = {
+    receso:      { txt: "En receso",     cls: "" },
+    esperando:   { txt: "Esperando",     cls: "" },
+    investigando:{ txt: "Investigando",  cls: "trabaja" },
+    escribiendo: { txt: "Escribiendo",   cls: "trabaja" },
+    debatiendo:  { txt: "Debatiendo",    cls: "debate" },
+    listo:       { txt: "Listo",         cls: "listo" },
+    fuera:       { txt: "No convocado",  cls: "" },
+  };
+  const GRAV = ["critico", "alto", "medio", "bajo"];
+  const GRAV_TXT = { critico: "Crítico", alto: "Alto", medio: "Medio", bajo: "Bajo" };
+
+  const estado = { sesion: null, miembros: {}, hallazgos: [], sel: null };
+  const $ = (id) => document.getElementById(id);
+  const hex = (n) => "#" + n.toString(16).padStart(6, "0");
+  const calma = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- Acta (panel de texto) ----------
+  function miembro(id) {
+    const base = MIEMBROS.find((m) => m.id === id);
+    return Object.assign({}, base, estado.miembros[id] || {});
+  }
+  function pintarActa() {
+    const s = estado.sesion;
+    const fase = s ? s.fase : "receso";
+    $("tema").textContent = s && s.tema && fase !== "receso" ? s.tema : "En receso. Di «llama al consejo» en Claude Code para convocarlo.";
+    const idx = FASES.findIndex((f) => f[0] === fase);
+    $("fases").replaceChildren(...FASES.map(([k, t], i) => {
+      const el = document.createElement("span");
+      el.className = "fase" + (i === idx ? " ahora" : idx > i ? " hecha" : "");
+      el.textContent = t;
+      return el;
+    }));
+    $("fases").hidden = idx < 0;
+
+    $("miembros").replaceChildren(...MIEMBROS.map((b) => {
+      const m = miembro(b.id); const e = ESTADOS[m.estado] || ESTADOS.receso;
+      const f = document.createElement("button");
+      f.type = "button"; f.className = "fila" + (estado.sel === b.id ? " sel" : "");
+      f.addEventListener("click", () => seleccionar(b.id));
+      const p = document.createElement("span"); p.className = "punto"; p.style.background = hex(b.color);
+      const t = document.createElement("span"); t.className = "txt";
+      const r = document.createElement("div"); r.className = "r"; r.textContent = m.nombre + " · " + (m.modelo || "");
+      const d = document.createElement("div"); d.className = "t"; d.textContent = m.tarea || m.rol;
+      t.append(r, d);
+      const c = document.createElement("span"); c.className = "chip " + e.cls; c.textContent = e.txt;
+      f.append(p, t, c);
+      return f;
+    }));
+
+    const sid = s && s.id;
+    let lista = estado.hallazgos.filter((h) => !sid || h.sesion === sid);
+    if (estado.sel) lista = lista.filter((h) => h.miembro === estado.sel);
+    lista.sort((a, b) => (GRAV.indexOf(a.gravedad) - GRAV.indexOf(b.gravedad)) || ((a.orden || 0) - (b.orden || 0)));
+    const vivos = lista.filter((h) => h.estado !== "tumbado");
+    $("cuenta").replaceChildren(...GRAV.map((g) => {
+      const d = document.createElement("div");
+      const b = document.createElement("b"); b.textContent = vivos.filter((h) => h.gravedad === g).length;
+      b.style.color = `var(--${g})`;
+      const sp = document.createElement("span"); sp.textContent = GRAV_TXT[g];
+      d.append(b, sp); return d;
+    }));
+    if (!lista.length) {
+      const li = document.createElement("li"); li.className = "aviso";
+      li.textContent = estado.sel ? "Este integrante no tiene hallazgos en esta sesión." : "Aún no hay hallazgos. Aparecen aquí en cuanto un integrante los entrega.";
+      $("hallazgos").replaceChildren(li);
+    } else {
+      $("hallazgos").replaceChildren(...lista.map((h) => {
+        const li = document.createElement("li");
+        li.className = "hz " + (h.gravedad || "bajo") + (h.estado === "tumbado" ? " tumbado" : "");
+        const meta = document.createElement("div"); meta.className = "meta";
+        const quien = miembro(h.miembro);
+        const a = document.createElement("span"); a.textContent = GRAV_TXT[h.gravedad] || h.gravedad; a.style.color = `var(--${h.gravedad})`;
+        const q = document.createElement("span"); q.textContent = "· " + (quien.nombre || h.miembro);
+        const st = document.createElement("span"); st.textContent = "· " + (h.estado || "propuesto");
+        meta.append(a, q, st);
+        const tit = document.createElement("div"); tit.className = "tit"; tit.textContent = h.titulo || "";
+        li.append(meta, tit);
+        if (h.donde) { const d = document.createElement("div"); d.className = "donde"; d.textContent = h.donde; li.append(d); }
+        if (h.nota) { const n = document.createElement("div"); n.className = "nota"; n.textContent = h.nota; li.append(n); }
+        return li;
+      }));
+    }
+    const v = s && s.veredicto;
+    $("secVeredicto").hidden = !v;
+    $("veredicto").textContent = v || "";
+    pintarEtiquetas();
+  }
+  function seleccionar(id) { estado.sel = estado.sel === id ? null : id; pintarActa(); }
+
+  // ---------- Escena 3D ----------
+  const caja = document.querySelector(".escena");
+  const lienzo = $("lienzo");
+  const tres = {};
+  const RADIO = 4.2;
+
+  function hay3d() {
+    try { const c = document.createElement("canvas"); return !!(window.THREE && (c.getContext("webgl2") || c.getContext("webgl"))); } catch (e) { return false; }
+  }
+
+  function armar() {
+    const T = THREE;
+    const r = new T.WebGLRenderer({ canvas: lienzo, antialias: true });
+    r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    r.shadowMap.enabled = true; r.shadowMap.type = T.PCFSoftShadowMap;
+    r.outputEncoding = T.sRGBEncoding;
+    const esc = new T.Scene();
+    esc.background = new T.Color(0x0c1016);
+    esc.fog = new T.Fog(0x0c1016, 18, 34);
+    const cam = new T.PerspectiveCamera(42, 1, 0.1, 100);
+
+    esc.add(new T.HemisphereLight(0x8fa3c4, 0x0c1016, 0.35));
+    const foco = new T.SpotLight(0xffd9a0, 1.4, 30, Math.PI / 5, 0.5, 1.2);
+    foco.position.set(0, 11, 0); foco.castShadow = true; foco.shadow.mapSize.set(1024, 1024);
+    esc.add(foco); esc.add(foco.target);
+
+    // Suelo: piedra oscura con anillos grabados
+    const suelo = new T.Mesh(new T.CircleGeometry(24, 64), new T.MeshStandardMaterial({ color: 0x121821, roughness: .9 }));
+    suelo.rotation.x = -Math.PI / 2; suelo.receiveShadow = true; esc.add(suelo);
+    for (const [rad, op] of [[6.2, .35], [7.4, .18], [9.5, .1]]) {
+      const an = new T.Mesh(new T.RingGeometry(rad, rad + .03, 96), new T.MeshBasicMaterial({ color: 0xd6a75c, transparent: true, opacity: op }));
+      an.rotation.x = -Math.PI / 2; an.position.y = .01; esc.add(an);
+    }
+    // Columnas al fondo
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const col = new T.Mesh(new T.CylinderGeometry(.28, .32, 7, 12), new T.MeshStandardMaterial({ color: 0x1a212c, roughness: .8 }));
+      col.position.set(Math.cos(a) * 19, 3.5, Math.sin(a) * 19); col.castShadow = true; esc.add(col);
+    }
+    // Mesa redonda
+    const mesa = new T.Group();
+    const tablero = new T.Mesh(new T.CylinderGeometry(2.6, 2.6, .16, 64), new T.MeshStandardMaterial({ color: 0x2b2118, roughness: .45, metalness: .2 }));
+    tablero.position.y = 1.05; tablero.castShadow = tablero.receiveShadow = true;
+    const canto = new T.Mesh(new T.TorusGeometry(2.6, .05, 8, 96), new T.MeshStandardMaterial({ color: 0xd6a75c, metalness: .9, roughness: .3, emissive: 0x3a2a10 }));
+    canto.rotation.x = Math.PI / 2; canto.position.y = 1.13;
+    const pie = new T.Mesh(new T.CylinderGeometry(.5, .9, 1, 24), new T.MeshStandardMaterial({ color: 0x1d1712, roughness: .6 }));
+    pie.position.y = .5; pie.castShadow = true;
+    mesa.add(tablero, canto, pie); esc.add(mesa);
+
+    // Holograma central: el tema de la sesión como anillos de luz
+    const holo = new T.Group(); holo.position.y = 1.2;
+    const haz = new T.Mesh(new T.CylinderGeometry(.9, .9, 2.4, 48, 1, true),
+      new T.MeshBasicMaterial({ color: 0xd6a75c, transparent: true, opacity: .07, side: T.DoubleSide, depthWrite: false }));
+    haz.position.y = 1.2;
+    const anillos = [];
+    for (let i = 0; i < 3; i++) {
+      const an = new T.Mesh(new T.TorusGeometry(.55 + i * .22, .012, 6, 80), new T.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .7 - i * .18 }));
+      an.position.y = .8 + i * .45; an.rotation.x = Math.PI / 2; holo.add(an); anillos.push(an);
+    }
+    const nucleo = new T.Mesh(new T.IcosahedronGeometry(.32, 1), new T.MeshBasicMaterial({ color: 0xffd9a0, wireframe: true, transparent: true, opacity: .8 }));
+    nucleo.position.y = 1.4;
+    holo.add(haz, nucleo); esc.add(holo);
+    const luzHolo = new T.PointLight(0xffc77a, .6, 8); luzHolo.position.y = 2.4; esc.add(luzHolo);
+
+    // Integrantes
+    const figuras = {};
+    MIEMBROS.forEach((m, i) => {
+      const a = -Math.PI / 2 + (i / MIEMBROS.length) * Math.PI * 2;
+      const g = new T.Group(); g.position.set(Math.cos(a) * RADIO, 0, Math.sin(a) * RADIO); g.lookAt(0, 0, 0);
+      const col = new T.Color(m.color);
+      // Silla
+      const silla = new T.Mesh(new T.BoxGeometry(1.1, 1.8, .14), new T.MeshStandardMaterial({ color: 0x1e1814, roughness: .7 }));
+      silla.position.set(0, 1.1, -.55); silla.castShadow = true;
+      const asiento = new T.Mesh(new T.BoxGeometry(1.1, .12, .9), new T.MeshStandardMaterial({ color: 0x1e1814, roughness: .7 }));
+      asiento.position.set(0, .62, -.1); asiento.castShadow = true;
+      // Cuerpo y cabeza
+      const matCuerpo = new T.MeshStandardMaterial({ color: 0x2a3140, roughness: .5, metalness: .3, emissive: col.clone().multiplyScalar(.05) });
+      const cuerpo = new T.Mesh(new T.CylinderGeometry(.34, .44, 1.0, 20), matCuerpo);
+      cuerpo.position.set(0, 1.2, -.1); cuerpo.castShadow = true;
+      const banda = new T.Mesh(new T.TorusGeometry(.36, .03, 8, 40), new T.MeshBasicMaterial({ color: col }));
+      banda.rotation.x = Math.PI / 2; banda.position.set(0, 1.45, -.1);
+      const cabeza = new T.Mesh(new T.SphereGeometry(.27, 24, 18), new T.MeshStandardMaterial({ color: 0x394254, roughness: .35, metalness: .4 }));
+      cabeza.position.set(0, 1.95, -.1); cabeza.castShadow = true;
+      const visor = new T.Mesh(new T.BoxGeometry(.34, .07, .05), new T.MeshBasicMaterial({ color: col }));
+      visor.position.set(0, 1.97, .15);
+      // Emblema del rol, flota sobre la cabeza
+      let geo;
+      if (m.forma === "octa") geo = new T.OctahedronGeometry(.22);
+      else if (m.forma === "moneda") geo = new T.CylinderGeometry(.22, .22, .06, 32);
+      else if (m.forma === "cubo") geo = new T.BoxGeometry(.3, .3, .3);
+      else if (m.forma === "aro") geo = new T.TorusGeometry(.18, .06, 12, 32);
+      else geo = new T.TetrahedronGeometry(.26);
+      const emblema = new T.Mesh(geo, new T.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: .4, metalness: .5, roughness: .3 }));
+      emblema.position.set(0, 2.6, -.1);
+      // Atril con pantalla delante (se enciende cuando trabaja)
+      const pantalla = new T.Mesh(new T.PlaneGeometry(.7, .42), new T.MeshBasicMaterial({ color: col, transparent: true, opacity: .1, side: T.DoubleSide }));
+      pantalla.position.set(0, 1.42, .95); pantalla.rotation.x = -.55;
+      const luz = new T.PointLight(m.color, 0, 3.5); luz.position.set(0, 2.2, .3);
+      g.add(silla, asiento, cuerpo, banda, cabeza, visor, emblema, pantalla, luz);
+      esc.add(g);
+      // Rayo hacia el holograma (cuando entrega o debate)
+      const rayoGeo = new T.BufferGeometry().setFromPoints([new T.Vector3(), new T.Vector3()]);
+      const rayo = new T.Line(rayoGeo, new T.LineBasicMaterial({ color: col, transparent: true, opacity: 0 }));
+      esc.add(rayo);
+      figuras[m.id] = { g, emblema, pantalla, luz, cabeza, cuerpo, matCuerpo, rayo, base: emblema.position.y, fase: i * 1.3 };
+    });
+
+    // Polvo de luz
+    const n = 260, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, rr = 1 + Math.random() * 9; pos[i * 3] = Math.cos(a) * rr; pos[i * 3 + 1] = Math.random() * 6; pos[i * 3 + 2] = Math.sin(a) * rr; }
+    const polvoGeo = new T.BufferGeometry(); polvoGeo.setAttribute("position", new T.BufferAttribute(pos, 3));
+    const polvo = new T.Points(polvoGeo, new T.PointsMaterial({ color: 0xd6a75c, size: .035, transparent: true, opacity: .5 }));
+    esc.add(polvo);
+
+    Object.assign(tres, { r, esc, cam, figuras, anillos, nucleo, haz, luzHolo, polvo, giro: 0.6, arrastre: null, inclin: 0 });
+    ajustar();
+    new ResizeObserver(ajustar).observe(caja);
+
+    // Girar con el dedo o el ratón (solo horizontal; el desplazamiento vertical sigue siendo de la página)
+    lienzo.addEventListener("pointerdown", (e) => { tres.arrastre = { x: e.clientX, g: tres.giro }; lienzo.setPointerCapture(e.pointerId); });
+    lienzo.addEventListener("pointermove", (e) => { if (tres.arrastre) tres.giro = tres.arrastre.g - (e.clientX - tres.arrastre.x) * .006; });
+    const soltar = () => { tres.arrastre = null; };
+    lienzo.addEventListener("pointerup", soltar); lienzo.addEventListener("pointercancel", soltar);
+
+    construirEtiquetas();
+    requestAnimationFrame(cuadro);
+  }
+
+  function ajustar() {
+    const w = caja.clientWidth, h = caja.clientHeight;
+    tres.r.setSize(w, h, false);
+    tres.cam.aspect = w / h; tres.cam.updateProjectionMatrix();
+    tres.lejos = w < 600 ? 14 : 12.5;
+    tres.cam.fov = w < 600 ? 58 : 42; tres.cam.updateProjectionMatrix();
+    tres.alto = w < 600 ? 9 : 6.8;
+  }
+
+  const etiquetas = {};
+  function construirEtiquetas() {
+    MIEMBROS.forEach((m) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "etq";
+      b.setAttribute("aria-label", m.nombre);
+      const nom = document.createElement("span"); nom.className = "nom"; nom.textContent = m.nombre; nom.style.color = hex(m.color);
+      const mod = document.createElement("span"); mod.className = "mod";
+      const bur = document.createElement("span"); bur.className = "burbuja";
+      b.append(bur, nom, mod);
+      b.addEventListener("click", () => seleccionar(m.id));
+      $("etiquetas").append(b);
+      etiquetas[m.id] = { b, mod, bur };
+    });
+    pintarEtiquetas();
+  }
+  function pintarEtiquetas() {
+    for (const b of MIEMBROS) {
+      const e = etiquetas[b.id]; if (!e) continue;
+      const m = miembro(b.id);
+      e.mod.textContent = (m.modelo || "") + " · " + (ESTADOS[m.estado] || ESTADOS.receso).txt.toLowerCase();
+      const activo = ["investigando", "escribiendo", "debatiendo"].includes(m.estado);
+      e.bur.textContent = activo ? (m.tarea || "") : "";
+      e.b.classList.toggle("apagado", m.estado === "fuera" || (estado.sel && estado.sel !== b.id));
+    }
+  }
+
+  function cuadro(t) {
+    requestAnimationFrame(cuadro);
+    if (document.hidden) return;
+    const s = t / 1000;
+    const T = THREE;
+    if (!tres.arrastre && !calma) tres.giro += .0007;
+    const objetivo = tres.giro;
+    const cam = tres.cam;
+    const lejos = tres.lejos;
+    cam.position.set(Math.cos(objetivo) * lejos, tres.alto, Math.sin(objetivo) * lejos);
+    cam.lookAt(0, 1.4, 0);
+
+    const fase = estado.sesion ? estado.sesion.fase : "receso";
+    const viva = ["preparando", "ronda1", "ronda2", "veredicto"].includes(fase);
+    tres.anillos.forEach((a, i) => { a.rotation.z = s * (.3 + i * .2) * (i % 2 ? -1 : 1); a.material.opacity = (viva ? .75 : .25) - i * .15; });
+    tres.nucleo.rotation.y = s * (viva ? .9 : .2); tres.nucleo.rotation.x = s * .3;
+    tres.nucleo.material.color.set(fase === "ronda2" ? 0xff8a7a : 0xffd9a0);
+    tres.haz.material.opacity = viva ? .09 + Math.sin(s * 2) * .03 : .03;
+    tres.luzHolo.intensity = viva ? .9 : .3;
+    tres.polvo.rotation.y = s * .02;
+
+    const centro = new T.Vector3(0, 2.6, 0);
+    for (const b of MIEMBROS) {
+      const f = tres.figuras[b.id];
+      const m = miembro(b.id);
+      const est = m.estado || "receso";
+      const trabaja = est === "investigando" || est === "escribiendo";
+      const debate = est === "debatiendo";
+      const fuera = est === "fuera";
+      const elegido = estado.sel === b.id;
+      const vel = trabaja ? 2.2 : debate ? 3.2 : .4;
+      f.emblema.rotation.y = s * vel + f.fase;
+      f.emblema.rotation.x = trabaja || debate ? Math.sin(s * 1.5 + f.fase) * .4 : 0;
+      f.emblema.position.y = f.base + (calma ? 0 : Math.sin(s * 1.6 + f.fase) * (trabaja ? .09 : .04));
+      f.emblema.material.emissiveIntensity = fuera ? .05 : trabaja || debate ? .9 + Math.sin(s * 5) * .2 : est === "listo" ? .7 : .25;
+      f.pantalla.material.opacity = fuera ? .03 : trabaja ? .45 + Math.sin(s * 9 + f.fase) * .12 : est === "listo" ? .25 : .08;
+      f.luz.intensity = (fuera ? 0 : trabaja || debate ? 1.1 : est === "listo" ? .5 : .12) + (elegido ? .8 : 0);
+      f.cabeza.rotation.y = trabaja ? Math.sin(s * .8 + f.fase) * .35 : 0;
+      f.cabeza.rotation.x = est === "escribiendo" ? .35 : 0;
+      f.g.scale.setScalar(fuera ? .92 : 1);
+      // Rayo al centro: al escribir o debatir
+      const op = est === "escribiendo" || debate ? .35 + Math.sin(s * 6 + f.fase) * .25 : 0;
+      f.rayo.material.opacity = op;
+      if (op) {
+        const p = f.emblema.getWorldPosition(new T.Vector3());
+        const at = f.rayo.geometry.attributes.position;
+        at.setXYZ(0, p.x, p.y, p.z); at.setXYZ(1, centro.x, centro.y, centro.z); at.needsUpdate = true;
+      }
+      // Etiqueta HTML sobre la figura
+      const e = etiquetas[b.id];
+      if (e) {
+        const p = f.emblema.getWorldPosition(new T.Vector3()); p.y += .35;
+        p.project(cam);
+        const W = caja.clientWidth, mitad = e.b.offsetWidth / 2 + 4;
+        const x = Math.min(W - mitad, Math.max(mitad, (p.x * .5 + .5) * W)), y = (-p.y * .5 + .5) * caja.clientHeight;
+        e.b.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+        e.b.style.zIndex = String(Math.round((1 - p.z) * 1000));
+        e.b.style.visibility = p.z > 1 ? "hidden" : "visible";
+      }
+    }
+    tres.r.render(tres.esc, cam);
+  }
+
+  // ---------- Conexión al acta (base de datos del artefacto) ----------
+  function aviso(txt) { $("aviso").hidden = !txt; $("aviso").textContent = txt || ""; }
+  async function conectar() {
+    const db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+    if (!db) { $("red").textContent = "Sin conexión al acta en esta vista: se muestra la sala en receso."; return; }
+    let cargado = false;
+    const reloj = setTimeout(() => { if (!cargado) $("red").textContent = "El acta todavía no responde. Lo que ves puede no estar al día."; }, 10000);
+    const listo = (snap) => { if (!snap.metadata.fromCache) { cargado = true; clearTimeout(reloj); $("red").textContent = "En vivo · " + new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }); } };
+    const fallo = () => { clearTimeout(reloj); $("red").textContent = "Se perdió la conexión al acta. Recarga la página para volver a verla."; };
+    db.doc("sesion/actual").onSnapshot((snap) => { estado.sesion = snap.exists ? snap.data() : null; listo(snap); pintarActa(); }, fallo);
+    db.collection("miembros").onSnapshot((snap) => {
+      const m = {}; snap.docs.forEach((d) => { m[d.id] = d.data(); }); estado.miembros = m; listo(snap); pintarActa();
+    }, fallo);
+    db.collection("hallazgos").onSnapshot((snap) => {
+      estado.hallazgos = snap.docs.map((d) => Object.assign({ id: d.id }, d.data())); listo(snap); pintarActa();
+    }, fallo);
+  }
+
+  pintarActa();
+  if (hay3d()) { try { armar(); } catch (e) { console.error(e); } }
+  else {
+    const d = document.createElement("div"); d.className = "sin3d";
+    d.textContent = "Este dispositivo no puede dibujar la sala en 3D. El acta de la derecha sigue en vivo.";
+    caja.append(d); $("ayuda").hidden = true;
+  }
+  conectar();
+})();
+</script>
