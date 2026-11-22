@@ -152,9 +152,30 @@ const Patrones = {
 
   /* A2 · Categoría que más has usado con esa nota (o null). Igual de la nota completa; si estás escribiendo
      (4 letras o más), vale el comienzo de una nota conocida solo si todas esas notas usan la misma categoría. */
+  // v102: palabras que ya dicen la categoría nueva. Ganan cuando tu historial dice "Otros" o no dice nada
+  // (antes de la v102 no existían Bebidas ni Comida a domicilio, así que "Uber Eats" quedó en Otros).
+  PALABRAS_CATEGORIA: [
+    [/\b(uber ?eats|doordash|door dash|grubhub|postmates|delivery|domicilio)\b/, "Comida a domicilio"],
+    [/\b(soda|monster|red ?bull|refresco|coca|pepsi|cafe|bebida|jugo|agua|energizante|gatorade)\b/, "Bebidas"],
+    [/\b(super|supermercado|shoprite|walmart|aldi|lidl|costco|bodega|mercado|compras)\b/, "Súper"],
+    [/\b(farmacia|medicina|doctor|cvs|walgreens|rite ?aid|dentista|pastillas)\b/, "Salud"],
+    [/\b(ropa|zapatos|tenis|camisa|pantalon|chaqueta|abrigo)\b/, "Ropa"],
+    [/\b(lavanderia|limpieza|detergente|jabon|papel|muebles|casa)\b/, "Casa"]
+  ],
+  categoriaPorPalabra(q) {
+    const f = this.PALABRAS_CATEGORIA.find(([re]) => re.test(q));
+    return f ? f[1] : null;
+  },
+
   categoriaDe(nota) {
     const q = Vigilante.normal(nota).trim();
     if (!q) return null;
+    const deHistorial = this.categoriaDeHistorial(q);
+    if (deHistorial && deHistorial !== "Otros") return deHistorial;
+    return this.categoriaPorPalabra(q) || deHistorial;
+  },
+
+  categoriaDeHistorial(q) {
     const lista = this._con("categorias", movs => {
       const m = {};
       movs.filter(x => x.tipo === "gasto" && (x.nota || "").trim()).sort((a, b) => (a.fecha + a.creado).localeCompare(b.fecha + b.creado)).forEach(x => {

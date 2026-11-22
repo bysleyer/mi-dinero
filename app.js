@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 101, fecha: "16 nov 2026" };
+const VERSION_APP = { numero: 102, fecha: "22 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -213,7 +213,12 @@ const Datos = {
 };
 
 // ---------- Formularios ----------
-const CATEGORIAS = ["Comida", "Transporte", "Teléfono", "Luz", "Internet", "Hijos", "Otros"];
+// Orden = orden de los cuadritos de la hoja del + (4 por fila; "Otros" al final, a lo ancho)
+const CATEGORIAS = ["Comida", "Súper", "Comida a domicilio", "Bebidas", "Transporte", "Hijos", "Casa", "Salud",
+                    "Ropa", "Teléfono", "Luz", "Internet", "Otros"];
+// Las que salen de lo apartado para comida cada semana (el súper es comida). "Comida a domicilio" NO: cuenta contra tu Libre.
+const CATEGORIAS_COMIDA = ["Comida", "Súper"];
+const esComida = categoria => CATEGORIAS_COMIDA.includes(categoria);
 
 const campoMonto = () => `
   <div class="campo campo-monto">
@@ -298,9 +303,9 @@ const Formularios = {
         // (antes, registrar la comida de la semana decía "te faltan $X más" aunque ya estaba prevista)
         const cat = $("f-categoria").value;
         let previsto = 0;
-        if (cat === "Transporte" || cat === "Comida") {
+        if (cat === "Transporte" || esComida(cat)) {
           const pr = Proyeccion.calcular({ horizonte: 10 });
-          previsto = redondear(-pr.lineas.filter(l => l.id === cat.toLowerCase() && l.monto < 0 &&
+          previsto = redondear(-pr.lineas.filter(l => l.id === (esComida(cat) ? "comida" : "transporte") && l.monto < 0 &&
             (cat === "Transporte" ? l.fecha === hoy() && fecha === hoy() : l.fecha <= fecha && l.fecha >= Jornadas.sumarDias(fecha, -2)))
             .reduce((x, l) => x + l.monto, 0));
         }
@@ -313,7 +318,7 @@ const Formularios = {
         caja.innerHTML = (vig ? vig + "<br>" : "") + (e.agrega > 0
           ? `Con este gasto, el ${Futuro.dia(e.diaAgrega)} te faltan <strong>${dinero(e.agrega)}</strong> más para tus pagos.
              <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver qué hacer</button>`
-          : previsto > 0.005 && extraReal <= 0.005 ? `Este gasto ya estaba apartado en tu cuenta (${escapar(cat.toLowerCase())}: ${dinero(previsto)}).
+          : previsto > 0.005 && extraReal <= 0.005 ? `Este gasto ya estaba apartado en tu cuenta (${esComida(cat) ? "comida" : "transporte"}: ${dinero(previsto)}).
              <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver detalle</button>`
           : `Con lo que ya tienes previsto, este gasto no deja ningún día sin dinero.
              <button type="button" class="enlace f-efecto-boton" data-ver-gasto>Ver detalle</button>`);

@@ -53,6 +53,7 @@ const Resumen = {
     pagos.forEach(m => { porDeuda[m.deudaId || "?"] = redondear((porDeuda[m.deudaId || "?"] || 0) + m.monto); });
     return {
       porCategoria,
+      totalSuper: suma(gastos.filter(m => m.categoria === "Súper")),
       totalGastado: suma(gastos),
       pagosDeudas: suma(pagos),
       ingresos: suma(ingresos),
@@ -132,20 +133,26 @@ const Resumen = {
     $("r-rango").textContent = `Del ${fechaCorta(c.rango.inicio)} al ${fechaCorta(c.rango.fin)}`;
 
     this._hayTendencia = false;
-    $("r-categorias").innerHTML = c.porCategoria.map(cat => {
+    // Con 13 categorías, las que están en $0 no se listan (menos Comida y Transporte, que tienen lo apartado)
+    $("r-categorias").innerHTML = c.porCategoria.filter(cat => cat.total > 0.005 || this.presupuestoSemanal(cat.nombre) != null).map(cat => {
       const parte = c.totalGastado > 0 ? cat.total / c.totalGastado : 0;
       const semanal = this.presupuestoSemanal(cat.nombre);
       const tope = semanal == null ? null : redondear(semanal * c.rango.factor);
-      const estado = tope == null ? "" : cat.total > tope + 0.005 ? "rojo" : cat.total > tope * 0.8 ? "amarillo" : "verde";
+      // Comida y Súper salen de lo mismo apartado: la barra de Comida cuenta los dos (v102)
+      const conSuper = cat.nombre === "Comida" && c.totalSuper > 0.005;
+      const usado = cat.nombre === "Comida" ? redondear(cat.total + c.totalSuper) : cat.total;
+      const estado = tope == null ? "" : usado > tope + 0.005 ? "rojo" : usado > tope * 0.8 ? "amarillo" : "verde";
       return `
         <li class="cat ${estado}">
           <div class="deuda-cabeza">
             <span class="deuda-nombre">${cat.nombre}</span>
             <span class="deuda-saldo neutro">${dineroCorto(cat.total)}${tope != null ? ` <small>de ${dineroCorto(tope)}</small>` : ""}</span>
           </div>
-          <div class="barra fina ${estado}"><div class="barra-relleno" style="--p:${tope ? Math.min(1, cat.total / tope) : parte}"></div></div>
+          <div class="barra fina ${estado}"><div class="barra-relleno" style="--p:${tope ? Math.min(1, usado / tope) : parte}"></div></div>
+          ${conSuper ? `<p class="nota-cat">Con el súper (${dineroCorto(c.totalSuper)}) llevas ${dineroCorto(usado)} de lo apartado para comida</p>` : ""}
+          ${cat.nombre === "Súper" ? `<p class="nota-cat">Sale de lo apartado para comida</p>` : ""}
           ${this.lineaTendencia(cat.nombre)}
-          ${tope != null && cat.total > tope + 0.005 ? `<p class="presupuesto rojo">Te pasaste por ${dinero(cat.total - tope)}</p>` : ""}
+          ${tope != null && usado > tope + 0.005 ? `<p class="presupuesto rojo">Te pasaste por ${dinero(usado - tope)}</p>` : ""}
         </li>`;
     }).join("");
 

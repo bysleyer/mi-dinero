@@ -83,11 +83,11 @@ const Proyeccion = {
     return r;
   },
 
-  // Gastos de Comida ya registrados que cuentan en "Dinero que tengo hoy" (los mismos que usa Dinero.actual)
+  // Gastos de Comida (y Súper) ya registrados que cuentan en "Dinero que tengo hoy" (los mismos que usa Dinero.actual)
   gastosDeComida() {
     const di = Almacen.leerDineroInicial();
     const desde = di ? di.momento : "";
-    return Almacen.leerMovimientos().filter(m => m.tipo === "gasto" && m.categoria === "Comida" && (!desde || m.creado > desde) && !m.incluidoEnCorreccion);
+    return Almacen.leerMovimientos().filter(m => m.tipo === "gasto" && esComida(m.categoria) && (!desde || m.creado > desde) && !m.incluidoEnCorreccion);
   },
 
   // ---------- Transporte: días que se reservan ----------

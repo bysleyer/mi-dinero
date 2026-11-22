@@ -1212,7 +1212,7 @@ body.con-nav #volver-consejero { display: none; }
 .inicio-hoy .hoy-texto { font-size: .9375rem; margin: 0; }
 .inicio-cierre .cierre-linea { margin: 0 0 4px; font-size: .9375rem; color: var(--texto); }
 .inicio-cierre .cierre-botones { display: flex; gap: 8px; margin-top: 10px; }
-.tendencia { margin: 4px 0 0; font-size: .8125rem; color: var(--suave); }
+.tendencia, .nota-cat { margin: 4px 0 0; font-size: .8125rem; color: var(--suave); }
 .tendencia.marca { color: var(--aviso); }
 .inicio-hoy .hoy-mensaje { font-size: .875rem; margin: 6px 0 0; color: var(--suave); }
 .inicio-hoy .boton-grande { margin-top: 10px; }
@@ -1992,10 +1992,12 @@ html, body { overscroll-behavior: none; }
 /* Gasté: categorías en cuadrícula con ícono, todas del mismo tamaño */
 .hoja-cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .hoja-cats[hidden] { display: none; }
-.hoja-cats .cat-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 70px; margin: 0;
+.hoja-cats .cat-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 66px; margin: 0;
   padding: 6px 2px; border-radius: 14px; font-size: .8rem; line-height: 1.1; text-align: center; }
 .hoja-cats .cat-tile .ico { width: 24px; height: 24px; }
 .hoja-cats .cat-tile[aria-pressed="true"] { border-color: var(--menta); color: var(--menta); background: #11302a; }
+/* v102: 13 categorías. "Otros" (la última) va sola a lo ancho, con el ícono al lado */
+.hoja-cats .cat-tile:last-child:nth-child(4n + 1) { grid-column: 1 / -1; flex-direction: row; min-height: 48px; gap: 8px; }
 
 /* El botón de la hoja dice lo que falta y se ve apagado hasta que está todo */
 #hoja-continuar { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background-color 150ms ease, color 150ms ease, transform 100ms var(--ease-out); }
