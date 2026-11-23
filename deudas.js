@@ -248,7 +248,7 @@ const Deudas = {
     Object.entries(d.ceros).forEach(([id, f]) => { if (f) fechas[id] = f === "ya" ? "pagada" : aFecha(f); });
     const libre = aFecha(d.libre);
     const semanas = libre && libre !== "ya" ? Math.max(1, Math.ceil((libre - Jornadas.aFecha(hoy())) / (7 * 86400000))) : null;
-    return { fechas, libre, semanas, fechaColchon: aFecha(d.colchonLleno) };
+    return { fechas, libre, semanas, fechaColchon: aFecha(d.colchonLleno), sinContar: d.sinContar || [] };
   },
 
   mostrarProyeccion() {
@@ -317,7 +317,9 @@ const Deudas = {
       <div class="av" role="img" aria-label="Pagado ${av.pct} por ciento de lo que se debía"><i style="width:${Math.max(av.pct, av.pagado > 0 ? 3 : 0)}%"></i></div>
       <div class="avt"><span>Pagado ${dineroCorto(av.pagado)}</span><span>De ${dineroCorto(av.original)} · ${av.pct} %</span></div>` : "";
     if (p.libre === "ya") {
-      caja.innerHTML = `<p class="k">Tu día de libertad</p><p class="fecha fecha-chica">Ya no tienes deudas</p>`;
+      const fuera = (p.sinContar || []).map(id => (Datos.deudas().find(x => x.id === id) || {}).nombre || id);
+      caja.innerHTML = `<p class="k">Tu día de libertad</p><p class="fecha fecha-chica">${fuera.length ? "Sin contar lo que no aportas" : "Ya no tienes deudas"}</p>
+        ${fuera.length ? `<p class="sem">Faltaría: ${escapar(fuera.join(", "))}.</p>` : ""}`;
       return;
     }
     if (!p.libre) {
@@ -336,8 +338,55 @@ const Deudas = {
       linea = `<p class="mas">Con <b>${dineroCorto(this.EXTRA_SUGERIDO)} más por semana</b>, llegas el <b>${fechaLibertad(mas.libre)}</b>${antes}.</p>`;
     }
     const conExtra = extra > 0 ? ` Incluye tu extra de ${dineroCorto(extra)} por semana.` : "";
-    caja.innerHTML += `${linea}<p class="est">Es un estimado: cambia si cambian tus horas, tus gastos o tus pagos.${conExtra}</p>`;
+    const nombres = ids => ids.map(id => (Datos.deudas().find(x => x.id === id) || {}).nombre || id).join(", ");
+    const supone = `<p class="est">Supone que aportas <b>${Plan.textoAporte()}</b> (lo cambias en "Mi aporte").${p.sinContar && p.sinContar.length ? ` No cuenta: ${escapar(nombres(p.sinContar))}.` : ""}</p>`;
+    caja.innerHTML += `${linea}${supone}<p class="est">Es un estimado: cambia si cambian tus horas, tus gastos o tus pagos.${conExtra}</p>`;
   },
+
+  // ---------- Mi aporte: cuánto y cómo mandas lo que te sobra ----------
+  // Se guarda en el plan (plan.aporte). La fecha de libertad, el plan semanal y las sugerencias usan lo mismo.
+  guardarAporte(cambios) {
+    const plan = Almacen.leerPlan();
+    plan.aporte = { ...Plan.aporte(), ...cambios };
+    Almacen.guardarPlan(plan);
+  },
+
+  ordenAporte() {
+    const base = Plan.deudasEnOrden();
+    const ids = Plan.idsEnOrdenDeAporte(base, {}, Plan.aporte()) || [...Plan.DEUDAS_PRIMERO, ...base.map(d => d.id).filter(id => !Plan.DEUDAS_PRIMERO.includes(id))];
+    return ids.filter(id => base.some(d => d.id === id));
+  },
+
+  mostrarAporte(cuerpo = true) {
+    if (!$("d-aporte")) return;
+    const ap = Plan.aporte();
+    $("d-aporte-resumen").innerHTML = `Mi aporte: <b>${escapar(Plan.textoAporte(ap))}</b>`;
+    if (!cuerpo) return;
+    const modo = (id, txt) => `<button type="button" data-ap-modo="${id}" class="${ap.modo === id ? "activo" : ""}" aria-pressed="${ap.modo === id}">${txt}</button>`;
+    const nombre = id => (Datos.deudas().find(d => d.id === id) || {}).nombre || id;
+    const ids = this.ordenAporte();
+    const filas = ids.map((id, i) => {
+      const saldo = Math.max(0, Datos.saldoReparto(id));
+      const aporta = !ap.excluidas.includes(id);
+      return `<li class="ap-fila${aporta ? "" : " ap-fuera"}">
+        <button type="button" class="ap-check" data-ap-toggle="${id}" role="switch" aria-checked="${aporta}" aria-label="Aportar a ${escapar(nombre(id))}">${aporta ? "✓" : ""}</button>
+        <span class="ap-nombre">${escapar(nombre(id))}<small>${dinero(saldo)}${aporta ? "" : " · no aporto"}</small></span>
+        <button type="button" class="ap-mover" data-ap-sube="${id}" aria-label="Subir ${escapar(nombre(id))}"${i === 0 ? " disabled" : ""}>↑</button>
+        <button type="button" class="ap-mover" data-ap-baja="${id}" aria-label="Bajar ${escapar(nombre(id))}"${i === ids.length - 1 ? " disabled" : ""}>↓</button>
+      </li>`;
+    }).join("");
+    $("d-aporte-cuerpo").innerHTML = `
+      <p class="ap-t">¿Cuánto de lo que te sobra de cada cheque aportas?</p>
+      <div class="selector" role="group" aria-label="Cuánto aporto">${modo("todo", "Todo")}${modo("porcentaje", "Un %")}${modo("fijo", "Un monto")}</div>
+      ${ap.modo === "todo" ? "" : `<div class="campo ap-valor"><label for="ap-valor">${ap.modo === "porcentaje" ? "Porcentaje de lo que te sobra" : "Monto por cheque ($)"}</label>
+        <input id="ap-valor" type="number" inputmode="decimal" step="${ap.modo === "porcentaje" ? 5 : 10}" min="0"${ap.modo === "porcentaje" ? ' max="100"' : ""} value="${ap.valor || ""}" placeholder="0"></div>`}
+      <p class="ap-t">¿A cuáles y en qué orden?</p>
+      <ul class="ap-lista">${filas}</ul>
+      <p class="estado">El aporte se reparte de arriba hacia abajo. Si quitas la palomita, esa deuda no recibe nada y no cuenta para tu día de libertad.</p>
+      <button type="button" class="enlace" data-ap-restablecer>Volver a como estaba (todo, en el orden de siempre)</button>`;
+  },
+
+  cambioAporte() { this.mostrarAporte(true); this.mostrar(); },
 
   mostrar() {
     if ($("pantalla-deudas").hidden) return;
@@ -352,6 +401,7 @@ const Deudas = {
       )).join("");
     this.mostrarPagos();
     this.mostrarProyeccion();
+    this.mostrarAporte(false);
     Liberado.mostrarTarjeta();
   },
 
@@ -378,6 +428,29 @@ const Deudas = {
         // La sugerencia de la renta es para lo atrasado
         if (pagar.dataset.pagar === Plan.ID_DEUDA_RENTA && $("f-renta-para")) $("f-renta-para").value = "atrasada";
       }
+    });
+    $("d-aporte").addEventListener("toggle", () => { if ($("d-aporte").open) this.mostrarAporte(true); });
+    $("d-aporte").addEventListener("click", e => {
+      const modo = e.target.closest("[data-ap-modo]");
+      if (modo) { this.guardarAporte({ modo: modo.dataset.apModo, valor: modo.dataset.apModo === "porcentaje" ? (Plan.aporte().valor || 50) : (Plan.aporte().valor || 100) }); return this.cambioAporte(); }
+      const tog = e.target.closest("[data-ap-toggle]");
+      if (tog) {
+        const ex = new Set(Plan.aporte().excluidas); ex.has(tog.dataset.apToggle) ? ex.delete(tog.dataset.apToggle) : ex.add(tog.dataset.apToggle);
+        this.guardarAporte({ excluidas: [...ex] }); return this.cambioAporte();
+      }
+      const mover = e.target.closest("[data-ap-sube], [data-ap-baja]");
+      if (mover) {
+        const id = mover.dataset.apSube || mover.dataset.apBaja, ids = this.ordenAporte(), i = ids.indexOf(id), j = i + (mover.dataset.apSube ? -1 : 1);
+        if (i >= 0 && j >= 0 && j < ids.length) { [ids[i], ids[j]] = [ids[j], ids[i]]; this.guardarAporte({ orden: ids }); this.cambioAporte(); }
+        return;
+      }
+      if (e.target.closest("[data-ap-restablecer]")) { this.guardarAporte({ modo: "todo", valor: 0, orden: null, excluidas: [] }); this.cambioAporte(); }
+    });
+    $("d-aporte").addEventListener("input", e => {
+      if (e.target.id !== "ap-valor") return;
+      const v = Number(e.target.value);
+      this.guardarAporte({ valor: v > 0 ? (Plan.aporte().modo === "porcentaje" ? Math.min(100, v) : v) : 0 });
+      this.mostrarAporte(false); this.mostrar();
     });
     $("d-extra").addEventListener("input", e => {
       const v = Number(e.target.value);

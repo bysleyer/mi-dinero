@@ -549,9 +549,13 @@ const Proyeccion = {
       ceros[Plan.ID_DEUDA_PRESTAMO] = Datos.saldoDeuda(Plan.ID_DEUDA_PRESTAMO) <= 0.005 ? "ya"
         : pagosPrestamo.length ? pagosPrestamo[pagosPrestamo.length - 1].fecha : null;
     r.ceros = ceros;
-    const todas = Object.values(ceros);
-    r.libre = Object.keys(saldos).every(id => id in ceros) && todas.every(x => x)
-      ? (todas.every(x => x === "ya") ? "ya" : todas.filter(x => x !== "ya").sort().slice(-1)[0]) : null;
+    // Las deudas a las que elegiste NO aportar (Mi aporte) no cuentan para tu día de libertad: se avisa cuáles
+    const sinAportar = Plan.aporte().excluidas;
+    const cuentan = Object.keys(saldos).filter(id => !sinAportar.includes(id));
+    const fechasQueCuentan = Object.entries(ceros).filter(([id]) => !sinAportar.includes(id)).map(([, f]) => f);
+    r.sinContar = Object.keys(saldos).filter(id => sinAportar.includes(id) && saldos[id] > 0.005);
+    r.libre = cuentan.every(id => id in ceros) && fechasQueCuentan.every(x => x)
+      ? (fechasQueCuentan.every(x => x === "ya") ? "ya" : fechasQueCuentan.filter(x => x !== "ya").sort().slice(-1)[0]) : null;
     return r;
   },
 

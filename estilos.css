@@ -2324,3 +2324,19 @@ html.bloqueado body > *:not(.candado) { visibility: hidden; }
 .kpis .dinero-tengo .dinero-cifra { font-size: 3.6rem; letter-spacing: -.03em; line-height: 1; }
 .kpis .kpi { min-height: 96px; padding: 14px 14px; }
 .kpis .kpi strong { font-size: 1.6rem; }
+
+/* Mis deudas: "Mi aporte" (cuánto y a cuáles deudas mandas lo que te sobra) */
+.aporte summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 1rem; list-style: none; }
+.aporte summary::-webkit-details-marker { display: none; }
+.aporte summary b { color: var(--menta, #4fd1b5); margin-left: 6px; }
+.aporte[open] summary { margin-bottom: 6px; }
+.ap-t { margin: 12px 0 6px; font-size: .9rem; color: var(--suave); font-weight: 700; }
+.ap-valor { margin-top: 10px; }
+.ap-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ap-fila { display: flex; align-items: center; gap: 8px; background: var(--panel2, #1d262d); border-radius: 12px; padding: 6px 6px 6px 8px; }
+.ap-fila.ap-fuera .ap-nombre { opacity: .6; }
+.ap-nombre { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: .95rem; line-height: 1.2; }
+.ap-nombre small { color: var(--suave); font-size: .8rem; }
+.ap-check { flex: none; width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--borde-fuerte, #2f3b44); background: none; color: var(--menta, #4fd1b5); font: inherit; font-size: 1.2rem; font-weight: 800; cursor: pointer; }
+.ap-mover { flex: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--borde); background: var(--tarjeta); color: var(--texto); font: inherit; font-size: 1.1rem; cursor: pointer; }
+.ap-mover:disabled { opacity: .3; cursor: default; }

@@ -100,26 +100,73 @@ const Plan = {
       .sort((a, b) => a.prioridad - b.prioridad);
   },
 
-  // Reparte el dinero extra:
-  //   1) renta atrasada, 2) internet atrasado,
+  // ---------- Mi aporte: cuánto de lo que sobra se manda a deudas/colchón y a cuáles ----------
+  // Se guarda en el plan: aporte = { modo: "todo" | "porcentaje" | "fijo", valor, orden: [ids] | null, excluidas: [ids] }
+  //   · modo "todo" (como siempre): todo lo que sobra. "porcentaje": ese % de lo que sobra. "fijo": ese monto por cheque
+  //     (o menos, si no sobra tanto).
+  //   · orden: el orden de las deudas que eliges (null = el de siempre: renta atrasada, internet atrasado, y luego por prioridad).
+  //   · excluidas: deudas a las que NO aportas con lo que sobra (la fecha de libertad no las cuenta).
+  aporte() {
+    const a = Almacen.leerPlan().aporte || {};
+    return { modo: ["porcentaje", "fijo"].includes(a.modo) ? a.modo : "todo", valor: Math.max(0, Number(a.valor) || 0),
+             orden: Array.isArray(a.orden) && a.orden.length ? a.orden : null, excluidas: Array.isArray(a.excluidas) ? a.excluidas : [] };
+  },
+
+  montoAporte(sobra, ap = this.aporte()) {
+    const s = Math.max(0, sobra);
+    if (ap.modo === "porcentaje") return redondear(s * Math.min(100, ap.valor) / 100);
+    if (ap.modo === "fijo") return redondear(Math.min(s, ap.valor));
+    return s;
+  },
+
+  // Frase para mostrar lo que supone la cuenta
+  textoAporte(ap = this.aporte()) {
+    if (ap.modo === "porcentaje") return ap.valor >= 100 ? "todo lo que te sobra" : `el ${ap.valor} % de lo que te sobra`;
+    if (ap.modo === "fijo") return `${dineroCorto(ap.valor)} por cheque (o menos, si no sobra tanto)`;
+    return "todo lo que te sobra";
+  },
+
+  // Orden en que se reparte (el que elegiste o el de siempre), solo con los ids de "orden"/"saldos"
+  idsEnOrdenDeAporte(orden, saldos, ap = this.aporte()) {
+    const basico = [...this.DEUDAS_PRIMERO, ...orden.map(d => d.id).filter(id => !this.DEUDAS_PRIMERO.includes(id))];
+    if (!ap.orden) return null;
+    return [...ap.orden.filter(id => basico.includes(id)), ...basico.filter(id => !ap.orden.includes(id))];
+  },
+
+  // Reparte el dinero extra (lo que sobra), según "Mi aporte":
+  //   por defecto: 1) renta atrasada, 2) internet atrasado,
   //   3) colchón: el % elegido hasta llegar a la meta (lleno = no recibe nada),
   //   4) lo demás a las deudas en su orden (préstamo del amigo, luego plan de luz).
+  //   con un orden elegido: primero el % al colchón y luego las deudas en el orden que pusiste.
   // "saldos" ({ id: saldo }) se va restando. Devuelve { deudas: { id: monto }, aColchon, resto }.
   repartirExtra(extra, { pct, colchon, meta, saldos, orden }) {
-    let E = Math.max(0, extra);
+    const ap = this.aporte();
+    const sobra = Math.max(0, extra);
+    let E = this.montoAporte(sobra, ap);
+    const noAportado = redondear(sobra - E);
     const deudas = {};
     const pagar = id => {
+      if (ap.excluidas.includes(id)) return;
       const m = Math.min(E, Math.max(0, saldos[id] || 0));
       if (m > 0.005) { deudas[id] = (deudas[id] || 0) + m; saldos[id] -= m; E -= m; }
     };
-    this.DEUDAS_PRIMERO.forEach(pagar);
     let aColchon = 0;
-    if (colchon < meta && E > 0) {
-      aColchon = Math.min(E * pct, meta - colchon);
-      E -= aColchon;
+    const alColchon = () => {
+      if (colchon < meta && E > 0) {
+        aColchon = Math.min(E * pct, meta - colchon);
+        E -= aColchon;
+      }
+    };
+    const propio = this.idsEnOrdenDeAporte(orden, saldos, ap);
+    if (propio) {
+      alColchon();
+      propio.forEach(pagar);
+    } else {
+      this.DEUDAS_PRIMERO.forEach(pagar);
+      alColchon();
+      orden.filter(d => !this.DEUDAS_PRIMERO.includes(d.id)).forEach(d => pagar(d.id));
     }
-    orden.filter(d => !this.DEUDAS_PRIMERO.includes(d.id)).forEach(d => pagar(d.id));
-    return { deudas, aColchon, resto: E };
+    return { deudas, aColchon, resto: E + noAportado };
   },
 
   // "Ya puedes pagarle a tu amigo": renta e internet atrasados en 0 y colchón lleno
