@@ -172,17 +172,13 @@
   <main id="pantalla-inicio" class="contenedor">
     <div class="cabeza-inicio">
       <div class="titulo-pantalla"><p id="ceja-inicio" class="ceja"></p><h1>Mi dinero</h1></div>
+      <button type="button" class="xp-circulo" id="xp-franja" aria-label="Mi progreso">
+        <svg viewBox="0 0 44 44" aria-hidden="true"><circle class="xp-pista" cx="22" cy="22" r="19"/><circle class="xp-avance" id="xp-avance" cx="22" cy="22" r="19" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <span class="xp-num" id="xp-nivel-n">1</span>
+      </button>
       <button id="campana" class="campana" aria-label="Avisos" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><span id="campana-num" class="badge" hidden></span></button>
       <button id="dinero-tengo" class="dinero-tengo" aria-label="Dinero que tengo. Toca para corregirlo"></button>
     </div>
-    <button type="button" class="xp-franja" id="xp-franja" aria-label="Mi progreso">
-      <span class="xp-top">
-        <span class="xp-nivel"><span class="xp-ico" id="xp-ico" aria-hidden="true"></span><b id="xp-nivel-n">Nivel 1</b><span class="xp-titulo" id="xp-titulo">Principiante</span></span>
-        <span class="xp-cifra" id="xp-cifra">0 / 100 XP</span>
-      </span>
-      <span class="xp-barra" id="xp-barra" aria-hidden="true"><i id="xp-barra-i" style="width:0%"></i></span>
-      <span class="xp-pie" id="xp-pie">100 XP para el nivel 2</span>
-    </button>
     <p id="estado-carga" class="estado"></p>
     <!-- Fuente de los avisos: no se ven en el inicio; avisos.js los lee y los muestra en la campana -->
     <div hidden>

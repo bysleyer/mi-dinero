@@ -209,19 +209,14 @@ const Xp = {
     if (e.nivel > e.p.nivelVisto && !(hayLogros && (Logros.ocupado() || Logros.pendientes(e.p).length))) this.mostrarSubida(e);
   },
 
+  // Círculo de nivel junto a la campana: el número es el nivel y el aro se llena con el avance hacia el siguiente
   pintarFranja(e) {
     const f = $("xp-franja"); if (!f) return;
-    $("xp-ico").innerHTML = this.svgIcono(e.icono);
-    $("xp-nivel-n").textContent = `Nivel ${e.nivel}`;
-    $("xp-titulo").textContent = e.titulo;
-    $("xp-cifra").textContent = `${e.enNivel} / ${e.costo} XP`;
-    $("xp-barra-i").style.width = `${e.pct}%`;
-    $("xp-barra").setAttribute("aria-valuemax", e.costo);
-    $("xp-barra").setAttribute("aria-valuenow", e.enNivel);
+    $("xp-nivel-n").textContent = e.nivel;
+    $("xp-avance").setAttribute("stroke-dasharray", `${Math.max(0, Math.min(100, e.pct))} 100`);
     const reciente = this._ultimo && this._ultimo.hasta > Date.now();
-    $("xp-pie").textContent = reciente ? `+${this._ultimo.xp} XP` : `${e.faltan} XP para el nivel ${e.nivel + 1}`;
-    $("xp-pie").classList.toggle("xp-ganaste", !!reciente);
-    f.setAttribute("aria-label", `Mi progreso: nivel ${e.nivel}, ${e.titulo}, ${e.enNivel} de ${e.costo} XP. Toca para ver el detalle.`);
+    f.classList.toggle("xp-ganaste", !!reciente);
+    f.setAttribute("aria-label", `Mi progreso: nivel ${e.nivel}, ${e.titulo}, ${e.enNivel} de ${e.costo} XP${reciente ? `, ganaste ${this._ultimo.xp} XP` : ""}. Toca para ver el detalle.`);
     if (reciente) setTimeout(() => this.actualizar(), 6100);
   },
 
