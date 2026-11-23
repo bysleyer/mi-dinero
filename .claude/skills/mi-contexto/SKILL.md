@@ -69,6 +69,9 @@ un pendiente resuelto) o cuando el chat ya esté muy largo.
   dejar antes una rama `respaldo/vNN`, commit, push a `main`, verificar GitHub Pages
   (`https://api.github.com/repos/bysleyer/mi-dinero/actions/runs?per_page=1`) y contar qué se probó.
   Si Pages da `startup_failure`, es GitHub: reintentar con un commit vacío.
+- Trabajos grandes: el modelo principal planea y orquesta; agentes Sonnet ejecutan, cada uno dueño de un solo archivo, con un
+  contrato escrito (reglas, cómo enchufarse, cómo probar), pruebas propias y un agente revisor al final. El orquestador revisa e
+  integra todo, y corre todas las pruebas juntas antes de publicar. Ejemplo: `mi-dinero-datos/propuestas/rediseno-concepto/CONTRATO.md`.
 - Si dice "dale con cada tarea hasta que termines o necesites algo de mí": seguir sin esperar un "dale" por tarea y parar solo
   cuando haga falta una respuesta suya o termine la fase.
 - `/mi-contexto` y `/mi-contexto guardar` solo los puede escribir el usuario (la skill no se invoca sola).
