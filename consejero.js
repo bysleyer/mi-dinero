@@ -157,7 +157,7 @@ const Vigilante = {
   }
 };
 
-/* PANTALLA "Tu consejero" y la tarjeta del inicio */
+/* PANTALLA "Tu consejero" */
 Object.assign(Consejero, {
   cuando(iso) {
     if (!iso) return "";
@@ -166,27 +166,6 @@ Object.assign(Consejero, {
 
   ICONOS: { bien: "✅", corregir: "✏️", alerta: "⚠️", paso: "👉" },
 
-  tarjetaInicio() {
-    const caja = $("inicio-consejero");
-    if (!caja) return;
-    if (Sync.soloVer()) { caja.hidden = true; return; }
-    const c = this.leer();
-    caja.hidden = false;
-    if (!c) {
-      caja.innerHTML = `<h2>🧑‍💼 Tu consejero</h2>
-        <p class="ayuda">${Sync.activo() ? "Todavía no hay revisión. La primera llega en la próxima hora." : "Conecta la sincronización (Respaldo y sincronizar) para que tu consejero vea tus datos."}</p>
-        <button class="enlace" data-abrir-consejero>Abrir ›</button>`;
-      return;
-    }
-    const com = (c.comentarios || [])[0];
-    const reciente = com && com.momento > (c.actualizadoInforme || "") ? com : null;
-    caja.innerHTML = `<h2>🧑‍💼 Tu consejero</h2>
-      ${reciente ? `<p class="cj-comentario">${escapar(reciente.texto)}</p>` : ""}
-      ${c.proximoPaso ? `<p><strong>👉 ${escapar(c.proximoPaso)}</strong></p>${this.botonesPaso(c.proximoPaso)}` : ""}
-      ${this.lineaReglas()}
-      ${c.informe && c.informe.titulo ? `<p class="ayuda">${escapar(c.informe.titulo)}</p>` : ""}
-      <button class="enlace" data-abrir-consejero>Ver todo ›</button>`;
-  },
 
   // Lista de los pasos que dejó el consejero, con "Hecho / No pude / Después" y lo que ya contestaste
   listaPasos(pasos) {
@@ -226,7 +205,6 @@ Object.assign(Consejero, {
   },
 
   mostrar() {
-    this.tarjetaInicio();
     if (!$("pantalla-consejero") || $("pantalla-consejero").hidden) return;
     const c = this.leer();
     $("cj-estado").textContent = c

@@ -184,14 +184,16 @@
       <span class="xp-pie" id="xp-pie">100 XP para el nivel 2</span>
     </button>
     <p id="estado-carga" class="estado"></p>
+    <!-- Fuente de los avisos: no se ven en el inicio; avisos.js los lee y los muestra en la campana -->
+    <div hidden>
     <button id="aviso-ejemplo" class="aviso-hoy aviso-boton" hidden>Estás viendo datos de ejemplo. Toca aquí para cargar mis-datos.json.</button>
     <button id="aviso-respaldo" class="aviso-hoy aviso-boton" hidden></button>
     <button id="aviso-datos-viejos" class="aviso-hoy aviso-boton" hidden>Tus datos son de una versión anterior. Toca aquí y carga tu mis-datos.json más reciente.</button>
     <p id="aviso-hoy" class="aviso-hoy" hidden>Hoy no has registrado nada</p>
+    </div>
 
     <!-- Resumen de esta semana (con el menú: el inicio es un resumen; registrar está en ＋) -->
     <section id="inicio-semana" class="inicio-semana" hidden aria-label="Resumen: lo que tengo y esta semana"><div class="kpis"><div id="kpi-semana" class="kpi-semana"></div></div></section>
-    <div id="avisos-afuera" class="avisos-afuera" hidden></div>
     <!-- Lo que viene, lo de hoy y el consejero (con el menú); sin menú se ven los botones de siempre -->
     <section class="tarjeta" id="inicio-pagos">
       <h2>Lo que viene · 14 días</h2>
@@ -199,11 +201,9 @@
       <button id="pagos-ver-todos" class="enlace" hidden>Ver todos ›</button>
     </section>
     <section id="inicio-cierre" class="tarjeta inicio-cierre" hidden></section>
-    <section id="inicio-hoy" class="tarjeta inicio-hoy" hidden></section>
-    <section id="inicio-consejero" class="tarjeta inicio-consejero" hidden></section>
 
-    <details class="tarjeta mas-detalles">
-      <summary>Más detalles <span class="opcional">(cheque, jornadas, deuda y movimientos)</span></summary>
+    <!-- Ya no se ve en el inicio ("Más detalles"); los nodos se conservan para que las cuentas que los llenan no fallen -->
+    <div hidden>
     <section class="tarjeta">
       <h2>Próximo cheque</h2>
       <div id="cheque"></div>
@@ -223,7 +223,7 @@
       <div class="mv-cabeza"><h2>Últimos movimientos</h2><button id="ver-todos-mov" class="enlace">Ver todos</button></div>
       <ul id="movimientos" class="movimientos"></ul>
     </section>
-    </details>
+    </div>
 
     <div class="botones-final">
       <button id="abrir-datosfijos" class="boton-chico">Datos fijos</button>

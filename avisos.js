@@ -210,24 +210,18 @@ const Avisos = {
   },
 
   mostrar() {
-    if (!document.body.classList.contains("con-nav") || !$("avisos-afuera")) return;
+    if (!document.body.classList.contains("con-nav")) return;
     const { afuera, campana } = this.calcular();
     const v = this.vistos();
     const nuevos = campana.filter(a => v[a.id] !== (a.firma || ""));
     this._campana = campana;
     this._afuera = afuera;
-    // Se ven los 2 más graves; el resto, con un botón
-    const primeros = afuera.slice(0, 2), resto = afuera.slice(2);
-    if (!resto.length) this._masAbierto = false;
-    $("avisos-afuera").innerHTML = primeros.map(a => this.html(a, false, true)).join("") + (resto.length
-      ? (this._masAbierto ? resto.map(a => this.html(a, false, true)).join("") : "") +
-        `<button class="avisos-mas" data-av-mas aria-expanded="${!!this._masAbierto}">${this._masAbierto ? "Ocultar" : `+${resto.length} ${resto.length === 1 ? "aviso urgente" : "avisos urgentes"}`}</button>` : "");
-    $("avisos-afuera").hidden = !afuera.length;
-    const n = nuevos.length;
-    $("campana-num").textContent = n;
-    $("campana-num").hidden = !n;
-    $("campana").setAttribute("aria-label", n ? `Avisos: ${n} nuevos` : "Avisos");
-    $("nav-avisos-num").textContent = n; $("nav-avisos-num").hidden = !n;
+    // Todo aviso (urgente o nuevo) vive en la campana: el inicio ya no muestra ninguno
+    const n = nuevos.length, enCampana = n + afuera.length;
+    $("campana-num").textContent = enCampana;
+    $("campana-num").hidden = !enCampana;
+    $("campana").setAttribute("aria-label", enCampana ? `Avisos: ${enCampana} nuevos` : "Avisos");
+    $("nav-avisos-num").textContent = enCampana; $("nav-avisos-num").hidden = !enCampana;
     // Puntito en "Inicio" de la barra: lo urgente de afuera y lo nuevo de la campana
     const total = afuera.length + n;
     $("nav-inicio-num").textContent = total; $("nav-inicio-num").hidden = !total;
@@ -287,7 +281,6 @@ const Avisos = {
     $("campana").addEventListener("click", () => this.abrirCampana());
     $("nav-avisos").addEventListener("click", () => this.abrirCampana());
     document.addEventListener("click", e => {
-      if (e.target.closest("[data-av-mas]")) { this._masAbierto = !this._masAbierto; this.mostrar(); return; }
       const a = e.target.closest("[data-av-accion]");
       if (a) this.accion(a.dataset.avAccion, a.dataset.avClave);
       const en = e.target.closest("[data-av-entendido]");
