@@ -19,8 +19,6 @@ const Mensajes = {
     return null;
   },
 
-  delMomento(ahora) { const r = this.elegir(ahora); return r ? r.texto : ""; },
-
 
   /* C3 · Preguntas que la app contesta sola (reglas simples, sin IA ni internet). Devuelve { texto } o { abrir } o null. */
   contestar(pregunta) {

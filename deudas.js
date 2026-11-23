@@ -44,11 +44,6 @@ const Deudas = {
   },
 
   // ---------- Proyección semana a semana ----------
-  proximoViernes(desde = new Date()) {
-    const d = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
-    d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7)); // si hoy es viernes, hoy
-    return d;
-  },
 
   proyectar(porcentajeColchon, extraSemanal) {
     const ing = Datos.actual.ingresos;
@@ -235,50 +230,6 @@ const Deudas = {
         }).join("") +
         `<p class="estado">Si decides pagarle a una deuda varias semanas, usa "Planear pagos" en esa deuda.</p>`
       : `<p class="mensaje-sobrante negativo">Esta semana no hay dinero libre para deudas.</p>`);
-    $("d-pagar").innerHTML = html;
-  },
-
-  mostrarPagosViejo() {
-    const c = Plan.calcular();
-    const orden = this.prioritarias();
-    const saldos = {};
-    orden.forEach(d => { saldos[d.id] = Math.max(0, Datos.saldoReparto(d.id)); });
-    const hayExtra = c.sobrante > 0;
-    const reparto = hayExtra ? this.repartir(c.aDeudas, saldos, orden) : {};
-    const boton = (id, monto) =>
-      `<button class="boton-chico lleno" data-pagar="${id}" data-monto="${redondear(monto)}">Ya lo pagué</button>`;
-
-    // Renta: pago normal + extra
-    const extraRenta = reparto[Plan.ID_DEUDA_RENTA] || 0;
-    const totalRenta = c.semanalRenta + extraRenta;
-    let html = `
-      <div class="pago-bloque">
-        <div class="deuda-nombre">Renta</div>
-        <ul class="resumen">
-          <li><span>Renta normal de la semana</span><span>${dinero(c.semanalRenta)}</span></li>
-          <li><span>Extra a deudas</span><span>${dinero(extraRenta)}</span></li>
-          <li class="total"><span>Total a la renta</span><span>${dinero(totalRenta)}</span></li>
-        </ul>
-        ${boton(Plan.ID_DEUDA_RENTA, totalRenta)}
-      </div>`;
-
-    if (!hayExtra) {
-      html += `<p class="mensaje-sobrante negativo">Esta semana no hay extra para deudas. Cubre lo fijo primero.</p>`;
-    } else {
-      html = `<p class="nota-sobre">Dinero para deudas esta semana: <strong>${dinero(c.aDeudas)}</strong>` +
-        (c.aColchon > 0 ? ` (y ${dinero(c.aColchon)} al colchón)` : "") + `</p>` +
-        (c.puedePagarAmigo ? `<p class="mensaje-sobrante positivo">Ya puedes pagarle a tu amigo</p>` : "") + html;
-      orden.filter(d => d.id !== Plan.ID_DEUDA_RENTA && reparto[d.id]).forEach(d => {
-        html += `
-          <div class="pago-bloque">
-            <div class="deuda-cabeza">
-              <span class="deuda-nombre">${escapar(d.nombre)}</span>
-              <span class="deuda-nombre">${dinero(reparto[d.id])}</span>
-            </div>
-            ${boton(d.id, reparto[d.id])}
-          </div>`;
-      });
-    }
     $("d-pagar").innerHTML = html;
   },
 

@@ -899,10 +899,6 @@ function cambiarTipoIngreso(id) {
 }
 
 // ---------- Registros rápidos (Bloque 5) ----------
-function costoTransporteDia() {
-  return Datos.actual.gastosFijos.find(g => g.id === "transporte").porDia;
-}
-
 // Botón "Transporte": cuánto llevas hoy y esta semana, montos rápidos y deshacer
 const Transporte = {
   gasto() {

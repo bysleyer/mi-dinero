@@ -225,11 +225,6 @@ const Planeados = {
     return min;
   },
 
-  textoCabe(m, dia) {
-    const mg = this.margen(m, dia);
-    return mg >= 0.005 ? `cabe ${Math.floor(mg)}` : mg < -0.005 ? `falta ${Math.ceil(-mg)}` : "cabe 0";
-  },
-
   // Monto que se evalúa en el calendario: una parte si se está comprando en partes
   montoCalendario(g) {
     return this.partes && this.partes.length ? Math.max(...this.partes.map(p => p.monto)) : g.monto;

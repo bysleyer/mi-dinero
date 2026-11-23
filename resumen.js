@@ -101,18 +101,6 @@ const Resumen = {
     window.scrollTo(0, 0);
   },
 
-  lineaPresupuesto(categoria, gastado, factor) {
-    const semanal = this.presupuestoSemanal(categoria);
-    if (semanal == null) return "";
-    const tope = redondear(semanal * factor);
-    const resta = tope - gastado;
-    const color = gastado > tope ? "rojo" : gastado > tope * 0.8 ? "amarillo" : "verde";
-    const texto = resta >= 0
-      ? `Llevas ${dinero(gastado)} de ${dinero(tope)}. Te quedan ${dinero(resta)}`
-      : `Llevas ${dinero(gastado)} de ${dinero(tope)}. Te pasaste por ${dinero(-resta)}`;
-    return `<p class="presupuesto ${color}">${texto}</p>`;
-  },
-
   // A4 · Bajo cada categoría (solo en "Esta semana"): tu promedio por semana contra lo de esta semana.
   // Se marca en ámbar solo cuando de verdad sube (más de 20 % o $100, con 2 o más semanas anteriores). Nunca en Transporte.
   lineaTendencia(nombre) {
