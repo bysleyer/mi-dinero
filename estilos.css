@@ -429,6 +429,7 @@ h2 { font-size: 1.1rem; margin: 0 0 8px; color: var(--suave); }
 
 /* ---------- Tipo de ingreso ---------- */
 .cambiar-tipo { font-size: .8rem; padding: 2px 0; min-height: 28px; }
+.cambiar-tipo + .cambiar-tipo { margin-left: 16px; } /* v104: "Editar" y "Cambiar a Cheque" en la misma línea */
 
 /* ---------- Bloque 13: Días libres ---------- */
 .dia.libre, .muestra.libre { background: #153a33; border-color: #2c5a4f; color: #8fe3d0; }
@@ -2012,6 +2013,8 @@ html, body { overscroll-behavior: none; }
 .hoja-fecha[hidden] { display: none; }
 .hoja-fecha .chip { min-height: 44px; }
 .hoja-fecha-otro { margin-top: 10px; }
+/* v104: editando un otro ingreso no se muestra Cheque / Otro ingreso */
+#hoja-ingreso.editando .hoja-seg { display: none; }
 #hoja .hoja-horas { margin: 10px 0 0; }
 #hoja .hoja-horas input { font-size: 1.05rem; font-weight: 400; min-height: 32px; }
 #hoja-ingreso[hidden], #hoja-horas-campo[hidden], #hoja-deuda-campo[hidden], #hoja-rapidos[hidden], #hoja-frecuentes[hidden] { display: none; }

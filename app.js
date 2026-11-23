@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 
 // Versión de la app: se muestra al final de la pantalla principal para saber si ya se actualizó.
 // Súbela en cada cambio, junto con CACHE en sw.js (mismo número).
-const VERSION_APP = { numero: 103, fecha: "22 nov 2026" };
+const VERSION_APP = { numero: 104, fecha: "22 nov 2026" };
 
 // Ingreso de tipo "cheque" (el pago del trabajo). Los "Otro ingreso" no cuentan como cheque.
 // Los ingresos viejos sin tipo se toman como cheque.
@@ -608,6 +608,42 @@ async function guardarFormulario(evento) {
   if (f.avisoDespues) Pantalla.aviso(f.avisoDespues(mov), 4000);
 }
 
+// v104 · Editar: los gastos (de las categorías de la lista) y los "otros ingresos". Los cheques, los pagos de deuda,
+// el colchón y los ajustes de saldo siguen con borrar y volver a anotar (mueven horas y saldos de deudas).
+function esEditable(m) {
+  if (m.tipo === "gasto") return !m.categoria || CATEGORIAS.includes(m.categoria);
+  return m.tipo === "ingreso" && !esCheque(m);
+}
+
+// Cambia monto, categoría, nota y/o fecha de un movimiento ya guardado.
+// Lo que el movimiento viejo sacó de los sobres (Renta, Servicios) vuelve al sobre, y se descuenta de nuevo según cómo queda.
+// Devuelve el movimiento como estaba antes (para "Deshacer") o null si no se pudo.
+function editarMovimiento(id, valores) {
+  const viejo = Almacen.leerMovimientos().find(m => m.id === id);
+  if (!viejo || !esEditable(viejo)) return null;
+  const antes = { monto: viejo.monto, fecha: viejo.fecha, categoria: viejo.categoria, nota: viejo.nota };
+  const nuevo = { ...viejo, ...valores };
+  if (!nuevo.nota) delete nuevo.nota;
+  Plan.moverSobreRenta(viejo.descontadoSobreRenta || 0);
+  Plan.moverSobreServicios(viejo.descontadoSobreServicios || 0);
+  delete nuevo.descontadoSobreRenta; delete nuevo.descontadoSobreServicios;
+  const dRenta = Plan.cuantoDescontarDeRenta(nuevo), dServ = Plan.cuantoDescontarDeServicios(nuevo);
+  const cambios = { monto: nuevo.monto, fecha: nuevo.fecha, categoria: nuevo.categoria, nota: nuevo.nota,
+                    descontadoSobreRenta: dRenta > 0 ? dRenta : undefined, descontadoSobreServicios: dServ > 0 ? dServ : undefined,
+                    editado: true };
+  if (!Almacen.actualizarMovimiento(id, cambios)) {
+    // No se pudo guardar: los sobres quedan como estaban
+    Plan.moverSobreRenta(-(viejo.descontadoSobreRenta || 0));
+    Plan.moverSobreServicios(-(viejo.descontadoSobreServicios || 0));
+    return null;
+  }
+  Plan.moverSobreRenta(-dRenta);
+  Plan.moverSobreServicios(-dServ);
+  Pantalla.actualizar();
+  avisarCambioMovimientos();
+  return antes;
+}
+
 // Guarda un movimiento ya validado (lo usan el formulario y los registros rápidos)
 function registrarMovimiento(mov) {
   // Pago a la renta: se descuenta del sobre de Renta (Bloque 3)
@@ -774,6 +810,7 @@ function filaMovimiento(m) {
   const esAjuste = m.tipo === "ajuste";
   const esOtro = esIngreso && !esCheque(m);
   const titulo = m.tipo === "gasto" ? `Gasto · ${m.categoria}` : esOtro ? "Otro ingreso" : NOMBRES_TIPO[m.tipo];
+  const editable = esEditable(m);
   const detalle = [fechaCorta(m.fecha), m.nota, m.estimado != null && !esOtro ? textoComparacion(m) : ""]
     .filter(Boolean).map(escapar).join(" · ");
   return `
@@ -781,6 +818,7 @@ function filaMovimiento(m) {
               <div class="mov-info">
                 <div class="mov-tipo">${escapar(titulo)}</div>
                 <div class="mov-detalle">${detalle}</div>
+                ${editable ? `<button class="enlace cambiar-tipo" data-editar="${m.id}" aria-label="Editar ${escapar(titulo)} de ${dinero(m.monto)}">Editar</button>` : ""}
                 ${esIngreso ? `<button class="enlace cambiar-tipo" data-cambiar-tipo="${m.id}">${esOtro ? "Cambiar a Cheque" : "Cambiar a Otro ingreso"}</button>` : ""}
               </div>
               <span class="mov-monto ${esAjuste ? "neutro" : esIngreso ? "positivo" : "negativo"}">
@@ -972,6 +1010,8 @@ try {
     if (b) borrarMovimiento(b.dataset.borrar);
     const c = e.target.closest("[data-cambiar-tipo]");
     if (c) cambiarTipoIngreso(c.dataset.cambiarTipo);
+    const ed = e.target.closest("[data-editar]");
+    if (ed) Nav.editarMovimiento(ed.dataset.editar);
   });
   // "Me pagaron": con "Otro ingreso" se ocultan las horas y se muestra la nota
   $("form-campos").addEventListener("input", () => { limpiarErrorForm(); ponerTextoGuardar(); });

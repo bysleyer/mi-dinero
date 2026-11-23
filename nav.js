@@ -84,6 +84,8 @@ const Nav = {
   abrirHoja(cual, tipo) {
     this.cerrarMenuReg();
     if (cual === "registrar") { // cada vez empieza limpia
+      this.editando = null; this.fechaOriginal = null;
+      $("hoja-ingreso").classList.remove("editando");
       this.tipoActual = tipo || "gasto";
       $("hoja-monto").value = "";
       $("hoja-nota").value = "";
@@ -236,6 +238,48 @@ const Nav = {
     this.textoBotonHoja();
   },
 
+  // v104 · Editar un gasto o un "otro ingreso" ya guardado: la misma hoja, llena, con "Guardar cambios"
+  editando: null,      // id del movimiento que se está editando (null = uno nuevo)
+  fechaOriginal: null, // su fecha de antes (si era futura, se deja guardar igual)
+  editarMovimiento(id) {
+    const m = Almacen.leerMovimientos().find(x => x.id === id);
+    if (!m || !esEditable(m)) return;
+    this.abrirHoja("registrar", m.tipo === "ingreso" ? "ingreso" : "gasto");
+    this.editando = id; this.fechaOriginal = m.fecha;
+    $("hoja-monto").value = redondear(m.monto).toFixed(2);
+    $("hoja-nota").value = m.nota || "";
+    if (m.tipo === "ingreso") {
+      this.ingresoHoja = "otro"; this.ponerIngresoHoja();
+      $("hoja-ingreso").classList.add("editando"); // un otro ingreso no se cambia a cheque desde aquí (para eso está "Cambiar a Cheque")
+    } else this.elegirCategoriaHoja(m.categoria || "Otros", false);
+    $("hoja-frecuentes").hidden = true;
+    const ayer = Jornadas.sumarDias(hoy(), -1);
+    if (m.fecha === hoy()) this.ponerFechaHoja("hoy");
+    else if (m.fecha === ayer) this.ponerFechaHoja("ayer");
+    else { $("hoja-fecha-otro").value = m.fecha; this.ponerFechaHoja("otro"); }
+    $("hoja-titulo-barra").textContent = m.tipo === "ingreso" ? "Editar ingreso" : "Editar gasto";
+    this.textoBotonHoja();
+  },
+
+  guardarEdicion() {
+    const id = this.editando;
+    const m = Almacen.leerMovimientos().find(x => x.id === id);
+    if (!m) { this.cerrarHoja(); return Pantalla.aviso("Ese movimiento ya no existe"); }
+    const monto = redondear(Number($("hoja-monto").value));
+    const nota = $("hoja-nota").value.trim();
+    const valores = { monto, fecha: this.fechaHoja(), nota: nota || undefined };
+    if (m.tipo === "gasto") valores.categoria = this.categoriaHoja;
+    const igual = valores.monto === m.monto && valores.fecha === m.fecha && (valores.nota || "") === (m.nota || "") &&
+      (m.tipo !== "gasto" || valores.categoria === m.categoria);
+    this.cerrarHoja();
+    if (igual) return Pantalla.aviso("No cambiaste nada");
+    const antes = editarMovimiento(id, valores);
+    if (!antes) return Pantalla.aviso("No se pudo guardar el cambio en este dispositivo.");
+    const que = m.tipo === "gasto" ? `${dineroCorto(monto)} en ${valores.categoria}` : `ingreso de ${dineroCorto(monto)}`;
+    Pantalla.aviso(`Cambiado: ${que}${valores.fecha !== hoy() ? ` · ${this.textoFechaHoja(valores.fecha)}` : ""}`, 5000,
+      { texto: "Deshacer", fn: () => { editarMovimiento(id, antes); Pantalla.aviso("Listo: quedó como antes"); } });
+  },
+
   // v103 · Fecha: Hoy · Ayer · Otro día (el calendario sale solo con "Otro día"). Nunca una fecha futura:
   // lo que vas a gastar más adelante va en Gastos planeados.
   fechaModo: "hoy",
@@ -243,7 +287,7 @@ const Nav = {
     this.fechaModo = modo;
     document.querySelectorAll("[data-hfecha]").forEach(b => b.setAttribute("aria-pressed", b.dataset.hfecha === modo));
     const campo = $("hoja-fecha-campo"), inp = $("hoja-fecha-otro");
-    inp.max = hoy();
+    inp.max = this.editando && this.fechaOriginal > hoy() ? this.fechaOriginal : hoy();
     if (modo === "otro") {
       if (!inp.value || inp.value > hoy()) inp.value = Jornadas.sumarDias(hoy(), -2);
       campo.hidden = false;
@@ -268,7 +312,7 @@ const Nav = {
   faltaHoja() {
     const t = this.tipoHoja();
     if (!(Number($("hoja-monto").value) > 0)) return "Escribe el monto";
-    if (t !== "colchon") { const f = this.fechaHoja(); if (!f) return "Elige el día"; if (f > hoy()) return "Esa fecha todavía no llega"; }
+    if (t !== "colchon") { const f = this.fechaHoja(); if (!f) return "Elige el día"; if (f > hoy() && !(this.editando && f === this.fechaOriginal)) return "Esa fecha todavía no llega"; }
     if (t === "gasto" && !this.categoriaHoja) return "Elige una categoría";
     if (t === "pagoDeuda" && !this.deudaHoja) return "Elige a cuál deuda";
     if (t === "pagoDeuda" && !$("hoja-renta-campo").hidden && !$("hoja-renta-para").value) return "Elige para qué es la renta";
@@ -283,6 +327,12 @@ const Nav = {
     b.classList.toggle("falta", !!falta);
     if (falta) { b.textContent = falta; return; }
     const t = this.tipoHoja();
+    if (this.editando) {
+      b.textContent = t === "gasto" ? `Guardar cambios · ${dinero(m)} en ${this.categoriaHoja}` : `Guardar cambios · ${dinero(m)}`;
+      const fe = this.fechaHoja();
+      if (fe && fe !== hoy()) b.textContent += ` · ${this.textoFechaHoja(fe)}`;
+      return;
+    }
     if (t === "colchon") b.textContent = `Poner ${dinero(m)} en el colchón`;
     else if (t === "pagoDeuda") {
       const d = Datos.deudas().find(x => x.id === this.deudaHoja);
@@ -310,6 +360,11 @@ const Nav = {
   // Guardar desde la hoja: todos usan el mismo guardado de siempre (consejero, "¿ya estaba incluido?"), sin otra pantalla
   guardarHoja() {
     const t = this.tipoHoja();
+    if (this.editando) {
+      const falta = this.faltaHoja();
+      if (falta) return this.errorHoja(falta + ".", /monto/i.test(falta) ? "monto" : /categor/i.test(falta) ? "categoria" : "fecha");
+      return this.guardarEdicion();
+    }
     const monto = Number($("hoja-monto").value);
     if (!(monto > 0)) return this.errorHoja("Escribe el monto.", "monto");
     const nota = $("hoja-nota").value.trim();
@@ -365,7 +420,7 @@ const Nav = {
     const deRegistro = !$("hoja").hidden && !$("hoja-registrar").hidden;
     $("hoja").hidden = true;
     this.liberarFondo();
-    if (volver && deRegistro) this.abrirMenuReg();
+    if (volver && deRegistro && !this.editando) this.abrirMenuReg(); // al editar, cerrar vuelve a la lista
   },
 
   // Mientras hay una hoja abierta, la página de atrás queda quieta (no se puede mover).

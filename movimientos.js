@@ -2,7 +2,7 @@
  * MOVIMIENTOS (Plan 2, 2.1)
  * Todos los movimientos registrados, agrupados por día, con búsqueda (nota, categoría o monto)
  * y filtros por tipo y por mes. Solo lee: borrar y "Cambiar a Cheque" usan las mismas funciones del inicio
- * (borrarMovimiento, cambiarTipoIngreso en app.js) y la fila es la misma (filaMovimiento).
+ * (borrarMovimiento, cambiarTipoIngreso en app.js; Editar abre la hoja del +: Nav.editarMovimiento) y la fila es la misma (filaMovimiento).
  * La línea "Suma de lo que ves" suma los registros de la lista; no es un saldo (el saldo sale de Dinero y Proyeccion).
  * Los filtros empiezan limpios cada vez que se abre la pantalla. En modo "Solo ver" esta pantalla no existe.
  */
@@ -139,7 +139,9 @@ const Movimientos = {
       const b = e.target.closest("[data-borrar]");
       if (b) return borrarMovimiento(b.dataset.borrar);
       const c = e.target.closest("[data-cambiar-tipo]");
-      if (c) cambiarTipoIngreso(c.dataset.cambiarTipo);
+      if (c) return cambiarTipoIngreso(c.dataset.cambiarTipo);
+      const ed = e.target.closest("[data-editar]");
+      if (ed) Nav.editarMovimiento(ed.dataset.editar);
     });
     window.addEventListener("movimientos-cambiaron", () => this.mostrar());
   }
