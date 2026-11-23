@@ -327,21 +327,19 @@ const Nav = {
     b.classList.toggle("falta", !!falta);
     if (falta) { b.textContent = falta; return; }
     const t = this.tipoHoja();
-    if (this.editando) {
-      b.textContent = t === "gasto" ? `Guardar cambios · ${dinero(m)} en ${this.categoriaHoja}` : `Guardar cambios · ${dinero(m)}`;
-      const fe = this.fechaHoja();
-      if (fe && fe !== hoy()) b.textContent += ` · ${this.textoFechaHoja(fe)}`;
-      return;
-    }
+    const fe = t === "colchon" ? hoy() : this.fechaHoja();
+    const otroDia = fe && fe !== hoy() ? ` · ${this.textoFechaHoja(fe)}` : "";
+    // Al editar: "Guardar cambios · $4.50" o, si no es de hoy, "Guardar cambios · ayer 21 nov" (cabe en 320 px)
+    if (this.editando) { b.textContent = `Guardar cambios${otroDia || ` · ${dinero(m)}`}`; return; }
+    // Si no es de hoy, el botón dice el día en vez de la categoría (la categoría ya se ve marcada arriba)
+    if (otroDia && (t === "gasto" || t === "ingreso")) { b.textContent = `Guardar ${dinero(m)}${otroDia}`; return; }
     if (t === "colchon") b.textContent = `Poner ${dinero(m)} en el colchón`;
     else if (t === "pagoDeuda") {
       const d = Datos.deudas().find(x => x.id === this.deudaHoja);
       b.textContent = `Pagar ${dinero(m)}${d ? ` · ${d.nombre}` : ""}`;
     } else if (t === "ingreso") b.textContent = `Guardar ${dinero(m)}`;
     else b.textContent = `Guardar ${dinero(m)} en ${this.categoriaHoja}`;
-    // Si no es de hoy, el botón lo dice (así no se guarda en otro día sin querer)
-    const f = this.fechaHoja();
-    if (t !== "colchon" && f && f !== hoy()) b.textContent += ` · ${this.textoFechaHoja(f)}`;
+    if (otroDia) b.textContent += otroDia; // pago de deuda de otro día
   },
 
   errorHoja(texto, donde) {
