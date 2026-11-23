@@ -2317,3 +2317,11 @@ html.bloqueado body > *:not(.candado) { visibility: hidden; }
 .rb3d-boton { position: absolute; right: 10px; bottom: 10px; min-height: 36px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--borde); background: rgba(14,19,22,.82); color: var(--texto); font-size: .8rem; font-weight: 600; cursor: pointer; }
 .rb3d-boton[aria-pressed="true"] { border-color: var(--menta, #4fd1b5); color: var(--menta, #4fd1b5); }
 .rb3d-boton:focus-visible { outline: 2px solid var(--menta, #4fd1b5); outline-offset: 2px; }
+
+/* Inicio: "Tengo" arriba, ancho completo y grande; los otros dos cuadros debajo, lado a lado */
+.kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.kpis .dinero-tengo { grid-column: 1 / -1; min-height: 168px; padding: 18px 20px; border-radius: 18px; }
+.kpis .dinero-tengo .dinero-etiqueta { font-size: 1rem; letter-spacing: .4px; }
+.kpis .dinero-tengo .dinero-cifra { font-size: 3.6rem; letter-spacing: -.03em; line-height: 1; }
+.kpis .kpi { min-height: 96px; padding: 14px 14px; }
+.kpis .kpi strong { font-size: 1.6rem; }
