@@ -241,6 +241,36 @@ const Plan = {
   // Libre + llega libre + guárdalo = lo que queda el domingo.
   DIAS_ADELANTE: 92,
 
+  // Para qué se lleva lo guardado: sigue la cuenta día por día después de "despuesDe" y, en cada pago, primero usa los
+  // cheques que ya llegaron; solo lo que no alcanza sale de S (lo guardado). Devuelve cada pago con lo que se lleva.
+  coberturaDesde(pr, fechas, S, despuesDe, chequeSig) {
+    const cobertura = [];
+    let C = 0, hasta = null;
+    for (const f of fechas.filter(x => x > despuesDe)) {
+      if (S <= 0.005) break;
+      const ls = pr.porDia[f].lineas;
+      C = redondear(C + ls.filter(l => l.monto > 0).reduce((s, l) => s + l.monto, 0));
+      const salen = ls.filter(l => l.monto < 0 && l.tipo !== "simulado");
+      const total = redondear(-salen.reduce((s, l) => s + l.monto, 0));
+      const deCheques = Math.min(C, total);
+      C = redondear(C - deCheques);
+      let deGuardado = redondear(Math.min(S, total - deCheques));
+      if (deGuardado <= 0.005) continue;
+      S = redondear(S - deGuardado);
+      hasta = f;
+      // Lo que sale de lo guardado se cuenta primero en lo más importante del día (la renta, luego por prioridad)
+      [...salen].sort((a, b) => a.orden - b.orden).forEach(l => {
+        if (deGuardado <= 0.005) return;
+        const usa = redondear(Math.min(-l.monto, deGuardado));
+        deGuardado = redondear(deGuardado - usa);
+        const cheques = pr.cheques.filter(c => c > despuesDe && c <= f);
+        cobertura.push({ ...l, fecha: f, monto: redondear(-l.monto), deGuardado: usa, cheques,
+                         completo: usa >= -l.monto - 0.005, antesDelCheque: !chequeSig || f < chequeSig });
+      });
+    }
+    return { cobertura, hasta };
+  },
+
   semanaReal() {
     const hoyClave = hoy();
     const lunes = this.claveSemana();
@@ -264,30 +294,7 @@ const Plan = {
     // llegaron y solo lo que no alcanza sale de lo guardado. Así cada fila dice cuánto de lo guardado se lleva,
     // y la suma de las filas es lo guardado.
     const chequeSig = (pr.cheques.filter(f => f > hoyClave)[0]) || null;
-    const cobertura = [];
-    let S = guardar, C = 0, hasta = null;
-    for (const f of fechas.filter(x => x > domingo)) {
-      if (S <= 0.005) break;
-      const ls = pr.porDia[f].lineas;
-      C = redondear(C + ls.filter(l => l.monto > 0).reduce((s, l) => s + l.monto, 0));
-      const salen = ls.filter(l => l.monto < 0 && l.tipo !== "simulado");
-      const total = redondear(-salen.reduce((s, l) => s + l.monto, 0));
-      const deCheques = Math.min(C, total);
-      C = redondear(C - deCheques);
-      let deGuardado = redondear(Math.min(S, total - deCheques));
-      if (deGuardado <= 0.005) continue;
-      S = redondear(S - deGuardado);
-      hasta = f;
-      // Lo que sale de lo guardado se cuenta primero en lo más importante del día (la renta, luego por prioridad)
-      [...salen].sort((a, b) => a.orden - b.orden).forEach(l => {
-        if (deGuardado <= 0.005) return;
-        const usa = redondear(Math.min(-l.monto, deGuardado));
-        deGuardado = redondear(deGuardado - usa);
-        const cheques = pr.cheques.filter(c => c > domingo && c <= f);
-        cobertura.push({ ...l, fecha: f, monto: redondear(-l.monto), deGuardado: usa, cheques,
-                         completo: usa >= -l.monto - 0.005, antesDelCheque: !chequeSig || f < chequeSig });
-      });
-    }
+    const { cobertura, hasta } = this.coberturaDesde(pr, fechas, guardar, domingo, chequeSig);
     const para = cobertura; // (nombre anterior)
     let hueco = null;
     if (despues && despues.saldo < -0.005) {
@@ -336,11 +343,18 @@ const Plan = {
   // Cuánto apartar: de lo que hay que guardar, lo que va para la renta y las facturas (en orden de fecha),
   // menos lo que ya está en cada sobre
   cuantoApartar(sem = this.semanaReal(), so = this.sobresMetas()) {
-    // Lo mismo que dice "Guárdalo": de lo guardado, lo que se lleva la renta y lo que se llevan las facturas
-    // (antes se repartía por fecha sin contar los cheques que llegan antes, y la renta salía con menos de lo que necesita)
+    // Se cuenta desde HOY (no desde el domingo de esta semana): así la renta que vence el viernes de esta misma semana
+    // sigue contando el lunes mientras el sobre esté vacío. (Antes solo contaban los pagos después del domingo y, al
+    // cambiar de semana, "apartar" caía a $0 con el sobre todavía vacío.) "Para después" no usa esto: sigue igual.
+    const pr = sem.pr, hoyClave = hoy();
+    const fechas = Object.keys(pr.porDia).sort();
+    const libre = Math.max(0, Math.min(...fechas.map(f => pr.porDia[f].saldoFin)));
+    const saldoHoy = pr.porDia[hoyClave] ? pr.porDia[hoyClave].saldoFin : pr.inicial;
+    const S = redondear(Math.max(0, saldoHoy - libre));
+    const { cobertura } = this.coberturaDesde(pr, fechas, S, hoyClave, sem.chequeSig);
     const servicios = new Set([...Vencimientos.facturasDeDatos().map(g => g.id), ...Almacen.leerPagosPropios().map(p => p.id)]);
     const objetivo = { renta: 0, servicios: 0 };
-    sem.cobertura.forEach(x => {
+    cobertura.forEach(x => {
       if (x.id === "renta") objetivo.renta = redondear(objetivo.renta + x.deGuardado);
       else if (x.tipo === "pago" && servicios.has(x.id)) objetivo.servicios = redondear(objetivo.servicios + x.deGuardado);
     });
