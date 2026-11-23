@@ -1997,6 +1997,7 @@ html, body { overscroll-behavior: none; }
   padding: 6px 2px; border-radius: 14px; font-size: .8rem; line-height: 1.1; text-align: center; }
 .hoja-cats .cat-tile .ico { width: 24px; height: 24px; }
 .hoja-cats .cat-tile[aria-pressed="true"] { border-color: var(--menta); color: var(--menta); background: #11302a; }
+@media (max-width: 360px) { .hoja-cats .cat-tile { font-size: .72rem; padding: 6px 1px; } } /* "Transporte" cabe a 320 px */
 /* v102: 13 categorías. "Otros" (la última) va sola a lo ancho, con el ícono al lado */
 .hoja-cats .cat-tile:last-child:nth-child(4n + 1) { grid-column: 1 / -1; flex-direction: row; min-height: 48px; gap: 8px; }
 

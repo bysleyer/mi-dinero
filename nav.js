@@ -519,6 +519,12 @@ const Nav = {
       // (ya no se esconde la nota mientras escribes: al quitar el foco todo saltaba y el toque caía en otro lado)
     };
     if (window.visualViewport) { window.visualViewport.addEventListener("resize", ajustar); window.visualViewport.addEventListener("scroll", ajustar); }
+    // v104: tocar una categoría, un día o un gasto frecuente no le quita el foco al campo que estás escribiendo.
+    // Si se lo quitara, el teclado se cierra, la hoja salta y el toque cae en otro cuadrito (más probable desde que hay 13).
+    $("hoja").addEventListener("mousedown", e => {
+      if (e.target.closest("[data-hoja-cat], [data-hfecha], [data-frec-nota]") && document.activeElement &&
+          document.activeElement.matches && document.activeElement.matches("#hoja input")) e.preventDefault();
+    });
     $("hoja").addEventListener("focusin", ajustar);
     $("hoja").addEventListener("focusout", () => setTimeout(ajustar, 60));
     $("hoja").addEventListener("click", e => {
