@@ -82,34 +82,14 @@ const Futuro = {
     // Escenarios
     $("fu-escenarios").innerHTML = this.ESCENARIOS.map(e => `
       <button class="${e.id === est.escenario ? "activo" : ""}" data-fu-escenario="${e.id}" aria-pressed="${e.id === est.escenario}">
-        ${e.titulo} <small>${dineroCorto(montos[e.id])}</small>
+        ${e.titulo.replace(/^Lo (.)/, (m, c) => c.toUpperCase())} <small>${dineroCorto(montos[e.id])}</small>
       </button>`).join("");
 
-    // Frase de un vistazo
-    const fechas = this.fechas(pr);
-    let bajo = fechas[0];
-    fechas.forEach(f => { if (pr.porDia[f].saldoFin < pr.porDia[bajo].saldoFin) bajo = f; });
-    const saldoBajo = pr.porDia[bajo].saldoFin;
-    // Con renta atrasada y el día 15 cerca, la tarjeta de arriba no puede decir "todo bien": lo dice primero
+    // Con renta atrasada y el día 15 cerca, la tarjeta de renta no repite lo atrasado (el aviso va en la campana)
     const atrasada = Proyeccion.rentaAtrasada();
     const diaLegal = Calendario.diaDelMes("accionLegal", 15);
     const faltanLegal = Deudas.diasParaDia(diaLegal);
     const legal = atrasada > 0.005 && faltanLegal <= 7;
-    const cheque = (pr.chequesInfo || []).find(c => c.fecha >= hoy());
-    const renta = Proyeccion.estadoRenta(pr);
-    const cuandoCheque = cheque ? (cheque.fecha === hoy() ? "Hoy" : cheque.fecha === Jornadas.sumarDias(hoy(), 1) ? "Mañana" : `El ${this.dia(cheque.fecha)}`) : "";
-    const libre = legal ? Plan.semanaReal().libre : 0;
-    const lineaLegal = legal ? `<span class="fu-frase-legal">${faltanLegal === 0 ? "Hoy" : this.dia(Jornadas.sumarDias(hoy(), faltanLegal)).replace(/^./, c => c.toUpperCase())}: puede haber acción legal.
-        Debes <b>${dineroCorto(atrasada)}</b> de renta atrasada${libre < atrasada ? ` y con lo libre esta semana solo alcanzas <b>${dineroCorto(libre)}</b>` : ""}.</span>` : "";
-    $("fu-frase").className = "fu-frase " + (saldoBajo < 0 ? "negativo" : legal ? "alerta" : "positivo");
-    $("fu-frase").innerHTML = saldoBajo < 0
-      ? `<strong>Te faltan ${dineroCorto(-saldoBajo)} el ${escapar(this.dia(bajo))}.</strong><span>Es tu día más apretado del mes.</span>${lineaLegal}`
-      : legal
-      ? `<strong>${cheque ? (cheque.origen === "real" ? `${cuandoCheque} cobras ${dineroCorto(cheque.monto)}.` : `${cuandoCheque} cobrarías ≈ ${dineroCorto(cheque.monto)} (estimado por ${redondear(cheque.horas)} h).`) : "Este mes no te quedas sin dinero."} La renta atrasada sigue pendiente.</strong>` +
-        (renta ? `<span>${renta.falta > 0.005 ? `A la ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} le faltan ${dineroCorto(renta.falta)}.`
-          : `La ${escapar(renta.nombre.charAt(0).toLowerCase() + renta.nombre.slice(1))} queda cubierta el ${escapar(this.diaCorto(renta.fecha).toLowerCase())}.`}</span>` : "") + lineaLegal
-      : `<strong>No te quedas sin dinero este mes.</strong><span>Punto más bajo: <b>${dineroCorto(saldoBajo)}</b> el ${escapar(this.dia(bajo))}.</span>`;
-    $("fu-cuenta").textContent = Proyeccion.textoCuenta(pr);
     // Bloque 16: colchón usable y arrastre
     $("fu-colchon").innerHTML = ColchonUI.html() + RentaUI.html(pr, { sinAtrasada: legal });
     $("fu-arrastre").innerHTML = ArrastreUI.html(pr);
@@ -129,8 +109,6 @@ const Futuro = {
     // Calendario, semana y ventana del día: hasta 3 meses (los primeros 30 días son los mismos de arriba)
     const prLargo = this.proyeccion(est.escenario, this.DIAS_LARGO);
     this._prLargo = prLargo;
-    // "¿Cómo lo cubro?" si en los próximos 3 meses hay un faltante (mismo escenario)
-    if ($("fu-cubrir")) $("fu-cubrir").hidden = !document.body.classList.contains("con-nav") || !Proyeccion.faltante(prLargo);
     this.dibujarGrafica(prs, est.escenario); // la gráfica tiene su propia tarjeta (pestaña "Gráfica")
     if (est.vista === "mes") this.dibujarCalendario(prLargo);
     else this.dibujarSemana(prLargo);
@@ -384,7 +362,6 @@ const Futuro = {
     $("fu-sem-siguiente").addEventListener("click", () => { this.semana++; this.mostrar(); });
     $("fu-mes-anterior").addEventListener("click", () => { this.mesVista--; this.mostrar(); });
     $("fu-mes-siguiente").addEventListener("click", () => { this.mesVista++; this.mostrar(); });
-    $("fu-cuenta").addEventListener("click", () => { $("fu-detalle").open = true; $("fu-detalle").scrollIntoView({ block: "start" }); });
     $("fu-libre").addEventListener("click", () => Calendario.abrirLibre());
     $("fu-sin-fecha").addEventListener("click", () => Planeados.abrirLista());
     $("fu-abrir-escenarios").addEventListener("click", () => Escenarios.abrir("pantalla-futuro"));
