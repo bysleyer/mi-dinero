@@ -17,7 +17,8 @@ const Futuro = {
 
   estado() {
     const g = Almacen.leerFuturo();
-    return { escenario: g.escenario || "esperado", vista: g.vista || "mes" };
+    // El escenario es siempre "lo esperado": ya no se elige (antes: menos / esperado / más)
+    return { escenario: "esperado", vista: g.vista || "mes" };
   },
 
   // La misma llamada que "¿Y si cobro...?": el próximo cheque con el monto del escenario
@@ -77,13 +78,6 @@ const Futuro = {
     const pr = prs[est.escenario];
     this._pr = pr;
     this._prs = prs;
-    const montos = Escenarios.config();
-
-    // Escenarios
-    $("fu-escenarios").innerHTML = this.ESCENARIOS.map(e => `
-      <button class="${e.id === est.escenario ? "activo" : ""}" data-fu-escenario="${e.id}" aria-pressed="${e.id === est.escenario}">
-        ${e.titulo.replace(/^Lo (.)/, (m, c) => c.toUpperCase())} <small>${dineroCorto(montos[e.id])}</small>
-      </button>`).join("");
 
     // Con renta atrasada y el día 15 cerca, la tarjeta de renta no repite lo atrasado (el aviso va en la campana)
     const atrasada = Proyeccion.rentaAtrasada();
@@ -346,8 +340,6 @@ const Futuro = {
   iniciar() {
     $("volver-futuro").addEventListener("click", () => this.cerrar());
     $("pantalla-futuro").addEventListener("click", e => {
-      const esc = e.target.closest("[data-fu-escenario]");
-      if (esc) { Almacen.guardarFuturo({ escenario: esc.dataset.fuEscenario }); this.mostrar(); }
       const vis = e.target.closest("[data-fu-vista]");
       if (vis) { Almacen.guardarFuturo({ vista: vis.dataset.fuVista }); this.mostrar(); }
       const dia = e.target.closest("[data-fu-dia]");

@@ -1087,7 +1087,6 @@ button.enlace { min-height: 44px; }
   #pantalla-futuro > #fu-cuenta { order: 3; align-self: flex-start; }
   #pantalla-futuro > #fu-cubrir { order: 4; }
   #pantalla-futuro > #fu-sin-fecha { order: 5; }
-  #pantalla-futuro > #fu-escenarios { order: 6; }
   #pantalla-futuro > .pestanas { order: 7; }
   #pantalla-futuro > [data-sec] { order: 8; }
   #pantalla-futuro > #fu-colchon { order: 9; }
@@ -2325,9 +2324,3 @@ html.bloqueado body > *:not(.candado) { visibility: hidden; }
 .kpis .dinero-tengo .dinero-cifra { font-size: 3.6rem; letter-spacing: -.03em; line-height: 1; }
 .kpis .kpi { min-height: 96px; padding: 14px 14px; }
 .kpis .kpi strong { font-size: 1.6rem; }
-
-/* Mi futuro: escenarios (Menos · Esperado · Más) en una sola fila baja */
-.fu-escenarios { margin: 8px 0 2px; gap: 6px; }
-.fu-escenarios button { min-height: 40px; padding: 0 6px; flex: 1; flex-wrap: nowrap; white-space: nowrap; font-size: .8125rem; gap: 0 4px; }
-.fu-escenarios button small { font-size: .8125rem; }
-@media (max-width: 360px) { .fu-escenarios button, .fu-escenarios button small { font-size: .75rem; } }

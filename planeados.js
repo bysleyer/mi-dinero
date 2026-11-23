@@ -662,10 +662,6 @@ const Planeados = {
           <button id="pc-compre" class="boton-chico lleno">Ya lo compré</button></div>` : ""}
       <details class="pc-cuenta"><summary>Ver la cuenta</summary><p class="estado esc-cuenta">${escapar(Proyeccion.textoCuenta(m.pr))}</p></details>`;
 
-    $("pc-escenarios").innerHTML = Futuro.ESCENARIOS.map(e => `
-      <button class="${e.id === est.escenario ? "activo" : ""}" data-pc-escenario="${e.id}" aria-pressed="${e.id === est.escenario}">
-        ${e.titulo}<small>${dinero(Escenarios.config()[e.id])}</small></button>`).join("");
-
     const textoOp = e => e.color === "verde" ? "no afecta nada"
       : e.color === "amarillo" ? "no agrega a lo que falta, pero corre otras fechas" : `${this.textoAgrega(e)} a lo que falta`;
     $("pc-sugerencias").innerHTML =
@@ -964,8 +960,6 @@ const Planeados = {
     });
     $("volver-cuando").addEventListener("click", () => this.cerrarCuando());
     $("pantalla-cuando").addEventListener("click", e => {
-      const esc = e.target.closest("[data-pc-escenario]");
-      if (esc) { Almacen.guardarFuturo({ escenario: esc.dataset.pcEscenario }); this.mostrarCuando(); }
       const vis = e.target.closest("[data-pc-vista]");
       if (vis) { Almacen.guardarFuturo({ vista: vis.dataset.pcVista }); this.mostrarCuando(); }
       const d = e.target.closest("[data-pc-dia]");
