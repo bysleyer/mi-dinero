@@ -2007,6 +2007,11 @@ html, body { overscroll-behavior: none; }
 .hoja-seg { display: flex; gap: 8px; margin: 10px 0 0; }
 .hoja-seg .chip { flex: 1; min-height: 52px; margin: 0; }
 .hoja-seg .chip[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); background: #11302a; }
+/* v103: Hoy · Ayer · Otro día, debajo del monto (más bajitos que Cheque / Otro ingreso) */
+.hoja-fecha { margin: 10px 0 0; }
+.hoja-fecha[hidden] { display: none; }
+.hoja-fecha .chip { min-height: 44px; }
+.hoja-fecha-otro { margin-top: 10px; }
 #hoja .hoja-horas { margin: 10px 0 0; }
 #hoja .hoja-horas input { font-size: 1.05rem; font-weight: 400; min-height: 32px; }
 #hoja-ingreso[hidden], #hoja-horas-campo[hidden], #hoja-deuda-campo[hidden], #hoja-rapidos[hidden], #hoja-frecuentes[hidden] { display: none; }

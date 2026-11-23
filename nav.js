@@ -92,6 +92,7 @@ const Nav = {
       this.categoriaAuto = false;
       this.deudaHoja = "";
       this.ingresoHoja = "cheque";
+      this.ponerFechaHoja("hoy");
       this.ponerCategoriasHoja();
     }
     $("hoja").hidden = false;
@@ -144,6 +145,9 @@ const Nav = {
     $("hoja-ingreso").hidden = t !== "ingreso";
     $("hoja-deuda-campo").hidden = t !== "pagoDeuda";
     $("hoja-renta-campo").hidden = true;
+    $("hoja-fecha").hidden = t === "colchon";
+    if (t === "colchon") $("hoja-fecha-campo").hidden = true;
+    else if (this.fechaModo === "otro") $("hoja-fecha-campo").hidden = false;
     if (t === "ingreso") this.ponerIngresoHoja();
     else $("hoja-nota").closest(".campo").hidden = t !== "gasto";
     if (t === "pagoDeuda") this.llenarDeudasHoja();
@@ -232,10 +236,39 @@ const Nav = {
     this.textoBotonHoja();
   },
 
+  // v103 · Fecha: Hoy · Ayer · Otro día (el calendario sale solo con "Otro día"). Nunca una fecha futura:
+  // lo que vas a gastar más adelante va en Gastos planeados.
+  fechaModo: "hoy",
+  ponerFechaHoja(modo) {
+    this.fechaModo = modo;
+    document.querySelectorAll("[data-hfecha]").forEach(b => b.setAttribute("aria-pressed", b.dataset.hfecha === modo));
+    const campo = $("hoja-fecha-campo"), inp = $("hoja-fecha-otro");
+    inp.max = hoy();
+    if (modo === "otro") {
+      if (!inp.value || inp.value > hoy()) inp.value = Jornadas.sumarDias(hoy(), -2);
+      campo.hidden = false;
+    } else campo.hidden = true;
+    campo.classList.remove("con-error");
+    if (/fecha|día/.test($("hoja-error").textContent)) $("hoja-error").textContent = "";
+  },
+  fechaHoja() {
+    if (this.fechaModo === "ayer") return Jornadas.sumarDias(hoy(), -1);
+    if (this.fechaModo === "otro") return $("hoja-fecha-otro").value || "";
+    return hoy();
+  },
+  // "ayer 21 nov", "jue 19 nov" (para el botón de guardar)
+  textoFechaHoja(f) {
+    const d = Jornadas.aFecha(f);
+    const corta = d.toLocaleDateString("es", { day: "numeric", month: "short" }).replace(".", "");
+    if (f === Jornadas.sumarDias(hoy(), -1)) return `ayer ${corta}`;
+    return `${d.toLocaleDateString("es", { weekday: "short" }).replace(".", "")} ${corta}`;
+  },
+
   // Lo que falta para poder guardar (null = está todo)
   faltaHoja() {
     const t = this.tipoHoja();
     if (!(Number($("hoja-monto").value) > 0)) return "Escribe el monto";
+    if (t !== "colchon") { const f = this.fechaHoja(); if (!f) return "Elige el día"; if (f > hoy()) return "Esa fecha todavía no llega"; }
     if (t === "gasto" && !this.categoriaHoja) return "Elige una categoría";
     if (t === "pagoDeuda" && !this.deudaHoja) return "Elige a cuál deuda";
     if (t === "pagoDeuda" && !$("hoja-renta-campo").hidden && !$("hoja-renta-para").value) return "Elige para qué es la renta";
@@ -256,6 +289,9 @@ const Nav = {
       b.textContent = `Pagar ${dinero(m)}${d ? ` · ${d.nombre}` : ""}`;
     } else if (t === "ingreso") b.textContent = `Guardar ${dinero(m)}`;
     else b.textContent = `Guardar ${dinero(m)} en ${this.categoriaHoja}`;
+    // Si no es de hoy, el botón lo dice (así no se guarda en otro día sin querer)
+    const f = this.fechaHoja();
+    if (t !== "colchon" && f && f !== hoy()) b.textContent += ` · ${this.textoFechaHoja(f)}`;
   },
 
   errorHoja(texto, donde) {
@@ -265,6 +301,7 @@ const Nav = {
     $("hoja-deudas").classList.toggle("con-error", donde === "deuda");
     $("hoja-renta-para").closest(".campo").classList.toggle("con-error", donde === "renta");
     $("hoja-horas-campo").classList.toggle("con-error", donde === "horas");
+    $("hoja-fecha-campo").classList.toggle("con-error", donde === "fecha");
     const foco = { monto: $("hoja-monto"), renta: $("hoja-renta-para"), horas: $("hoja-horas"),
       deuda: $("hoja-deudas").querySelector("button"), categoria: $("hoja-categorias").querySelector("button") }[donde];
     if (foco) foco.focus({ preventScroll: true });
@@ -276,6 +313,9 @@ const Nav = {
     const monto = Number($("hoja-monto").value);
     if (!(monto > 0)) return this.errorHoja("Escribe el monto.", "monto");
     const nota = $("hoja-nota").value.trim();
+    const fecha = t === "colchon" ? hoy() : this.fechaHoja();
+    if (!fecha) return this.errorHoja("Elige el día en que fue.", "fecha");
+    if (fecha > hoy()) return this.errorHoja("Esa fecha todavía no llega. Lo que vas a gastar más adelante va en Gastos planeados.", "fecha");
     if (t === "colchon") {
       const error = Plan.aColchon(monto);
       if (error) return this.errorHoja(error, "monto");
@@ -284,7 +324,7 @@ const Nav = {
     if (t === "gasto") {
       if (!this.categoriaHoja) return this.errorHoja("Elige una categoría.", "categoria");
       this.cerrarHoja();
-      abrirFormulario("gasto", { selector: true, monto, categoria: this.categoriaHoja, nota: nota || undefined });
+      abrirFormulario("gasto", { selector: true, monto, fecha, categoria: this.categoriaHoja, nota: nota || undefined });
       return $("formulario").requestSubmit();
     }
     if (t === "ingreso") {
@@ -292,7 +332,7 @@ const Nav = {
       const horasTxt = $("hoja-horas").value.trim().replace(",", ".");
       if (!otro && horasTxt !== "" && !(Number(horasTxt) > 0)) return this.errorHoja("Las horas deben ser mayores que 0, o deja el campo vacío.", "horas");
       this.cerrarHoja();
-      abrirFormulario("ingreso", { selector: true, monto, horas: !otro && horasTxt !== "" ? Number(horasTxt) : undefined, nota: otro && nota ? nota : undefined });
+      abrirFormulario("ingreso", { selector: true, monto, fecha, horas: !otro && horasTxt !== "" ? Number(horasTxt) : undefined, nota: otro && nota ? nota : undefined });
       const sel = $("f-tipo-ingreso");
       if (sel) { sel.value = otro ? "otro" : "cheque"; sel.dispatchEvent(new Event("change", { bubbles: true })); }
       if (otro && nota && $("f-nota")) $("f-nota").value = nota;
@@ -306,7 +346,7 @@ const Nav = {
     const saldo = Datos.saldoDeuda(deudaId);
     if (monto > saldo + 0.005) return this.errorHoja(`El monto es mayor que lo que debes en esa deuda (${dinero(saldo)}).`, "monto");
     this.cerrarHoja();
-    abrirFormulario("pagoDeuda", { selector: true, monto, deudaId });
+    abrirFormulario("pagoDeuda", { selector: true, monto, fecha, deudaId });
     if (renta && $("f-renta-para")) $("f-renta-para").value = renta;
     $("formulario").requestSubmit();
   },
@@ -397,6 +437,7 @@ const Nav = {
     $("hoja-renta-para").addEventListener("change", () => { $("hoja-renta-para").closest(".campo").classList.remove("con-error"); this.textoBotonHoja(); });
     $("hoja-horas").addEventListener("input", () => { $("hoja-horas-campo").classList.remove("con-error"); if (/horas/.test($("hoja-error").textContent)) $("hoja-error").textContent = ""; });
     $("hoja-nota").addEventListener("input", () => this.sugerirCategoriaHoja());
+    $("hoja-fecha-otro").addEventListener("change", () => { $("hoja-fecha-campo").classList.remove("con-error"); this.textoBotonHoja(); });
     $("hoja-monto").addEventListener("input", () => {
       // El punto se corre solo, como en una calculadora de caja: 1 → 0.01 · 12 → 0.12 · 123 → 1.23
       const digitos = $("hoja-monto").value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9);
@@ -443,6 +484,8 @@ const Nav = {
         this.elegirCategoriaHoja(fr.dataset.frecCat, false);
         return this.textoBotonHoja();
       }
+      const hf = e.target.closest("[data-hfecha]");
+      if (hf) { this.ponerFechaHoja(hf.dataset.hfecha); return this.textoBotonHoja(); }
       const ing = e.target.closest("[data-ing]");
       if (ing) { this.ingresoHoja = ing.dataset.ing; return this.ponerIngresoHoja(); }
       const deu = e.target.closest("[data-deuda]");

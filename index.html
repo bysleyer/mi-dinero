@@ -76,6 +76,15 @@
           <label for="hoja-monto">Monto</label>
           <div class="monto-caja"><span class="monto-signo" aria-hidden="true">$</span><input id="hoja-monto" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0.00"></div>
         </div>
+        <div id="hoja-fecha" class="hoja-seg hoja-fecha" role="group" aria-label="Fecha">
+          <button type="button" class="chip" data-hfecha="hoy" aria-pressed="true">Hoy</button>
+          <button type="button" class="chip" data-hfecha="ayer" aria-pressed="false">Ayer</button>
+          <button type="button" class="chip" data-hfecha="otro" aria-pressed="false">Otro día</button>
+        </div>
+        <div class="campo hoja-fecha-otro" id="hoja-fecha-campo" hidden>
+          <label for="hoja-fecha-otro">¿Qué día fue?</label>
+          <input id="hoja-fecha-otro" type="date">
+        </div>
         <div id="hoja-deuda-campo" hidden>
           <div id="hoja-rapidos" class="hoja-rapidos" role="group" aria-label="Montos rápidos" hidden></div>
           <p class="hoja-etiqueta" id="hoja-deudas-etq">¿A cuál deuda?</p>
