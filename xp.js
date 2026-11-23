@@ -310,7 +310,7 @@ const Xp = {
     $("xp-pg-temas").addEventListener("click", ev => { const b = ev.target.closest("[data-tema]"); if (b) this.elegirTema(b.dataset.tema); });
     // Logro secreto "Vuelta sin reproches": volver después de 7 días sin entrar
     const p = this.leer(), h = hoy();
-    if (typeof Logros !== "undefined" && p.ultimaVisita && Logros.diasEntre(p.ultimaVisita, h) >= 7) p.flags.vuelta = true;
+    if (typeof Logros !== "undefined" && p.ultimaVisita && Jornadas.diasEntre(p.ultimaVisita, h) >= 7) p.flags.vuelta = true;
     p.ultimaVisita = h; this.guardar(p);
     this.actualizar();
   }

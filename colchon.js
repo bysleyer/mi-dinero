@@ -36,7 +36,7 @@ const RentaUI = {
       // La próxima renta vence después de estos días: se mira con la misma cuenta un poco más lejos
       const sig = Proyeccion.rentaMeses(pr.desde, Jornadas.sumarDias(pr.desde, 62)).find(c => c.pendiente > 0.005);
       if (sig) {
-        const dias = Math.round((Jornadas.aFecha(sig.meta) - Jornadas.aFecha(pr.desde)) / 86400000) + 1;
+        const dias = Jornadas.diasEntre(pr.desde, sig.meta) + 1;
         r = Proyeccion.estadoRenta(Proyeccion.calcular({ ...pr.opciones, horizonte: Math.max(dias, 31) }));
       }
     }

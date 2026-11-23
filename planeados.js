@@ -176,7 +176,7 @@ const Planeados = {
     // ¿Y si gasto…? (y la vista "¿Se puede comprar?"): mira 3 meses, igual que lo libre del Plan
     // Siempre 3 meses (o hasta la fecha límite y un mes más): antes un gasto con fecha límite se medía solo 30 días
     // y podía salir "No afecta nada" aunque dejara corta la renta del mes siguiente.
-    const hastaLimite = g.fechaLimite ? Math.round((Jornadas.aFecha(g.fechaLimite) - Jornadas.aFecha(hoy())) / 86400000) + 35 : 0;
+    const hastaLimite = g.fechaLimite ? Jornadas.diasEntre(hoy(), g.fechaLimite) + 35 : 0;
     const op = { chequeEscenario: cheque, excluirPlaneado: g.id, horizonte: Math.max(92, hastaLimite), ...extra };
     const pr = Proyeccion.calcular(op);
     const prLargo = Proyeccion.calcular({ ...op, horizonte: 730 });
@@ -245,7 +245,7 @@ const Planeados = {
     if (!a) return 0;                // ni sin el gasto se alcanza: no cambia
     if (a && !b) return Infinity;    // con el gasto ya no se alcanza en 2 años
     if (a === "ya" || b === "ya") return 0;
-    return Math.round((Jornadas.aFecha(b) - Jornadas.aFecha(a)) / 86400000);
+    return Jornadas.diasEntre(a, b);
   },
 
   costo(l) {

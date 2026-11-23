@@ -115,7 +115,7 @@ const Acuerdo = {
 
     // Cheques y gastos: proyeccion.js, con los pagos del acuerdo y sin las líneas de renta
     const est = Futuro.estado();
-    const horizonte = Math.round((Jornadas.aFecha(fin) - Jornadas.aFecha(hoyClave)) / 86400000) + 7;
+    const horizonte = Jornadas.diasEntre(hoyClave, fin) + 7;
     const pr = Proyeccion.calcular({ chequeEscenario: Escenarios.config()[est.escenario], horizonte, sinRenta: true,
       extras: pagos.filter(x => x.monto > 0).map(x => ({ fecha: x.fecha, monto: -x.monto, nombre: "Pago del acuerdo de renta" })) });
 

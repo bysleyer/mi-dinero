@@ -84,8 +84,6 @@ const Logros = {
   },
 
   // ---------- Fechas ----------
-  _dia(f) { const [a, m, d] = f.split("-").map(Number); return Date.UTC(a, m - 1, d) / 86400000; },
-  diasEntre(a, b) { return Math.round(this._dia(b) - this._dia(a)); },
   mesSiguiente(mes) { const [a, m] = mes.split("-").map(Number); return m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, "0")}`; },
   // Cuántos seguidos hay en una lista ordenada, donde "sigue(a, b)" dice si b va justo después de a
   rachaMayor(lista, sigue) {
@@ -110,7 +108,7 @@ const Logros = {
     const iTarde = lista.findIndex(x => !x.aTiempo);
     return {
       dias, porMes, mesActual,
-      rachaDias: this.rachaMayor(dias, (a, b) => this.diasEntre(a, b) === 1),
+      rachaDias: this.rachaMayor(dias, (a, b) => Jornadas.diasEntre(a, b) === 1),
       mejorMes: Math.max(0, ...Object.values(porMes)),
       mesCompleto: Object.keys(porMes).some(m => m < mesActual && porMes[m] >= 20),
       pagosATiempo: lista.filter(x => x.aTiempo).length,
@@ -118,7 +116,7 @@ const Logros = {
       mesesLimpios,
       mesesLimpiosSeguidos: this.rachaMayor(mesesLimpios, (a, b) => this.mesSiguiente(a) === b),
       recupero: iTarde >= 0 && lista.slice(iTarde + 1).some(x => x.aTiempo),
-      semanas, rachaSemanas: this.rachaMayor(semanas, (a, b) => this.diasEntre(a, b) === 7),
+      semanas, rachaSemanas: this.rachaMayor(semanas, (a, b) => Jornadas.diasEntre(a, b) === 7),
       mesesRespaldo: mesesRespaldo.size
     };
   },

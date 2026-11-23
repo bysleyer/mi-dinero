@@ -123,7 +123,7 @@ const Proyeccion = {
     const n = t.diasPorSemana;
     const jornadas = {};
     (this._cache ? this._cache.jornadas : Almacen.leerJornadas()).forEach(j => { jornadas[j.fecha] = j; });
-    const i = Math.round((Jornadas.aFecha(hoyClave) - Jornadas.aFecha(lunes)) / 86400000);
+    const i = Jornadas.diasEntre(lunes, hoyClave);
     const hoyCuenta = this.diaConTransporte(hoyClave, i, n, jornadas);
     const cerrado = Almacen.leerPlan().transporteCerradoEl === hoyClave;
     const di = Almacen.leerDineroInicial(), desdeMov = di ? di.momento : "";
@@ -596,7 +596,7 @@ const Proyeccion = {
     const sale = redondear(-antes.filter(x => x.monto < 0).reduce((s, x) => s + x.monto, 0));
     // Se arrastra hasta el primer cheque después del cual el saldo vuelve a 0 o más
     const hasta = pr.cheques.find(c => c > l.fecha && pr.porDia[c].saldoFin >= -0.005) || null;
-    const dias = Math.max(1, Math.round((Jornadas.aFecha(l.fecha) - Jornadas.aFecha(pr.desde)) / 86400000));
+    const dias = Math.max(1, Jornadas.diasEntre(pr.desde, l.fecha));
     const semanas = Math.max(1, Math.ceil(dias / 7));
     return { id: l.id, nombre: l.nombre, fecha: l.fecha, monto, inicial: pr.inicial, entra, sale,
              queda: Math.max(0, queda), falta, hasta, semanas, porSemana: redondear(falta / semanas) };

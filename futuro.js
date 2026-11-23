@@ -260,7 +260,7 @@ const Futuro = {
   // ---------- Vista de semana ----------
   dibujarSemana(pr) {
     const fechas = this.fechas(pr);
-    const maxSemana = Math.floor(this.diferenciaDias(Plan.claveSemana(Jornadas.aFecha(fechas[0])), fechas[fechas.length - 1]) / 7);
+    const maxSemana = Math.floor(Jornadas.diasEntre(Plan.claveSemana(Jornadas.aFecha(fechas[0])), fechas[fechas.length - 1]) / 7);
     this.semana = Math.max(0, Math.min(this.semana, maxSemana));
     const lunes = Jornadas.sumarDias(Plan.claveSemana(Jornadas.aFecha(fechas[0])), this.semana * 7);
     $("fu-sem-anterior").disabled = this.semana === 0;
@@ -282,10 +282,6 @@ const Futuro = {
           </button>
         </li>`;
     }).join("");
-  },
-
-  diferenciaDias(a, b) {
-    return Math.round((Jornadas.aFecha(b) - Jornadas.aFecha(a)) / 86400000);
   },
 
   // ---------- Ventana de un día ----------

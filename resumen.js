@@ -308,7 +308,7 @@ const Cierre = {
         const pago = fechaDePago[p.clave] || (p.pagado ? i.fecha : null);
         if (pago) {
           if (pago <= i.fecha) r.aTiempo++;
-          else r.tarde.push({ nombre: p.nombre, monto: p.monto, dias: Math.round((Jornadas.aFecha(pago) - Jornadas.aFecha(i.fecha)) / 86400000) });
+          else r.tarde.push({ nombre: p.nombre, monto: p.monto, dias: Jornadas.diasEntre(i.fecha, pago) });
         } else if (i.fecha < hoyC) r.sinPagar.push({ nombre: p.nombre, monto: p.monto });
       });
     });

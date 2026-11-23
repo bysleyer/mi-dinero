@@ -81,6 +81,11 @@ const Jornadas = {
     return new Date(a, m - 1, d);
   },
 
+  // Días de calendario de a hasta b (positivo si b es después de a)
+  diasEntre(a, b) {
+    return Math.round((this.aFecha(b) - this.aFecha(a)) / 86400000);
+  },
+
   sumarDias(clave, dias) {
     const f = this.aFecha(clave);
     f.setDate(f.getDate() + dias);
@@ -94,7 +99,7 @@ const Jornadas = {
   cobroDeCheque(fecha) {
     const diaCobro = Math.max(0, this.DIAS.indexOf(this.config().diaDeCobro));
     const cobro = this.sumarDias(Plan.claveSemana(this.aFecha(fecha)), (diaCobro + 6) % 7);
-    const antes = Math.round((this.aFecha(cobro) - this.aFecha(fecha)) / 86400000);
+    const antes = this.diasEntre(fecha, cobro);
     return antes >= 3 ? this.sumarDias(cobro, -7) : cobro;
   },
 

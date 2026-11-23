@@ -126,7 +126,7 @@ const Prestamo = {
   comparar(s, escenarioId) {
     const cheque = Escenarios.config()[escenarioId];
     const ex = this.extras(s);
-    const horizonte = Math.max(30, Math.round((Jornadas.aFecha(ex.ultimo) - Jornadas.aFecha(hoy())) / 86400000) + 8);
+    const horizonte = Math.max(30, Jornadas.diasEntre(hoy(), ex.ultimo) + 8);
     const sin = Proyeccion.calcular({ chequeEscenario: cheque, horizonte });
     const con = Proyeccion.calcular({ chequeEscenario: cheque, horizonte, extras: ex.lineas });
     const largoSin = Proyeccion.calcular({ chequeEscenario: cheque, horizonte: 730 });
@@ -139,7 +139,7 @@ const Prestamo = {
 
   dias(a, b) {
     if (!a || !b || a === "ya" || b === "ya") return null;
-    return Math.round((Jornadas.aFecha(a) - Jornadas.aFecha(b)) / 86400000);
+    return Jornadas.diasEntre(b, a);
   },
 
   // ---------- Sin intereses: ¿cuándo lo podría pagar? ----------

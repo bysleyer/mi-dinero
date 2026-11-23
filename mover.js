@@ -42,7 +42,7 @@ const Mover = {
   },
 
   diferencia(a, b) {
-    return Math.round((Jornadas.aFecha(a) - Jornadas.aFecha(b)) / 86400000);
+    return Jornadas.diasEntre(b, a);
   },
 
   // ---------- Proyección día por día ----------
@@ -206,7 +206,7 @@ const Mover = {
     dias.forEach(f => {
       const antes = pr.porDia[f].saldoFin;
       const despues = redondear(minDesde[f] - pago.monto);
-      const atraso = this.diferencia(f, pago.fecha);
+      const atraso = Jornadas.diasEntre(pago.fecha, f);
       // Deuda atrasada (internet atrasado): se puede aplazar; no hay "atraso" ni recargo nuevo
       const fueraDeGracia = !this.esDeuda(pago) && atraso > reglas.gracia_dias;
       let color;
@@ -263,7 +263,7 @@ const Mover = {
     this._intentoGuardar = false;
     const guardado = Almacen.leerPagosMovidos()[clave];
     const original = this.pagoOriginal(clave);
-    this.horizonte = Math.max(this.config().horizonte, this.diferencia(original.fecha, hoy()) + 15);
+    this.horizonte = Math.max(this.config().horizonte, Jornadas.diasEntre(hoy(), original.fecha) + 15);
     this.ajuste = guardado ? guardado.partes.map(p => ({ ...p })) : [{ fecha: (original.meta || original.fecha) < hoy() ? hoy() : (original.meta || original.fecha), monto: original.monto }];
     $("mv-prestamo-opciones").hidden = !clave.startsWith("prestamo@");
     $("mv-recargo").value = guardado && guardado.recargo ? guardado.recargo : "";

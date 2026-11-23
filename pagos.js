@@ -135,7 +135,7 @@ const Vencimientos = {
       .map(([k, v]) => {
         const F = k.split("@")[1];
         const ultima = v.partes.map(p => p.fecha).sort().slice(-1)[0];
-        const semanas = Math.max(0, Math.ceil(Math.round((Jornadas.aFecha(ultima) - Jornadas.aFecha(F)) / 86400000) / 7));
+        const semanas = Math.max(0, Math.ceil(Jornadas.diasEntre(F, ultima) / 7));
         return { desde: F, hasta: Jornadas.sumarDias(F, 7 * semanas) };
       });
   },
@@ -367,7 +367,7 @@ const Vencimientos = {
   },
 
   diasHasta(fecha) {
-    return Math.round((Jornadas.aFecha(fecha) - Jornadas.aFecha(hoy())) / 86400000);
+    return Jornadas.diasEntre(hoy(), fecha);
   },
 
   textoCuando(dias) {
